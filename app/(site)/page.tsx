@@ -59,7 +59,7 @@ export default async function Home() {
   const next = calendar.find((c) => !c.cancelled) ?? calendar[0];
   const nextTraining = calendar.find((c) => c.kind === "training" && !c.cancelled);
   const pct = Math.min(100, (stats.members / SITE.goal) * 100);
-  const showcase = founders.filter((f) => f.card_url).slice(0, 4);
+  const showcase = founders.filter((f) => f.card_url && f.title).slice(0, 4);
 
   return (
     <>
@@ -99,7 +99,7 @@ export default async function Home() {
                 <span>Next meet</span>
               </div>
               <div>
-                <b>$0</b>
+                <b>Free</b>
                 <span>Drinks & snacks</span>
               </div>
             </div>

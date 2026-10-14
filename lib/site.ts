@@ -14,6 +14,8 @@ export const SITE = {
     start: { h: 19, m: 0 },
     end: { h: 21, m: 30 },
     timeLabel: "7:00 – 9:30 pm",
+    /** No monthly session is generated before this date (YYYY-MM-DD). */
+    resumeFrom: "2026-12-06",
     mapsUrl: "https://www.google.com/maps/search/?api=1&query=Rhodes+Amphitheatre+Rhodes+NSW",
   },
   timeZone: "Australia/Sydney",

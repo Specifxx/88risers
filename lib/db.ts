@@ -94,6 +94,11 @@ CREATE TABLE IF NOT EXISTS matches (
   CHECK (winner_id <> loser_id)
 );
 
+CREATE TABLE IF NOT EXISTS meta (
+  key    text PRIMARY KEY,
+  value  text
+);
+
 CREATE INDEX IF NOT EXISTS matches_winner_idx ON matches (winner_id);
 CREATE INDEX IF NOT EXISTS matches_loser_idx ON matches (loser_id);
 CREATE INDEX IF NOT EXISTS matches_event_idx ON matches (event_id);
@@ -103,27 +108,62 @@ CREATE INDEX IF NOT EXISTS events_starts_idx ON events (starts_at);
 /** The eight founders hold the first eight permanent Riser IDs. */
 const FOUNDERS: Array<[number, string, string | null, string | null]> = [
   [1, "Harry Lu", "70kg Arm Wrestling Champion", "/founders/harry.jpg"],
-  [2, "Erick Kang", "80kg Newcastle Arm Wrestling Champion", "/founders/erick.jpg"],
-  [3, "Bhavya Sharma", "70kg Arm Wrestling Silver Medalist", "/founders/bhavya.jpg"],
-  [4, "Phillip Nguyen", "80kg NSW Bronze Medalist", "/founders/philip.jpg"],
-  [5, "George Lu", null, "/founders/george.jpg"],
-  [6, "Tommy", null, null],
-  [7, "Luie", null, null],
-  [8, "Kelvin", null, null],
+  [2, "George Lu", null, "/founders/george.jpg"],
+  [3, "Phillip Nguyen", "80kg NSW Bronze Medalist", "/founders/philip.jpg"],
+  [4, "Bhavya Sharma", "70kg Arm Wrestling Silver Medalist", "/founders/bhavya.jpg"],
+  [5, "Kelvin Gian", null, null],
+  [6, "Tommy Cao", null, null],
+  [7, "Luie Hoang", null, null],
+  [8, "Erick Kang", "80kg Newcastle Arm Wrestling Champion", "/founders/erick.jpg"],
+];
+
+/** First release's placeholder numbering: [old id, old name, new id, new name]. */
+const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
+  [1, "Harry Lu", 1, "Harry Lu"],
+  [5, "George Lu", 2, "George Lu"],
+  [4, "Phillip Nguyen", 3, "Phillip Nguyen"],
+  [3, "Bhavya Sharma", 4, "Bhavya Sharma"],
+  [8, "Kelvin", 5, "Kelvin Gian"],
+  [6, "Tommy", 6, "Tommy Cao"],
+  [7, "Luie", 7, "Luie Hoang"],
+  [2, "Erick Kang", 8, "Erick Kang"],
 ];
 
 async function migrate(db: Db) {
   await db.query(SCHEMA);
-  const [{ n }] = await db.query<{ n: number }>("SELECT count(*)::int AS n FROM pullers");
-  if (n === 0) {
-    for (const [id, name, title, card] of FOUNDERS) {
-      await db.query(
-        `INSERT INTO pullers (id, name, title, card_url, is_founder, joined_on)
-         VALUES ($1, $2, $3, $4, true, '2026-01-01') ON CONFLICT (id) DO NOTHING`,
-        [id, name, title, card],
-      );
+  await db.transaction(async (tx) => {
+    // Whoever inserts this marker runs the step; concurrent cold starts wait on the row and skip.
+    const claimed = await tx.query(
+      `INSERT INTO meta (key, value) VALUES ('founders_v2', now()::text) ON CONFLICT (key) DO NOTHING RETURNING key`,
+    );
+    if (!claimed.length) return;
+    const [{ n }] = await tx.query<{ n: number }>("SELECT count(*)::int AS n FROM pullers");
+    if (n === 0) {
+      for (const [id, name, title, card] of FOUNDERS) {
+        await tx.query(
+          `INSERT INTO pullers (id, name, title, card_url, is_founder, joined_on)
+           VALUES ($1, $2, $3, $4, true, '2026-01-01')`,
+          [id, name, title, card],
+        );
+      }
+      return;
     }
-  }
+    // Databases seeded by the first release: move founders to their real numbers.
+    // Matches follow via ON UPDATE CASCADE. Rows an admin already renamed are left alone.
+    const OFFSET = 100000;
+    const moved: Array<[number, number, string]> = [];
+    for (const [oldId, oldName, newId, newName] of FOUNDER_RENUMBER) {
+      const r = await tx.query(
+        `UPDATE pullers SET id = id + ${OFFSET} WHERE id = $1 AND name = $2 AND is_founder RETURNING id`,
+        [oldId, oldName],
+      );
+      if (r.length) moved.push([oldId, newId, newName]);
+    }
+    for (const [oldId, newId, newName] of moved) {
+      await tx.query(`UPDATE pullers SET id = $2, name = $3 WHERE id = $1`, [oldId + OFFSET, newId, newName]);
+      await tx.query(`UPDATE registrations SET puller_id = $2 WHERE puller_id = $1`, [oldId, newId]);
+    }
+  });
 }
 
 async function connectPostgres(url: string): Promise<Db> {

@@ -59,7 +59,8 @@ export function upcomingTrainingSessions(count = 3, now = new Date()): Session[]
     const d = firstSunday(y, m);
     const { start, end } = SITE.training;
     const s = { start: sydneyTime(y, m, d, start.h, start.m), end: sydneyTime(y, m, d, end.h, end.m) };
-    if (s.end > now) out.push(s);
+    const [ry, rm, rd] = SITE.training.resumeFrom.split("-").map(Number);
+    if (s.end > now && s.start >= sydneyTime(ry, rm - 1, rd)) out.push(s);
     m += 1;
     if (m > 11) {
       m = 0;
