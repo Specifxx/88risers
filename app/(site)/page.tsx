@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { CardFace } from "@/components/CardFace";
 import { Countdown } from "@/components/Countdown";
@@ -10,6 +11,9 @@ import { KIND_LABEL, upcomingCalendar } from "@/lib/calendar";
 import { getClubStats, getLeaderboard, listPullers } from "@/lib/data";
 import { fmtDay, fmtDayNum, fmtMonth, fmtTime, fmtWeekday } from "@/lib/schedule";
 import { SITE, formatId } from "@/lib/site";
+
+/** Served from cache; regenerated at most once a minute, or immediately after admin edits. */
+export const revalidate = 60;
 
 const TICKER = [
   "First Sunday · Every month",
@@ -221,8 +225,7 @@ export default async function Home() {
           </div>
           <div className="tiles">
             <div className="tile wide photo-tile" data-reveal>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/founders/bhavya.jpg" alt="" loading="lazy" />
+              <Image src="/founders/bhavya.jpg" alt="" fill sizes="(max-width: 1000px) 100vw, 620px" />
               <div className="tile-inner">
                 <h3>First Sunday. Every month.</h3>
                 <p>

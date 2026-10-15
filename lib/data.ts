@@ -1,5 +1,4 @@
 import "server-only";
-import { connection } from "next/server";
 import { getDb, type Db } from "./db";
 import { START_ELO, eloAfter } from "./elo";
 
@@ -94,10 +93,9 @@ const MATCH_COLS = `
   JOIN pullers l ON l.id = m.loser_id
   LEFT JOIN events e ON e.id = m.event_id`;
 
-async function db() {
-  await connection(); // always render database pages at request time
-  return getDb();
-}
+// Public pages are statically cached and regenerated in the background (see
+// `revalidate` in each page); admin actions call revalidatePath to refresh them at once.
+const db = getDb;
 
 /* ─────────── Pullers ─────────── */
 

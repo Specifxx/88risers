@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { SITE } from "@/lib/site";
 
@@ -7,8 +8,7 @@ export function SiteFooter() {
       <div className="wrap">
         <div className="footer-grid">
           <div className="footer-brand">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/crest.jpg" alt="88 Risers crest" />
+            <Image src="/crest.jpg" alt="88 Risers crest" width={96} height={96} />
             <p>
               A social arm wrestling club in Rhodes, Sydney. Associated with the {SITE.federation}. Strength in the grip,
               respect at the table.

@@ -5,6 +5,9 @@ import { listEvents } from "@/lib/data";
 import { fmtDay, fmtDayNum, fmtMonth, fmtShortDate, fmtTime } from "@/lib/schedule";
 import { SITE } from "@/lib/site";
 
+/** Served from cache; regenerated at most once a minute, or immediately after admin edits. */
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   title: "Events",
   description: "88 Risers table time, tournaments and socials in Rhodes, Sydney — plus past results and match videos.",

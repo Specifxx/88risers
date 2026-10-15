@@ -6,6 +6,8 @@ import { PullerSlab } from "@/components/PullerSlab";
 import { getClubStats, getLeaderboard, listPullers } from "@/lib/data";
 import { TIERS } from "@/lib/elo";
 
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   title: "Riser Database",
   description: "Every 88 Risers puller, their permanent Riser ID, Elo rating, match record and match videos.",

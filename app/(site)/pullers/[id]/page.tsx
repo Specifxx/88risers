@@ -11,6 +11,14 @@ import { PROVISIONAL_MATCHES, START_ELO, tierFor } from "@/lib/elo";
 import { fmtShortDate } from "@/lib/schedule";
 import { formatId } from "@/lib/site";
 
+/** Served from cache; regenerated at most once a minute, or immediately after admin edits. */
+export const revalidate = 60;
+
+// Pages are generated on first visit, then cached.
+export function generateStaticParams() {
+  return [];
+}
+
 function parseId(raw: string) {
   const m = /^#?0*(\d{1,6})$/.exec(decodeURIComponent(raw));
   return m ? Number(m[1]) : null;

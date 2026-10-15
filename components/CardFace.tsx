@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 interface Props {
   name: string;
   id: number | string;
@@ -11,8 +13,12 @@ interface Props {
 /** The art inside a slab: the printed champion card if there is one, otherwise a generated face. */
 export function CardFace({ name, id, title, photo, card, mystery, priority }: Props) {
   if (card) {
+    const alt = `${name}'s 88 Risers champion card`;
+    // Bundled card art goes through the image optimiser; uploaded cards are already resized.
+    if (!card.startsWith("/api/"))
+      return <Image src={card} alt={alt} fill sizes="(max-width: 720px) 48vw, 320px" priority={priority} />;
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={card} alt={`${name}'s 88 Risers champion card`} loading={priority ? "eager" : "lazy"} />;
+    return <img src={card} alt={alt} loading={priority ? "eager" : "lazy"} />;
   }
   const num = typeof id === "number" ? String(id).padStart(3, "0") : id;
   return (
@@ -29,8 +35,7 @@ export function CardFace({ name, id, title, photo, card, mystery, priority }: Pr
           {mystery ? <div className="face-q">?</div> : null}
         </>
       )}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className="face-crest" src="/crest.jpg" alt="" />
+      <Image className="face-crest" src="/crest.jpg" alt="" width={96} height={96} />
       <div className="face-num">
         {mystery ? "NEXT" : "MEMBER"}
         <b className="gold-text">{num}</b>

@@ -47,6 +47,8 @@ Bookmark `https://<your-domain>/admin/<ADMIN_KEY>` on the organisers' phones.
 
 Next.js 16 (App Router, server actions), React 19, plain CSS, `postgres` driver. Photos are stored in Postgres, so there's no separate file storage to configure.
 
+Public pages are cached by Vercel and regenerated in the background at most once a minute; every admin change refreshes them immediately. If the database is briefly unavailable (Neon's free tier sleeps when idle), visitors keep seeing the cached pages, and database calls retry automatically.
+
 ```
 app/(site)/        public pages
 app/admin/[key]/   admin dashboard + server actions

@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 import { listEvents, listPullers } from "@/lib/data";
 import { SITE } from "@/lib/site";
 
+export const revalidate = 3600;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [pullers, events] = await Promise.all([listPullers(), listEvents("all")]);
   return [

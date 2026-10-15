@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -32,8 +33,7 @@ export function SiteHeader() {
     <header className="site-header" data-scrolled={scrolled || path !== "/"}>
       <div className="wrap">
         <Link href="/" className="brand" aria-label="88 Risers home">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/crest.jpg" alt="" width={42} height={42} />
+          <Image src="/crest.jpg" alt="" width={42} height={42} priority />
           <span>
             <b>88 Risers</b>
             <small>Arm Wrestling Club</small>

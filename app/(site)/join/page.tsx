@@ -3,6 +3,9 @@ import { JoinForm } from "@/components/JoinForm";
 import { getClubStats } from "@/lib/data";
 import { SITE, formatId } from "@/lib/site";
 
+/** Served from cache; regenerated at most once a minute, or immediately after admin edits. */
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   title: "Register",
   description: "Register with 88 Risers to get texts about meets and tournaments, and claim your permanent Riser ID.",

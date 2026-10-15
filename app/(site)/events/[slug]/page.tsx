@@ -9,6 +9,14 @@ import { getEventBySlug, getEventMatches } from "@/lib/data";
 import { fmtDay, fmtTime } from "@/lib/schedule";
 import { SITE, formatId } from "@/lib/site";
 
+/** Served from cache; regenerated at most once a minute, or immediately after admin edits. */
+export const revalidate = 60;
+
+// Pages are generated on first visit, then cached.
+export function generateStaticParams() {
+  return [];
+}
+
 export async function generateMetadata({ params }: PageProps<"/events/[slug]">): Promise<Metadata> {
   const e = await getEventBySlug((await params).slug);
   if (!e) return { title: "Event not found" };

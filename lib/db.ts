@@ -129,12 +129,23 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
   [2, "Erick Kang", 8, "Erick Kang"],
 ];
 
+const MIGRATION_MARKER = "founders_v2";
+
 async function migrate(db: Db) {
+  // Fast path for every cold start after the first: one tiny query instead of the whole schema.
+  // Bump MIGRATION_MARKER whenever SCHEMA or the data steps below change.
+  try {
+    const done = await db.query(`SELECT 1 FROM meta WHERE key = $1`, [MIGRATION_MARKER]);
+    if (done.length) return;
+  } catch {
+    // meta table doesn't exist yet — fresh database
+  }
   await db.query(SCHEMA);
   await db.transaction(async (tx) => {
     // Whoever inserts this marker runs the step; concurrent cold starts wait on the row and skip.
     const claimed = await tx.query(
-      `INSERT INTO meta (key, value) VALUES ('founders_v2', now()::text) ON CONFLICT (key) DO NOTHING RETURNING key`,
+      `INSERT INTO meta (key, value) VALUES ($1, now()::text) ON CONFLICT (key) DO NOTHING RETURNING key`,
+      [MIGRATION_MARKER],
     );
     if (!claimed.length) return;
     const [{ n }] = await tx.query<{ n: number }>("SELECT count(*)::int AS n FROM pullers");
@@ -172,6 +183,10 @@ async function connectPostgres(url: string): Promise<Db> {
     max: Number(process.env.PG_POOL_MAX) || 3,
     prepare: false, // compatible with transaction-mode poolers (Supabase, Neon pooled)
     idle_timeout: 20,
+    connect_timeout: 10, // serverless databases (Neon free tier) can take a few seconds to wake
+    // The driver's default reconnect delay grows to 20s after repeated failures, which
+    // stalls every later request on a warm instance. Reconnect promptly; withRetry paces us.
+    backoff: () => 0.25,
     onnotice: () => {},
   });
   type Q = { unsafe: (t: string, p?: never[]) => Promise<unknown> };
@@ -195,8 +210,10 @@ async function connectPostgres(url: string): Promise<Db> {
 async function connectPglite(): Promise<Db> {
   const { PGlite } = await import("@electric-sql/pglite");
   const { mkdirSync } = await import("node:fs");
-  const dir = process.env.PGLITE_DIR || "./.data/pglite";
-  mkdirSync(dir, { recursive: true });
+  // During `next build` several workers prerender in parallel; give them a throwaway database.
+  const building = process.env.NEXT_PHASE === "phase-production-build";
+  const dir = building ? "memory://" : process.env.PGLITE_DIR || "./.data/pglite";
+  if (!building) mkdirSync(dir, { recursive: true });
   const pg = await PGlite.create(dir);
   type Q = Pick<typeof pg, "query" | "exec">;
   const wrap = (q: Q): Db => ({
@@ -218,6 +235,34 @@ async function connectPglite(): Promise<Db> {
   };
 }
 
+/** Errors worth retrying: the connection dropped or the database is still waking up. */
+function isTransient(err: unknown) {
+  const code = String((err as { code?: unknown })?.code ?? "");
+  return (
+    /^(ECONNRESET|ECONNREFUSED|ETIMEDOUT|EPIPE|EAI_AGAIN|CONNECTION_CLOSED|CONNECTION_ENDED|CONNECTION_DESTROYED|CONNECT_TIMEOUT)$/.test(code) ||
+    /^(08|57P0[1-3])/.test(code) // connection exceptions, server shutting down / starting up
+  );
+}
+
+async function withRetry<R>(fn: () => Promise<R>, attempts = 3): Promise<R> {
+  for (let i = 1; ; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (i >= attempts || !isTransient(err)) throw err;
+      await new Promise((r) => setTimeout(r, 300 * 2 ** (i - 1)));
+    }
+  }
+}
+
+function resilient(db: Db): Db {
+  return {
+    query: (text, params) => withRetry(() => db.query(text, params)),
+    // A transaction that failed on a dropped connection was rolled back, so it is safe to rerun.
+    transaction: (fn) => withRetry(() => db.transaction(fn)),
+  };
+}
+
 const globalForDb = globalThis as unknown as { __risersDb?: Promise<Db> };
 
 export function getDb(): Promise<Db> {
@@ -227,7 +272,7 @@ export function getDb(): Promise<Db> {
       if (!url && process.env.VERCEL) {
         throw new Error("DATABASE_URL is not set. Connect a Postgres database in Vercel → Storage.");
       }
-      const db = url ? await connectPostgres(url) : await connectPglite();
+      const db = resilient(url ? await connectPostgres(url) : await connectPglite());
       await migrate(db);
       return db;
     })().catch((err) => {

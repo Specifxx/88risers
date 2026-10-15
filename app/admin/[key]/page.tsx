@@ -21,6 +21,8 @@ import {
 } from "./actions";
 import { ConfirmButton, CopyButton, ImageInput } from "./ui";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "HQ",
   robots: { index: false, follow: false, nocache: true },
