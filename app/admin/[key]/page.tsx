@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
 import { isAdminKey } from "@/lib/admin";
-import { getClubStats, listEvents, listPullers, listRecentMatches, listRegistrations, type ClubEvent, type MatchView, type Puller } from "@/lib/data";
+import { getClubStats, listEvents, listPullers, listRecentMatches, listReels, listRegistrations, type ClubEvent, type MatchView, type Puller, type Reel } from "@/lib/data";
 import { prettyPhone } from "@/lib/phone";
 import { fmtShortDate, toSydneyInput } from "@/lib/schedule";
 import { SITE, formatId } from "@/lib/site";
@@ -11,11 +11,13 @@ import {
   deleteEvent,
   deleteMatch,
   deletePuller,
+  deleteReel,
   deleteRegistration,
   promoteRegistration,
   saveEvent,
   saveMatch,
   savePuller,
+  saveReel,
   saveRegistrationNote,
   setRegistrationStatus,
 } from "./actions";
@@ -34,6 +36,7 @@ const TABS = [
   ["pullers", "Pullers"],
   ["matches", "Matches"],
   ["events", "Events"],
+  ["tv", "88RisersTV"],
 ] as const;
 type Tab = (typeof TABS)[number][0];
 
@@ -51,12 +54,13 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
   const k = decodeURIComponent(key);
   const base = `/admin/${encodeURIComponent(k)}`;
 
-  const [stats, regs, pullers, matches, events] = await Promise.all([
+  const [stats, regs, pullers, matches, events, reels] = await Promise.all([
     getClubStats(),
     listRegistrations(),
     listPullers({ includeHidden: true }),
     listRecentMatches(200),
     listEvents("all"),
+    listReels({ includeHidden: true }),
   ]);
   const newRegs = regs.filter((r) => r.status === "new").length;
 
@@ -112,6 +116,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
         {tab === "pullers" ? <Pullers pullers={pullers} k={k} nextId={stats.next_id} /> : null}
         {tab === "matches" ? <Matches matches={matches} pullers={pullers} events={events} k={k} /> : null}
         {tab === "events" ? <Events events={events} k={k} /> : null}
+        {tab === "tv" ? <Tv reels={reels} k={k} /> : null}
 
         <p className="fine" style={{ marginTop: 60 }}>
           Anyone with this link can manage the club, so share it only with organisers. To change the link, set a new
@@ -623,6 +628,92 @@ function Events({ events, k }: { events: ClubEvent[]; k: string }) {
           </details>
         ))}
         {events.length === 0 ? <div className="panel empty">No custom events yet.</div> : null}
+      </div>
+    </>
+  );
+}
+
+function ReelFields({ r }: { r?: Reel }) {
+  return (
+    <div className="form-grid">
+      <div className="field span2">
+        <label>Reel link</label>
+        <input name="url" type="url" defaultValue={r?.url} required placeholder="https://www.instagram.com/reel/…" />
+      </div>
+      <div className="field span2">
+        <label>Title</label>
+        <input name="title" type="text" defaultValue={r?.title} required placeholder="Harry vs Erick: the rematch" />
+      </div>
+      <div className="field span4">
+        <label>Caption <em>optional</em></label>
+        <textarea name="caption" defaultValue={r?.caption ?? ""} rows={2} placeholder="One or two lines shown under the player" />
+      </div>
+      <div className="field">
+        <label>Posted on</label>
+        <input name="posted_on" type="date" defaultValue={r?.posted_on ?? ""} />
+      </div>
+      <div className="field">
+        <label>Order <em>lower plays first</em></label>
+        <input name="sort_order" type="number" defaultValue={r?.sort_order ?? 0} />
+      </div>
+      <label className="check span2" style={{ margin: 0, alignSelf: "end" }}>
+        <input type="checkbox" name="hidden" defaultChecked={r?.hidden} />
+        <span>Hidden from the site</span>
+      </label>
+    </div>
+  );
+}
+
+function Tv({ reels, k }: { reels: Reel[]; k: string }) {
+  return (
+    <>
+      <div className="admin-head">
+        <div>
+          <h1>88RisersTV</h1>
+          <p className="muted">
+            Paste reel links from @{SITE.instagramHandle}. The first reel (lowest order number, then newest) is the
+            featured broadcast on <Link href="/tv" target="_blank">/tv</Link>.
+          </p>
+        </div>
+      </div>
+      <div className="panel">
+        <h2 className="panel-title">Add a reel</h2>
+        <form action={saveReel}>
+          <input type="hidden" name="key" value={k} />
+          <ReelFields />
+          <button className="btn btn-primary btn-sm">Add to 88RisersTV</button>
+        </form>
+      </div>
+      <div className="admin-rows">
+        {reels.map((r, i) => (
+          <details key={r.id} className="admin-row">
+            <summary>
+              <span className="rid">CH {String(i + 1).padStart(2, "0")}</span>
+              <b>{r.title}</b>
+              <span className="muted tech">{r.posted_on ? fmtShortDate(new Date(r.posted_on)) : "no date"} · order {r.sort_order}</span>
+              {r.hidden ? <span className="pill dim">Hidden</span> : null}
+            </summary>
+            <form action={saveReel}>
+              <input type="hidden" name="key" value={k} />
+              <input type="hidden" name="reel_id" value={r.id} />
+              <ReelFields r={r} />
+              <div className="btn-row">
+                <button className="btn btn-primary btn-sm">Save reel</button>
+                <a className="btn btn-sm btn-ghost" href={r.url} target="_blank" rel="noreferrer">
+                  Open on Instagram ↗
+                </a>
+              </div>
+            </form>
+            <form action={deleteReel} style={{ marginTop: 12 }}>
+              <input type="hidden" name="key" value={k} />
+              <input type="hidden" name="reel_id" value={r.id} />
+              <ConfirmButton message={`Remove "${r.title}" from 88RisersTV?`} className="btn btn-sm btn-ghost danger">
+                Remove reel
+              </ConfirmButton>
+            </form>
+          </details>
+        ))}
+        {reels.length === 0 ? <div className="panel empty">No reels yet. Paste the first one above.</div> : null}
       </div>
     </>
   );

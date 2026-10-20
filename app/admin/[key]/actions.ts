@@ -7,8 +7,9 @@ import { recomputeElo } from "@/lib/data";
 import { getDb, type Db } from "@/lib/db";
 import { savePhoto, photoUrl } from "@/lib/photos";
 import { fromSydneyInput } from "@/lib/schedule";
+import { videoEmbed } from "@/lib/video";
 
-type Tab = "registrations" | "pullers" | "matches" | "events";
+type Tab = "registrations" | "pullers" | "matches" | "events" | "tv";
 
 const str = (f: FormData, k: string) => {
   const v = f.get(k);
@@ -296,4 +297,35 @@ export async function deleteEvent(form: FormData) {
   const db = await getDb();
   await db.query(`DELETE FROM events WHERE id = $1`, [int(form, "event_id")]);
   done(key, "events", "Event deleted. Its matches were kept.");
+}
+
+/* ─────────── 88RisersTV ─────────── */
+
+export async function saveReel(form: FormData) {
+  const key = guard(form);
+  const id = int(form, "reel_id");
+  const url = str(form, "url");
+  const title = str(form, "title");
+  if (!url || !videoEmbed(url)) done(key, "tv", "Paste an Instagram reel link (or YouTube Short / TikTok).", true);
+  if (!title) done(key, "tv", "Give the reel a title.", true);
+  const posted = str(form, "posted_on");
+  const vals = [url, title, str(form, "caption"), posted && /^\d{4}-\d{2}-\d{2}$/.test(posted) ? posted : null, int(form, "sort_order") ?? 0, bool(form, "hidden")];
+  try {
+    const db = await getDb();
+    if (id) {
+      await db.query(`UPDATE tv_reels SET url=$1, title=$2, caption=$3, posted_on=$4, sort_order=$5, hidden=$6 WHERE id=$7`, [...vals, id]);
+    } else {
+      await db.query(`INSERT INTO tv_reels (url, title, caption, posted_on, sort_order, hidden) VALUES ($1, $2, $3, $4, $5, $6)`, vals);
+    }
+  } catch (err) {
+    done(key, "tv", friendly(err), true);
+  }
+  done(key, "tv", id ? "Reel updated." : "Reel added to 88RisersTV.");
+}
+
+export async function deleteReel(form: FormData) {
+  const key = guard(form);
+  const db = await getDb();
+  await db.query(`DELETE FROM tv_reels WHERE id = $1`, [int(form, "reel_id")]);
+  done(key, "tv", "Reel removed.");
 }

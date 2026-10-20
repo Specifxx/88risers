@@ -11,6 +11,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE.url}/join`, priority: 0.9 },
     { url: `${SITE.url}/pullers`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${SITE.url}/events`, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${SITE.url}/tv`, changeFrequency: "weekly", priority: 0.6 },
     { url: `${SITE.url}/gallery`, priority: 0.5 },
     { url: `${SITE.url}/shop`, priority: 0.5 },
     ...pullers.map((p) => ({ url: `${SITE.url}/pullers/${p.id}`, priority: 0.5 })),

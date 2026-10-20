@@ -223,6 +223,28 @@ export async function getEventBySlug(slug: string) {
   return e ?? null;
 }
 
+/* ─────────── 88RisersTV ─────────── */
+
+export interface Reel {
+  id: number;
+  url: string;
+  title: string;
+  caption: string | null;
+  posted_on: string | null;
+  sort_order: number;
+  hidden: boolean;
+}
+
+/** Reels in channel order: lowest sort number first, then newest. */
+export async function listReels(opts: { includeHidden?: boolean } = {}) {
+  const d = await db();
+  return d.query<Reel>(
+    `SELECT id, url, title, caption, to_char(posted_on, 'YYYY-MM-DD') AS posted_on, sort_order, hidden
+     FROM tv_reels ${opts.includeHidden ? "" : "WHERE NOT hidden"}
+     ORDER BY sort_order ASC, posted_on DESC NULLS LAST, id DESC`,
+  );
+}
+
 /* ─────────── Registrations (admin only) ─────────── */
 
 export async function listRegistrations() {

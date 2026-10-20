@@ -94,6 +94,17 @@ CREATE TABLE IF NOT EXISTS matches (
   CHECK (winner_id <> loser_id)
 );
 
+CREATE TABLE IF NOT EXISTS tv_reels (
+  id          serial PRIMARY KEY,
+  url         text NOT NULL,
+  title       text NOT NULL,
+  caption     text,
+  posted_on   date,
+  sort_order  integer NOT NULL DEFAULT 0,
+  hidden      boolean NOT NULL DEFAULT false,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS meta (
   key    text PRIMARY KEY,
   value  text
@@ -129,7 +140,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
   [2, "Erick Kang", 8, "Erick Kang"],
 ];
 
-const MIGRATION_MARKER = "founders_v5";
+const MIGRATION_MARKER = "founders_v6";
 
 async function migrate(db: Db) {
   // Fast path for every cold start after the first: one tiny query instead of the whole schema.

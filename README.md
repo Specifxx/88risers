@@ -5,6 +5,7 @@ Website for 88 Risers, a social arm wrestling club in Rhodes, NSW. We're looking
 - **Landing page** (`/`) — the club, the 88-seat member grid, champion cards, next table time with countdown, leaderboard, founders, registration, Instagram, FAQ.
 - **Register** (`/join`) — name, mobile, photo (resized in the browser), optional Instagram. No accounts. Re-registering with the same number updates the entry.
 - **Riser Database** (`/pullers`, `/pullers/8`) — every puller has a permanent Riser ID. Profiles show Elo, rating tier, W–L (by arm), titles, an Elo history chart and match history with embedded videos.
+- **88RisersTV** (`/tv`) — the club's reels as a TV channel: featured player, channel guide, every episode. Reels are added in the admin.
 - **Events** (`/events`, `/events/<slug>`) — the first-Sunday table time is generated automatically; tournaments and socials are added by admins. Past events show results with videos. `/api/calendar` serves an `.ics` file.
 - **Admin** (`/admin/<ADMIN_KEY>`) — a private link, no sign-in.
 
@@ -18,6 +19,7 @@ Open `https://<site>/admin/<ADMIN_KEY>`. Anyone with the link is an admin, so sh
 | Pullers | Edit name, nickname, title, bio, weight class, arm, Instagram; upload a headshot and a champion card image; hide from the site; renumber (matches follow). |
 | Matches | Record winner/loser, event, arm, round, weight class, score, video link (YouTube, Instagram reel, TikTok, Google Drive or .mp4), title match. Elo updates for both pullers. Editing or deleting a match replays every rating from scratch. |
 | Events | Publish tournaments, socials and other events. An event of type *Table time* on a first Sunday replaces that month's auto-generated session, which is how you move, rename or cancel one. |
+| 88RisersTV | Paste Instagram reel links (or YouTube Shorts / TikTok) with a title, caption and date. They play on `/tv`; the lowest order number (then newest) is the featured broadcast. Hide or remove any time. |
 
 Registration photos and phone numbers are only visible through the admin link. A registrant's photo becomes public once they're added to the database (it's their profile photo).
 
