@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { CardFace } from "@/components/CardFace";
 import { Countdown } from "@/components/Countdown";
+import { HeroLion } from "@/components/HeroLion";
 import { Arrow, ArrowUpRight, Bolt, Calendar, Instagram, Pin, Search, Shield, Trophy, Users } from "@/components/Icons";
 import { JoinForm } from "@/components/JoinForm";
 import { Leaderboard } from "@/components/Leaderboard";
@@ -110,7 +111,7 @@ export default async function Home() {
             </div>
           </div>
           <div className="hero-card">
-            <div className="hero-lion" aria-hidden />
+            <HeroLion />
             <div className="halo" />
             <Slab label={{ name: "Your name here", sub: "Future champion", grade: String(stats.next_id).padStart(3, "0"), gradeLabel: "NEXT ID" }} tilt={16}>
               <CardFace name="This could be you" id={stats.next_id} mystery priority />

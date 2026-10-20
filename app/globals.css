@@ -2613,25 +2613,164 @@ a.event-row:hover {
 
 /* ───────── Concept-art accents ───────── */
 
-/* Lion artwork glowing faintly behind the hero card. Black in the art drops out via screen blend. */
+/* Lion mascot. Rests faintly behind the hero card; on a session's first visit it leaps out,
+   strikes at the viewer and settles back (HeroLion picks .intro or .rest). */
 .hero-lion {
+  --rest-opacity: 0.4;
   position: absolute;
   z-index: -1;
   top: 50%;
   left: 44%;
   width: 100%;
-  aspect-ratio: 381 / 461;
+  aspect-ratio: 571 / 642;
   transform: translateY(-50%);
   background: url("/ink/lion.webp") center/contain no-repeat;
-  opacity: 0.4;
-  -webkit-mask-image: radial-gradient(closest-side, #000 55%, transparent);
-  mask-image: radial-gradient(closest-side, #000 55%, transparent);
+  opacity: var(--rest-opacity);
+  pointer-events: none;
+  transform-origin: 40% 55%;
+}
+.hero-lion.rest {
+  animation: lion-fade 0.8s ease-out both;
+}
+.hero-lion.intro {
+  animation: lion-strike 3s cubic-bezier(0.3, 0.7, 0.2, 1) 0.35s both;
+  filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.7));
+}
+@keyframes lion-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes lion-strike {
+  0% {
+    z-index: -1;
+    opacity: 0;
+    transform: translate(-30%, -40%) scale(0.7);
+  }
+  14% {
+    z-index: -1;
+    opacity: 1;
+    transform: translate(6%, -66%) scale(0.95) rotate(8deg);
+  }
+  /* pops out in front of the card */
+  24% {
+    z-index: 5;
+    transform: translate(-30%, -52%) scale(1.45) rotate(-4deg);
+  }
+  /* coils back */
+  33% {
+    transform: translate(-22%, -54%) scale(1.35) rotate(3deg);
+  }
+  /* strike */
+  39% {
+    transform: translate(-46%, -46%) scale(2.05) rotate(-9deg);
+  }
+  46% {
+    transform: translate(-42%, -48%) scale(1.9) rotate(-6deg);
+  }
+  /* holds, growls */
+  56% {
+    z-index: 5;
+    opacity: 1;
+    transform: translate(-38%, -49%) scale(1.85) rotate(-4deg);
+  }
+  /* slips back behind the card */
+  74% {
+    z-index: 5;
+    opacity: 0.85;
+    transform: translate(-8%, -50%) scale(1.05) rotate(2deg);
+  }
+  78% {
+    z-index: -1;
+  }
+  100% {
+    z-index: -1;
+    opacity: var(--rest-opacity);
+    transform: translateY(-50%);
+  }
+}
+
+/* Red claw marks raked across the card at the moment of the strike. */
+.hero-claw {
+  position: absolute;
+  z-index: 6;
+  inset: 4% 8%;
+  display: flex;
+  justify-content: center;
+  gap: 9%;
+  transform: rotate(24deg);
   pointer-events: none;
 }
+.hero-claw span {
+  width: 5%;
+  border-radius: 50%;
+  background: linear-gradient(180deg, transparent, var(--red-hi) 18%, var(--red) 60%, transparent);
+  box-shadow: 0 0 24px rgba(255, 74, 79, 0.6);
+  transform: scaleY(0);
+  transform-origin: top;
+  opacity: 0;
+  animation: claw 1.1s ease-out both;
+  animation-delay: calc(0.35s + 3s * 0.37);
+}
+.hero-claw span:nth-child(2) {
+  margin-top: 6%;
+  animation-delay: calc(0.35s + 3s * 0.37 + 0.04s);
+}
+.hero-claw span:nth-child(3) {
+  margin-top: 12%;
+  animation-delay: calc(0.35s + 3s * 0.37 + 0.08s);
+}
+@keyframes claw {
+  0% {
+    opacity: 1;
+    transform: scaleY(0);
+  }
+  14% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(1);
+  }
+}
+
+/* The card takes the hit. */
+.hero-card:has(.hero-lion.intro) {
+  animation: card-hit 0.5s ease-out calc(0.35s + 3s * 0.38) both;
+}
+@keyframes card-hit {
+  0%,
+  100% {
+    transform: none;
+  }
+  15% {
+    transform: translate(10px, 6px) rotate(1.5deg);
+  }
+  35% {
+    transform: translate(-8px, -3px) rotate(-1deg);
+  }
+  55% {
+    transform: translate(5px, 2px) rotate(0.6deg);
+  }
+  75% {
+    transform: translate(-2px, 0) rotate(-0.2deg);
+  }
+}
+
 @media (max-width: 900px) {
   .hero-lion {
+    --rest-opacity: 0.22;
     left: 30%;
-    opacity: 0.22;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-lion.intro,
+  .hero-card:has(.hero-lion.intro) {
+    animation: none;
+  }
+  .hero-claw {
+    display: none;
   }
 }
 
