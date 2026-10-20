@@ -140,7 +140,10 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
   [2, "Erick Kang", 8, "Erick Kang"],
 ];
 
-const MIGRATION_MARKER = "founders_v6";
+/** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
+const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
+
+const MIGRATION_MARKER = "founders_v7";
 
 async function migrate(db: Db) {
   // Fast path for every cold start after the first: one tiny query instead of the whole schema.
@@ -191,6 +194,13 @@ async function migrate(db: Db) {
       `UPDATE pullers SET nickname = $2 WHERE id = $1 AND name ILIKE $3 AND is_founder AND coalesce(nickname, '') = ''`,
       [5, "Kelvinator", "Kelvin%"],
     );
+    for (const [i, code] of TV_SEED.entries()) {
+      await tx.query(
+        `INSERT INTO tv_reels (url, title, sort_order)
+         SELECT $1, $2, $3 WHERE NOT EXISTS (SELECT 1 FROM tv_reels WHERE url LIKE $4)`,
+        [`https://www.instagram.com/reel/${code}/`, `Episode ${String(i + 1).padStart(2, "0")}`, i + 1, `%/${code}/%`],
+      );
+    }
   });
 }
 
