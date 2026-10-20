@@ -55,26 +55,26 @@ const FAQ = [
 
 const GALLERY: GalleryItem[][] = [
   [
-    { src: "/gallery/crest-lion.jpg", w: 781, h: 609, title: "The crest", note: "88 Risers · Arm Wrestling Club" },
-    { src: "/gallery/logo.jpg", w: 359, h: 461, title: "Symbol & wordmark", note: "Logo" },
-    { src: "/gallery/lion.jpg", w: 381, h: 461, title: "Guardian lion", note: "Lion detail" },
+    { src: "/gallery/crest-lion.jpg", w: 781, h: 609, title: "Lion crest", note: "Stylised artwork" },
+    { src: "/gallery/logo.jpg", w: 359, h: 461, title: "Symbol study", note: "Stylised artwork" },
+    { src: "/gallery/lion.jpg", w: 381, h: 461, title: "Guardian lion", note: "Stylised artwork" },
   ],
   [
-    { src: "/gallery/tee.jpg", w: 532, h: 406, title: "Club tee", note: "Apparel" },
-    { src: "/gallery/mural.jpg", w: 494, h: 406, title: "Gym wall", note: "Mural" },
+    { src: "/gallery/tee.jpg", w: 532, h: 406, title: "Club tee", note: "Apparel concept" },
+    { src: "/gallery/mural.jpg", w: 494, h: 406, title: "Gym wall", note: "Mural concept" },
   ],
   [
-    { src: "/gallery/grip.jpg", w: 494, h: 211, title: "Grip wrap", note: "Gear" },
-    { src: "/gallery/patch.jpg", w: 494, h: 189, title: "Woven patch", note: "Gear" },
+    { src: "/gallery/grip.jpg", w: 494, h: 211, title: "Grip wrap", note: "Gear concept" },
+    { src: "/gallery/patch.jpg", w: 494, h: 189, title: "Woven patch", note: "Gear concept" },
   ],
-  [{ src: "/gallery/elements.jpg", w: 745, h: 131, title: "Brand elements", note: "Circle · Om · Cloud · Lion" }],
+  [{ src: "/gallery/elements.jpg", w: 745, h: 131, title: "Art elements", note: "Circle · Om · Cloud · Lion" }],
 ];
 const GALLERY_BOARD: GalleryItem = {
   src: "/gallery/board.jpg",
   w: 1536,
   h: 1024,
   title: "Concept board",
-  note: "The full identity",
+  note: "Stylised artwork",
 };
 
 export default async function Home() {
@@ -512,8 +512,8 @@ export default async function Home() {
               </h2>
             </div>
             <p className="lede">
-              The 88 Risers identity: the crest, the guardian lion, and the gold and red that run through the tees,
-              the gym wall and the grip gear. Tap any piece to see it up close.
+              Stylised concept art inspired by the 88 Risers logo: the guardian lion, red ink and gold cloud work, imagined
+              on tees, the gym wall and grip gear. Tap any piece to see it up close.
             </p>
           </div>
           <div data-reveal>
