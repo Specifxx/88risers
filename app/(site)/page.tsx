@@ -63,7 +63,8 @@ export default async function Home() {
   const next = calendar.find((c) => !c.cancelled) ?? calendar[0];
   const nextTraining = calendar.find((c) => c.kind === "training" && !c.cancelled);
   const pct = Math.min(100, (stats.members / SITE.goal) * 100);
-  const showcase = founders.filter((f) => f.card_url && f.title).slice(0, 4);
+  // Homepage card row: Harry, Phillip, Bhavya, Erick. Kelvin (#005) shows in the founders grid instead.
+  const showcase = founders.filter((f) => f.card_url && f.title && f.id !== 5).slice(0, 4);
 
   return (
     <>
