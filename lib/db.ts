@@ -111,7 +111,7 @@ const FOUNDERS: Array<[number, string, string | null, string | null]> = [
   [2, "George Lu", null, "/founders/george.jpg"],
   [3, "Phillip Nguyen", "80kg NSW Bronze Medalist", "/founders/philip.jpg"],
   [4, "Bhavya Sharma", "70kg Arm Wrestling Silver Medalist", "/founders/bhavya.jpg"],
-  [5, "Kelvin Gian", null, null],
+  [5, "Kelvin Gian", "85kg+ Bushy's Amateur 2nd Place", "/founders/kelvin.jpg"],
   [6, "Tommy Cao", null, null],
   [7, "Luie Hoang", null, null],
   [8, "Erick Kang", "80kg Newcastle Arm Wrestling Champion", "/founders/erick.jpg"],
@@ -129,7 +129,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
   [2, "Erick Kang", 8, "Erick Kang"],
 ];
 
-const MIGRATION_MARKER = "founders_v2";
+const MIGRATION_MARKER = "founders_v3";
 
 async function migrate(db: Db) {
   // Fast path for every cold start after the first: one tiny query instead of the whole schema.
@@ -161,20 +161,31 @@ async function migrate(db: Db) {
     }
     // Databases seeded by the first release: move founders to their real numbers.
     // Matches follow via ON UPDATE CASCADE. Rows an admin already renamed are left alone.
-    const OFFSET = 100000;
-    const moved: Array<[number, number, string]> = [];
-    for (const [oldId, oldName, newId, newName] of FOUNDER_RENUMBER) {
-      const r = await tx.query(
-        `UPDATE pullers SET id = id + ${OFFSET} WHERE id = $1 AND name = $2 AND is_founder RETURNING id`,
-        [oldId, oldName],
-      );
-      if (r.length) moved.push([oldId, newId, newName]);
-    }
-    for (const [oldId, newId, newName] of moved) {
-      await tx.query(`UPDATE pullers SET id = $2, name = $3 WHERE id = $1`, [oldId + OFFSET, newId, newName]);
-      await tx.query(`UPDATE registrations SET puller_id = $2 WHERE puller_id = $1`, [oldId, newId]);
-    }
+    // Skipped on databases that already reached founders_v2.
+    const [renumbered] = await tx.query(`SELECT 1 FROM meta WHERE key = 'founders_v2'`);
+    if (!renumbered) await renumberFounders(tx);
+    // Kelvin's champion card (added after launch). Keeps a title an admin already set.
+    await tx.query(
+      `UPDATE pullers SET card_url = $2, title = coalesce(title, $3) WHERE id = $1 AND name ILIKE $4 AND is_founder`,
+      [5, "/founders/kelvin.jpg", "85kg+ Bushy's Amateur 2nd Place", "Kelvin%"],
+    );
   });
+}
+
+async function renumberFounders(tx: Db) {
+  const OFFSET = 100000;
+  const moved: Array<[number, number, string]> = [];
+  for (const [oldId, oldName, newId, newName] of FOUNDER_RENUMBER) {
+    const r = await tx.query(
+      `UPDATE pullers SET id = id + ${OFFSET} WHERE id = $1 AND name = $2 AND is_founder RETURNING id`,
+      [oldId, oldName],
+    );
+    if (r.length) moved.push([oldId, newId, newName]);
+  }
+  for (const [oldId, newId, newName] of moved) {
+    await tx.query(`UPDATE pullers SET id = $2, name = $3 WHERE id = $1`, [oldId + OFFSET, newId, newName]);
+    await tx.query(`UPDATE registrations SET puller_id = $2 WHERE puller_id = $1`, [oldId, newId]);
+  }
 }
 
 async function connectPostgres(url: string): Promise<Db> {
