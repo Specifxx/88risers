@@ -129,7 +129,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
   [2, "Erick Kang", 8, "Erick Kang"],
 ];
 
-const MIGRATION_MARKER = "founders_v4";
+const MIGRATION_MARKER = "founders_v5";
 
 async function migrate(db: Db) {
   // Fast path for every cold start after the first: one tiny query instead of the whole schema.
@@ -157,13 +157,13 @@ async function migrate(db: Db) {
           [id, name, title, card],
         );
       }
-      return;
+    } else {
+      // Databases seeded by the first release: move founders to their real numbers.
+      // Matches follow via ON UPDATE CASCADE. Rows an admin already renamed are left alone.
+      // Skipped on databases that already reached founders_v2.
+      const [renumbered] = await tx.query(`SELECT 1 FROM meta WHERE key = 'founders_v2'`);
+      if (!renumbered) await renumberFounders(tx);
     }
-    // Databases seeded by the first release: move founders to their real numbers.
-    // Matches follow via ON UPDATE CASCADE. Rows an admin already renamed are left alone.
-    // Skipped on databases that already reached founders_v2.
-    const [renumbered] = await tx.query(`SELECT 1 FROM meta WHERE key = 'founders_v2'`);
-    if (!renumbered) await renumberFounders(tx);
     // Kelvin's champion card (added after launch). Keeps a title an admin already set.
     await tx.query(
       `UPDATE pullers SET card_url = $2, title = coalesce(title, $3) WHERE id = $1 AND name ILIKE $4 AND is_founder
@@ -175,6 +175,11 @@ async function migrate(db: Db) {
       "/founders/phillip.jpg",
       "/founders/philip.jpg",
     ]);
+    // Founder nicknames. Keeps a nickname an admin already set.
+    await tx.query(
+      `UPDATE pullers SET nickname = $2 WHERE id = $1 AND name ILIKE $3 AND is_founder AND coalesce(nickname, '') = ''`,
+      [5, "Kelvinator", "Kelvin%"],
+    );
   });
 }
 
