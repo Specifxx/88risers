@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { CardFace } from "@/components/CardFace";
 import { Countdown } from "@/components/Countdown";
+import { Gallery, type GalleryItem } from "@/components/Gallery";
 import { Arrow, ArrowUpRight, Bolt, Calendar, Instagram, Pin, Search, Shield, Trophy, Users } from "@/components/Icons";
 import { JoinForm } from "@/components/JoinForm";
 import { Leaderboard } from "@/components/Leaderboard";
@@ -51,6 +52,30 @@ const FAQ = [
     `We're associated with the ${SITE.federation}.`,
   ],
 ] as const;
+
+const GALLERY: GalleryItem[][] = [
+  [
+    { src: "/gallery/crest-lion.jpg", w: 781, h: 609, title: "The crest", note: "88 Risers · Arm Wrestling Club" },
+    { src: "/gallery/logo.jpg", w: 359, h: 461, title: "Symbol & wordmark", note: "Logo" },
+    { src: "/gallery/lion.jpg", w: 381, h: 461, title: "Guardian lion", note: "Lion detail" },
+  ],
+  [
+    { src: "/gallery/tee.jpg", w: 532, h: 406, title: "Club tee", note: "Apparel" },
+    { src: "/gallery/mural.jpg", w: 494, h: 406, title: "Gym wall", note: "Mural" },
+  ],
+  [
+    { src: "/gallery/grip.jpg", w: 494, h: 211, title: "Grip wrap", note: "Gear" },
+    { src: "/gallery/patch.jpg", w: 494, h: 189, title: "Woven patch", note: "Gear" },
+  ],
+  [{ src: "/gallery/elements.jpg", w: 745, h: 131, title: "Brand elements", note: "Circle · Om · Cloud · Lion" }],
+];
+const GALLERY_BOARD: GalleryItem = {
+  src: "/gallery/board.jpg",
+  w: 1536,
+  h: 1024,
+  title: "Concept board",
+  note: "The full identity",
+};
 
 export default async function Home() {
   const [stats, leaders, founders, calendar] = await Promise.all([
@@ -110,6 +135,7 @@ export default async function Home() {
             </div>
           </div>
           <div className="hero-card">
+            <div className="hero-lion" aria-hidden />
             <div className="halo" />
             <Slab label={{ name: "Your name here", sub: "Future champion", grade: String(stats.next_id).padStart(3, "0"), gradeLabel: "NEXT ID" }} tilt={16}>
               <CardFace name="This could be you" id={stats.next_id} mystery priority />
@@ -467,6 +493,31 @@ export default async function Home() {
                 <PullerSlab p={p} />
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="cloud-rule" aria-hidden>
+        <span className="cloud" />
+      </div>
+
+      {/* ───────── GALLERY ───────── */}
+      <section className="section gallery-section" id="gallery">
+        <div className="wrap">
+          <div className="section-head" data-reveal>
+            <div>
+              <p className="eyebrow">Gallery</p>
+              <h2 className="display">
+                Forged in <span className="gold-text">gold.</span>
+              </h2>
+            </div>
+            <p className="lede">
+              The 88 Risers identity: the crest, the guardian lion, and the gold and red that run through the tees,
+              the gym wall and the grip gear. Tap any piece to see it up close.
+            </p>
+          </div>
+          <div data-reveal>
+            <Gallery rows={GALLERY} board={GALLERY_BOARD} />
           </div>
         </div>
       </section>
