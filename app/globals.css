@@ -666,6 +666,14 @@ a {
 .marquee.red .marquee-track span {
   color: #fff;
 }
+.marquee-track .tick-sponsor {
+  gap: 0;
+}
+.tick-sponsor img {
+  height: 46px;
+  width: auto;
+  margin: -8px 52px -8px 16px;
+}
 .marquee.red .marquee-track span::after {
   background: var(--ink);
 }

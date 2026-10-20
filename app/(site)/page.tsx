@@ -16,6 +16,9 @@ import { SITE, formatId } from "@/lib/site";
 /** Served from cache; regenerated at most once a minute, or immediately after admin edits. */
 export const revalidate = 60;
 
+/** Ticker slot for the club sponsor: the logo on the dark band, plain text on the red one. */
+const SPONSOR = "Sponsored by Supp Station";
+
 const TICKER = [
   "First Sunday · Every month",
   "Rhodes NSW",
@@ -24,6 +27,7 @@ const TICKER = [
   "AAF associated",
   "All levels welcome",
   "Looking for the 88th Riser",
+  SPONSOR,
 ];
 
 const FAQ = [
@@ -125,9 +129,16 @@ export default async function Home() {
 
       <div className="marquee" aria-hidden>
         <div className="marquee-track">
-          {[...TICKER, ...TICKER].map((t, i) => (
-            <span key={i}>{t}</span>
-          ))}
+          {[...TICKER, ...TICKER].map((t, i) =>
+            t === SPONSOR ? (
+              <span key={i} className="tick-sponsor">
+                Sponsored by
+                <Image src="/sponsors/supp-station.webp" alt="Supp Station" width={393} height={156} />
+              </span>
+            ) : (
+              <span key={i}>{t}</span>
+            ),
+          )}
         </div>
       </div>
       <div className="marquee red" aria-hidden>
