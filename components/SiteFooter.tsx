@@ -30,6 +30,7 @@ export function SiteFooter() {
               <li><Link href="/pullers#leaderboard">Leaderboard</Link></li>
               <li><Link href="/#founders">Founders</Link></li>
               <li><Link href="/gallery">Gallery</Link></li>
+              <li><Link href="/shop">Shop</Link></li>
             </ul>
           </div>
           <div>

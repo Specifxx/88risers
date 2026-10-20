@@ -12,6 +12,7 @@ const NAV = [
   { href: "/pullers", label: "Database" },
   { href: "/#founders", label: "Founders" },
   { href: "/gallery", label: "Gallery" },
+  { href: "/shop", label: "Shop" },
 ];
 
 export function SiteHeader() {
