@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { CardFace } from "@/components/CardFace";
 import { Countdown } from "@/components/Countdown";
-import { Gallery, type GalleryItem } from "@/components/Gallery";
 import { Arrow, ArrowUpRight, Bolt, Calendar, Instagram, Pin, Search, Shield, Trophy, Users } from "@/components/Icons";
 import { JoinForm } from "@/components/JoinForm";
 import { Leaderboard } from "@/components/Leaderboard";
@@ -52,30 +51,6 @@ const FAQ = [
     `We're associated with the ${SITE.federation}.`,
   ],
 ] as const;
-
-const GALLERY: GalleryItem[][] = [
-  [
-    { src: "/gallery/crest-lion.jpg", w: 781, h: 609, title: "Lion crest", note: "Stylised artwork" },
-    { src: "/gallery/logo.jpg", w: 359, h: 461, title: "Symbol study", note: "Stylised artwork" },
-    { src: "/gallery/lion.jpg", w: 381, h: 461, title: "Guardian lion", note: "Stylised artwork" },
-  ],
-  [
-    { src: "/gallery/tee.jpg", w: 532, h: 406, title: "Club tee", note: "Apparel concept" },
-    { src: "/gallery/mural.jpg", w: 494, h: 406, title: "Gym wall", note: "Mural concept" },
-  ],
-  [
-    { src: "/gallery/grip.jpg", w: 494, h: 211, title: "Grip wrap", note: "Gear concept" },
-    { src: "/gallery/patch.jpg", w: 494, h: 189, title: "Woven patch", note: "Gear concept" },
-  ],
-  [{ src: "/gallery/elements.jpg", w: 745, h: 131, title: "Art elements", note: "Circle · Om · Cloud · Lion" }],
-];
-const GALLERY_BOARD: GalleryItem = {
-  src: "/gallery/board.jpg",
-  w: 1536,
-  h: 1024,
-  title: "Concept board",
-  note: "Stylised artwork",
-};
 
 export default async function Home() {
   const [stats, leaders, founders, calendar] = await Promise.all([
@@ -164,6 +139,7 @@ export default async function Home() {
 
       {/* ───────── THE 88 ───────── */}
       <section className="section eighty-eight" id="the-88">
+        <div className="ink ink-lion-line ink-88" aria-hidden />
         <div className="wrap">
           <div className="section-head" data-reveal>
             <div>
@@ -236,6 +212,7 @@ export default async function Home() {
 
       {/* ───────── THE CLUB ───────── */}
       <section className="section" id="club" style={{ paddingTop: 0 }}>
+        <div className="ink ink-circle ink-club" aria-hidden />
         <div className="wrap">
           <div className="section-head" data-reveal>
             <div>
@@ -297,6 +274,7 @@ export default async function Home() {
 
       {/* ───────── CHAMPION CARDS ───────── */}
       <section className="section champions" id="cards">
+        <div className="ink ink-cloud ink-cards" aria-hidden />
         <div className="wrap champions-grid">
           <div data-reveal>
             <p className="eyebrow">The prize</p>
@@ -343,6 +321,7 @@ export default async function Home() {
 
       {/* ───────── TABLE TIME ───────── */}
       <section className="section" id="table-time">
+        <div className="ink ink-cloud ink-table" aria-hidden />
         <div className="wrap">
           <div className="section-head" data-reveal>
             <div>
@@ -474,6 +453,7 @@ export default async function Home() {
 
       {/* ───────── FOUNDERS ───────── */}
       <section className="section" id="founders">
+        <div className="ink ink-lion ink-founders" aria-hidden />
         <div className="wrap">
           <div className="section-head" data-reveal>
             <div>
@@ -501,29 +481,9 @@ export default async function Home() {
         <span className="cloud" />
       </div>
 
-      {/* ───────── GALLERY ───────── */}
-      <section className="section gallery-section" id="gallery">
-        <div className="wrap">
-          <div className="section-head" data-reveal>
-            <div>
-              <p className="eyebrow">Gallery</p>
-              <h2 className="display">
-                Forged in <span className="gold-text">gold.</span>
-              </h2>
-            </div>
-            <p className="lede">
-              Stylised concept art inspired by the 88 Risers logo: the guardian lion, red ink and gold cloud work, imagined
-              on tees, the gym wall and grip gear. Tap any piece to see it up close.
-            </p>
-          </div>
-          <div data-reveal>
-            <Gallery rows={GALLERY} board={GALLERY_BOARD} />
-          </div>
-        </div>
-      </section>
-
       {/* ───────── JOIN ───────── */}
       <section className="section join" id="join">
+        <div className="ink ink-lion-line ink-join" aria-hidden />
         <div className="wrap join-grid">
           <div data-reveal>
             <p className="eyebrow">Register</p>
@@ -573,6 +533,7 @@ export default async function Home() {
 
       {/* ───────── FAQ ───────── */}
       <section className="section" id="faq">
+        <div className="ink ink-cloud ink-faq" aria-hidden />
         <div className="wrap faq">
           <div data-reveal>
             <p className="eyebrow">Before you pull</p>

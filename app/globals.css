@@ -2622,9 +2622,8 @@ a.event-row:hover {
   width: 100%;
   aspect-ratio: 381 / 461;
   transform: translateY(-50%);
-  background: url("/gallery/lion.jpg") center/contain no-repeat;
-  mix-blend-mode: screen;
-  opacity: 0.42;
+  background: url("/ink/lion.webp") center/contain no-repeat;
+  opacity: 0.4;
   -webkit-mask-image: radial-gradient(closest-side, #000 55%, transparent);
   mask-image: radial-gradient(closest-side, #000 55%, transparent);
   pointer-events: none;
@@ -2636,12 +2635,92 @@ a.event-row:hover {
   }
 }
 
+/* Brushstroke artwork sitting faintly on the black behind homepage sections. */
+.section:has(> .ink) {
+  isolation: isolate;
+}
+.ink {
+  position: absolute;
+  z-index: -1;
+  background: center/contain no-repeat;
+  pointer-events: none;
+}
+.ink-lion {
+  background-image: url("/ink/lion.webp");
+  aspect-ratio: 571 / 642;
+}
+.ink-lion-line {
+  background-image: url("/ink/lion-line.webp");
+  aspect-ratio: 420 / 258;
+}
+.ink-cloud {
+  background-image: url("/ink/cloud.webp");
+  aspect-ratio: 390 / 246;
+}
+.ink-circle {
+  background-image: url("/ink/circle.webp");
+  aspect-ratio: 360 / 336;
+}
+.ink-88 {
+  top: clamp(60px, 9vw, 120px);
+  right: max(-40px, calc(50% - 720px));
+  width: clamp(220px, 26vw, 380px);
+  opacity: 0.11;
+}
+.ink-club {
+  top: -40px;
+  right: max(-80px, calc(50% - 700px));
+  width: clamp(260px, 30vw, 440px);
+  opacity: 0.07;
+}
+.ink-cards {
+  top: clamp(40px, 6vw, 80px);
+  right: max(-60px, calc(50% - 760px));
+  width: clamp(200px, 22vw, 320px);
+  opacity: 0.1;
+}
+.ink-table {
+  top: clamp(40px, 6vw, 90px);
+  right: max(-30px, calc(50% - 700px));
+  width: clamp(180px, 20vw, 300px);
+  opacity: 0.1;
+  transform: scaleX(-1);
+}
+.ink-founders {
+  top: 50%;
+  left: max(-180px, calc(50% - 900px));
+  width: clamp(320px, 38vw, 560px);
+  transform: translateY(-50%) scaleX(-1);
+  opacity: 0.06;
+}
+.ink-join {
+  bottom: 30px;
+  right: max(-40px, calc(50% - 720px));
+  width: clamp(220px, 26vw, 380px);
+  opacity: 0.09;
+}
+.ink-faq {
+  bottom: 40px;
+  left: max(-40px, calc(50% - 740px));
+  width: clamp(160px, 18vw, 260px);
+  opacity: 0.09;
+}
+@media (max-width: 720px) {
+  .ink {
+    opacity: 0.06;
+  }
+  .ink-club,
+  .ink-founders {
+    display: none;
+  }
+}
+
 /* Gold cloud linework, used as a small ornament next to headings. */
 .cloud {
   display: inline-block;
   width: 110px;
   aspect-ratio: 390 / 246;
-  background: url("/cloud.png") center/contain no-repeat;
+  background: url("/ink/cloud.webp") center/contain no-repeat;
   opacity: 0.85;
 }
 .cloud.flip {

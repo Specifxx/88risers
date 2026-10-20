@@ -11,7 +11,7 @@ const NAV = [
   { href: "/events", label: "Events" },
   { href: "/pullers", label: "Database" },
   { href: "/#founders", label: "Founders" },
-  { href: "/#gallery", label: "Gallery" },
+  { href: "/gallery", label: "Gallery" },
 ];
 
 export function SiteHeader() {
