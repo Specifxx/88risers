@@ -109,7 +109,7 @@ CREATE INDEX IF NOT EXISTS events_starts_idx ON events (starts_at);
 const FOUNDERS: Array<[number, string, string | null, string | null]> = [
   [1, "Harry Lu", "70kg Arm Wrestling Champion", "/founders/harry.jpg"],
   [2, "George Lu", null, "/founders/george.jpg"],
-  [3, "Phillip Nguyen", "80kg NSW Bronze Medalist", "/founders/philip.jpg"],
+  [3, "Phillip Nguyen", "80kg NSW Bronze Medalist", "/founders/phillip.jpg"],
   [4, "Bhavya Sharma", "70kg Arm Wrestling Silver Medalist", "/founders/bhavya.jpg"],
   [5, "Kelvin Gian", "85kg+ Bushy's Amateur 2nd Place", "/founders/kelvin.jpg"],
   [6, "Tommy Cao", null, null],
@@ -129,7 +129,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
   [2, "Erick Kang", 8, "Erick Kang"],
 ];
 
-const MIGRATION_MARKER = "founders_v3";
+const MIGRATION_MARKER = "founders_v4";
 
 async function migrate(db: Db) {
   // Fast path for every cold start after the first: one tiny query instead of the whole schema.
@@ -166,9 +166,15 @@ async function migrate(db: Db) {
     if (!renumbered) await renumberFounders(tx);
     // Kelvin's champion card (added after launch). Keeps a title an admin already set.
     await tx.query(
-      `UPDATE pullers SET card_url = $2, title = coalesce(title, $3) WHERE id = $1 AND name ILIKE $4 AND is_founder`,
+      `UPDATE pullers SET card_url = $2, title = coalesce(title, $3) WHERE id = $1 AND name ILIKE $4 AND is_founder
+       AND (card_url IS NULL OR card_url LIKE '/founders/%')`,
       [5, "/founders/kelvin.jpg", "85kg+ Bushy's Amateur 2nd Place", "Kelvin%"],
     );
+    // Phillip's new card (the old file was removed). Leaves a card an admin uploaded alone.
+    await tx.query(`UPDATE pullers SET card_url = $1 WHERE card_url = $2`, [
+      "/founders/phillip.jpg",
+      "/founders/philip.jpg",
+    ]);
   });
 }
 
