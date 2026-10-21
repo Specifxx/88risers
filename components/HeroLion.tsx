@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const SEEN_KEY = "88r-lion-intro";
+/** Set once the intro has run in this page load, so navigating back to the homepage within the
+ * site doesn't replay it. A refresh or new visit starts a fresh page load, so it plays again. */
+let playedThisLoad = false;
 
 /**
- * The lion mascot behind the hero card. On the first homepage visit of a session the lion
+ * The lion mascot behind the hero card. Each time the homepage is loaded or refreshed, the lion
  * (a video) pounces out from behind the card, roars at the viewer and slinks back, where the
- * resting head fades in; afterwards only the resting head shows.
+ * resting head fades in.
  */
 export function HeroLion() {
   const [mode, setMode] = useState<"intro" | "rest" | null>(null);
@@ -17,13 +19,8 @@ export function HeroLion() {
   useEffect(() => {
     if (decided.current) return; // effects run twice in dev
     decided.current = true;
-    let seen = false;
-    try {
-      seen = sessionStorage.getItem(SEEN_KEY) === "1";
-      sessionStorage.setItem(SEEN_KEY, "1");
-    } catch {
-      // storage blocked: play the intro
-    }
+    const seen = playedThisLoad;
+    playedThisLoad = true;
     const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     setMode(seen || calm ? "rest" : "intro");
   }, []);
