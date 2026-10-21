@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Chakra_Petch, Inter, Saira_Extra_Condensed } from "next/font/google";
+import { SiteAnalytics } from "@/components/SiteAnalytics";
 import { SITE } from "@/lib/site";
 import "./globals.css";
 
@@ -37,7 +38,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-AU" suppressHydrationWarning className={`${display.variable} ${tech.variable} ${body.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <SiteAnalytics />
+      </body>
     </html>
   );
 }
