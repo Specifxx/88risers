@@ -28,52 +28,62 @@ export function HeroLion() {
     setMode(seen || calm ? "rest" : "intro");
   }, []);
 
-  // Play the pounce once enough of it has loaded; if it can't load or play in time, just rest.
+  // Play the pounce once the card is on screen. iPhones don't download video until play() is
+  // called, so don't wait for buffering there: ask to play, and start the clock once it does.
   useEffect(() => {
     const v = video.current;
     if (mode !== "intro" || !v) return;
     const card = v.parentElement;
+    // Safari checks the muted attribute (not just the property) before allowing autoplay.
+    v.muted = true;
+    v.setAttribute("muted", "");
     let started = false;
-    let ready = v.readyState >= 4; // enough buffered to play through
-    let seen = false; // card is on screen
-    const giveUp = () => !started && setMode("rest");
-    // Too slow to load: skip. (Only counts loading time, not time spent scrolled away.)
-    const slow = setTimeout(() => !ready && giveUp(), 4000);
-    const start = () => {
+    let asked = false;
+    let giveUpTimer: ReturnType<typeof setTimeout> | undefined;
+    let waitTimer: ReturnType<typeof setTimeout> | undefined;
+    const giveUp = () => {
       if (started) return;
-      v.play().then(
-        () => {
-          started = true;
-          clearTimeout(slow);
-          card?.classList.add("lion-go");
-        },
-        giveUp,
-      );
+      v.pause();
+      setMode("rest");
     };
-    // Wait until the card is on screen (on phones it starts below the fold).
-    const maybeStart = () => ready && seen && start();
+    const play = () => {
+      if (asked) return;
+      asked = true;
+      clearTimeout(waitTimer);
+      giveUpTimer = setTimeout(giveUp, 6000); // never got going (slow network, Low Power Mode…)
+      v.play().catch(giveUp);
+    };
+    const onPlaying = () => {
+      if (started) return;
+      started = true;
+      clearTimeout(giveUpTimer);
+      card?.classList.add("lion-go");
+    };
     const io = new IntersectionObserver(
       ([e]) => {
-        if (e.isIntersecting) {
-          seen = true;
-          io.disconnect();
-          maybeStart();
-        }
+        if (!e.isIntersecting) return;
+        io.disconnect();
+        // Desktop browsers have usually buffered it by now; give them a moment if not.
+        if (v.readyState >= 3) play();
+        else waitTimer = setTimeout(play, 1200);
       },
       { threshold: 0.5 },
     );
     if (card) io.observe(card);
+    // Buffered while we were waiting: go now rather than at the end of the grace period.
     const onReady = () => {
-      ready = true;
-      maybeStart();
+      if (waitTimer && !asked) play();
     };
+    v.addEventListener("playing", onPlaying);
     v.addEventListener("canplaythrough", onReady);
     // Sources are tried in order; only the last one failing means nothing can play.
     const last = v.querySelector("source:last-of-type");
     last?.addEventListener("error", giveUp);
     return () => {
-      clearTimeout(slow);
+      clearTimeout(giveUpTimer);
+      clearTimeout(waitTimer);
       io.disconnect();
+      v.removeEventListener("playing", onPlaying);
       v.removeEventListener("canplaythrough", onReady);
       last?.removeEventListener("error", giveUp);
     };
@@ -96,8 +106,9 @@ export function HeroLion() {
             tabIndex={-1}
             disablePictureInPicture
           >
-            <source src="/video/lion-pounce.webm" type="video/webm" />
+            {/* MP4 first: Safari and iPhones play H.264 natively; WebM covers builds without it. */}
             <source src="/video/lion-pounce.mp4" type="video/mp4" />
+            <source src="/video/lion-pounce.webm" type="video/webm" />
           </video>
           <div className="hero-claw" aria-hidden>
             <span />
