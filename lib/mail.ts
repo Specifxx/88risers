@@ -12,16 +12,28 @@ export function mailConfigured() {
   return Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
 }
 
+/** What the running site sees, for the admin Shop tab. Never exposes the password itself. */
+export function mailStatus() {
+  const user = process.env.GMAIL_USER?.trim() || null;
+  const pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s+/g, "") || "";
+  return {
+    user,
+    hasPassword: pass.length > 0,
+    passwordLength: pass.length,
+    to: process.env.MAIL_TO?.trim() || SITE.email,
+  };
+}
+
 export async function sendClubMail(msg: { subject: string; text: string; replyTo?: string }) {
   if (!mailConfigured()) return false;
-  const user = process.env.GMAIL_USER!;
+  const user = process.env.GMAIL_USER!.trim();
   const transport = nodemailer.createTransport({
     service: "gmail",
     auth: { user, pass: process.env.GMAIL_APP_PASSWORD!.replace(/\s+/g, "") },
   });
   await transport.sendMail({
     from: `"${SITE.name} website" <${user}>`,
-    to: process.env.MAIL_TO || SITE.email,
+    to: process.env.MAIL_TO?.trim() || SITE.email,
     subject: msg.subject,
     text: msg.text,
     replyTo: msg.replyTo,

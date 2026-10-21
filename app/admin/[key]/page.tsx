@@ -6,6 +6,7 @@ import { isAdminKey } from "@/lib/admin";
 import { getClubStats, listEvents, listPullers, listRecentMatches, listReels, listRegistrations, listShopInterest, type ClubEvent, type MatchView, type Puller, type Reel, type ShopInterest } from "@/lib/data";
 import { prettyPhone } from "@/lib/phone";
 import { fmtShortDate, toSydneyInput } from "@/lib/schedule";
+import { mailStatus } from "@/lib/mail";
 import { PRODUCTS } from "@/lib/shop";
 import { SITE, formatId } from "@/lib/site";
 import {
@@ -21,6 +22,7 @@ import {
   savePuller,
   saveReel,
   saveRegistrationNote,
+  sendTestEmail,
   setInterestDone,
   setRegistrationStatus,
 } from "./actions";
@@ -736,11 +738,12 @@ function Shop({ interest, k }: { interest: ShopInterest[]; k: string }) {
         <div>
           <h1>Shop interest</h1>
           <p className="muted">
-            People who registered interest on <Link href="/shop" target="_blank">/shop</Link>. Each one is also emailed to{" "}
-            {SITE.email} when email is set up (GMAIL_USER and GMAIL_APP_PASSWORD in Vercel).
+            People who registered interest on <Link href="/shop" target="_blank">/shop</Link>. Each one is also emailed
+            when email is set up below.
           </p>
         </div>
       </div>
+      <MailPanel k={k} />
       <div className="panel interest-counts">
         {counts.map(({ p, n }) => (
           <div key={p.id}>
@@ -783,5 +786,42 @@ function Shop({ interest, k }: { interest: ShopInterest[]; k: string }) {
         {interest.length === 0 ? <div className="panel empty">No one has registered interest yet.</div> : null}
       </div>
     </>
+  );
+}
+
+function MailPanel({ k }: { k: string }) {
+  const st = mailStatus();
+  const ok = Boolean(st.user && st.hasPassword);
+  return (
+    <div className="panel mail-panel">
+      <h2 className="panel-title">Email notifications</h2>
+      <ul>
+        <li>
+          <span>Send from</span>
+          <b className={st.user ? "" : "red"}>{st.user ?? "GMAIL_USER not set"}</b>
+        </li>
+        <li>
+          <span>App password</span>
+          <b className={st.hasPassword ? (st.passwordLength === 16 ? "" : "red") : "red"}>
+            {st.hasPassword
+              ? st.passwordLength === 16
+                ? "Set (16 characters)"
+                : `Set, but ${st.passwordLength} characters (app passwords are 16)`
+              : "GMAIL_APP_PASSWORD not set"}
+          </b>
+        </li>
+        <li>
+          <span>Send to</span>
+          <b>{st.to}</b>
+          <em>change with MAIL_TO</em>
+        </li>
+      </ul>
+      <form action={sendTestEmail}>
+        <input type="hidden" name="key" value={k} />
+        <button className="btn btn-sm" disabled={!ok}>
+          Send test email
+        </button>
+      </form>
+    </div>
   );
 }

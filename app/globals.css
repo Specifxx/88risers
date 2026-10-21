@@ -4235,3 +4235,31 @@ button.product-media:focus-visible .product-zoom {
 .interest-row .btn-row form {
   display: inline;
 }
+.mail-panel ul {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+.mail-panel li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+.mail-panel li span {
+  min-width: 110px;
+  font: 600 11px/1.4 var(--f-tech);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.mail-panel li b.red {
+  color: var(--loss);
+}
+.mail-panel li em {
+  font-size: 12px;
+  font-style: normal;
+  color: var(--faint);
+}

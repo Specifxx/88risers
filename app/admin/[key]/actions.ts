@@ -8,6 +8,7 @@ import { getDb, type Db } from "@/lib/db";
 import { savePhoto, photoUrl } from "@/lib/photos";
 import { fromSydneyInput } from "@/lib/schedule";
 import { videoEmbed } from "@/lib/video";
+import { mailConfigured, mailStatus, sendClubMail } from "@/lib/mail";
 
 type Tab = "registrations" | "pullers" | "matches" | "events" | "tv" | "shop";
 
@@ -344,4 +345,27 @@ export async function deleteInterest(form: FormData) {
   const db = await getDb();
   await db.query(`DELETE FROM shop_interest WHERE id = $1`, [int(form, "interest_id")]);
   done(key, "shop", "Removed.");
+}
+
+/** Sends a test email and reports Gmail's own error if it fails. */
+export async function sendTestEmail(form: FormData) {
+  const key = guard(form);
+  if (!mailConfigured()) {
+    const st = mailStatus();
+    done(key, "shop", !st.user ? "GMAIL_USER isn't set on the live site yet." : "GMAIL_APP_PASSWORD isn't set on the live site yet.", true);
+  }
+  let error: string | null = null;
+  try {
+    await sendClubMail({
+      subject: "88 Risers website: test email",
+      text: "This is a test from the admin Shop tab. Shop interest notifications will arrive like this.",
+    });
+  } catch (err) {
+    const m = err instanceof Error ? err.message : String(err);
+    error = /535|Username and Password not accepted|Invalid login|BadCredentials/i.test(m)
+      ? "Gmail rejected the login. Check GMAIL_USER is the full address and GMAIL_APP_PASSWORD is the 16-letter app password (not your normal password), then redeploy. Gmail said: " + m.slice(0, 160)
+      : "Sending failed: " + m.slice(0, 200);
+  }
+  if (error) done(key, "shop", error, true);
+  done(key, "shop", `Test email sent to ${mailStatus().to}. Check that inbox (and spam).`);
 }
