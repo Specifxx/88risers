@@ -20,6 +20,7 @@ Open `https://<site>/admin/<ADMIN_KEY>`. Anyone with the link is an admin, so sh
 | Matches | Record winner/loser, event, arm, round, weight class, score, video link (YouTube, Instagram reel, TikTok, Google Drive or .mp4), title match. Elo updates for both pullers. Editing or deleting a match replays every rating from scratch. |
 | Events | Publish tournaments, socials and other events. An event of type *Table time* on a first Sunday replaces that month's auto-generated session, which is how you move, rename or cancel one. |
 | 88RisersTV | Paste Instagram reel links (or YouTube Shorts / TikTok) with a title, caption and date. They play on `/tv`; the lowest order number (then newest) is the featured broadcast. Hide or remove any time. |
+| Shop | Everyone who registered interest in a concept product: counts per product, name, mobile (tap to call or text) and size/notes. Mark contacted or remove. Each one is also emailed to the club once `GMAIL_USER` and `GMAIL_APP_PASSWORD` are set. |
 
 Registration photos and phone numbers are only visible through the admin link. A registrant's photo becomes public once they're added to the database (it's their profile photo).
 

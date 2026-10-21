@@ -3,12 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
 import { isAdminKey } from "@/lib/admin";
-import { getClubStats, listEvents, listPullers, listRecentMatches, listReels, listRegistrations, type ClubEvent, type MatchView, type Puller, type Reel } from "@/lib/data";
+import { getClubStats, listEvents, listPullers, listRecentMatches, listReels, listRegistrations, listShopInterest, type ClubEvent, type MatchView, type Puller, type Reel, type ShopInterest } from "@/lib/data";
 import { prettyPhone } from "@/lib/phone";
 import { fmtShortDate, toSydneyInput } from "@/lib/schedule";
+import { PRODUCTS } from "@/lib/shop";
 import { SITE, formatId } from "@/lib/site";
 import {
   deleteEvent,
+  deleteInterest,
   deleteMatch,
   deletePuller,
   deleteReel,
@@ -19,6 +21,7 @@ import {
   savePuller,
   saveReel,
   saveRegistrationNote,
+  setInterestDone,
   setRegistrationStatus,
 } from "./actions";
 import { ConfirmButton, CopyButton, ImageInput } from "./ui";
@@ -37,6 +40,7 @@ const TABS = [
   ["matches", "Matches"],
   ["events", "Events"],
   ["tv", "88RisersTV"],
+  ["shop", "Shop"],
 ] as const;
 type Tab = (typeof TABS)[number][0];
 
@@ -54,15 +58,17 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
   const k = decodeURIComponent(key);
   const base = `/admin/${encodeURIComponent(k)}`;
 
-  const [stats, regs, pullers, matches, events, reels] = await Promise.all([
+  const [stats, regs, pullers, matches, events, reels, interest] = await Promise.all([
     getClubStats(),
     listRegistrations(),
     listPullers({ includeHidden: true }),
     listRecentMatches(200),
     listEvents("all"),
     listReels({ includeHidden: true }),
+    listShopInterest(),
   ]);
   const newRegs = regs.filter((r) => r.status === "new").length;
+  const newInterest = interest.filter((r) => !r.done).length;
 
   return (
     <div className="admin">
@@ -103,6 +109,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
             <Link key={t} href={`${base}?tab=${t}`} aria-current={t === tab ? "page" : undefined}>
               {label}
               {t === "registrations" && newRegs ? <i>{newRegs}</i> : null}
+              {t === "shop" && newInterest ? <i>{newInterest}</i> : null}
             </Link>
           ))}
         </nav>
@@ -117,6 +124,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
         {tab === "matches" ? <Matches matches={matches} pullers={pullers} events={events} k={k} /> : null}
         {tab === "events" ? <Events events={events} k={k} /> : null}
         {tab === "tv" ? <Tv reels={reels} k={k} /> : null}
+        {tab === "shop" ? <Shop interest={interest} k={k} /> : null}
 
         <p className="fine" style={{ marginTop: 60 }}>
           Anyone with this link can manage the club, so share it only with organisers. To change the link, set a new
@@ -714,6 +722,65 @@ function Tv({ reels, k }: { reels: Reel[]; k: string }) {
           </details>
         ))}
         {reels.length === 0 ? <div className="panel empty">No reels yet. Paste the first one above.</div> : null}
+      </div>
+    </>
+  );
+}
+
+function Shop({ interest, k }: { interest: ShopInterest[]; k: string }) {
+  const name = (id: string) => PRODUCTS.find((p) => p.id === id)?.name ?? id;
+  const counts = PRODUCTS.map((p) => ({ p, n: interest.filter((r) => r.product === p.id).length }));
+  return (
+    <>
+      <div className="admin-head">
+        <div>
+          <h1>Shop interest</h1>
+          <p className="muted">
+            People who registered interest on <Link href="/shop" target="_blank">/shop</Link>. Each one is also emailed to{" "}
+            {SITE.email} when email is set up (GMAIL_USER and GMAIL_APP_PASSWORD in Vercel).
+          </p>
+        </div>
+      </div>
+      <div className="panel interest-counts">
+        {counts.map(({ p, n }) => (
+          <div key={p.id}>
+            <b>{n}</b>
+            <span>{p.name}</span>
+          </div>
+        ))}
+      </div>
+      <div className="admin-rows">
+        {interest.map((r) => (
+          <div key={r.id} className={`admin-row interest-row${r.done ? " is-done" : ""}`}>
+            <div className="interest-main">
+              <b>{r.name}</b>
+              <span className="pill">{name(r.product)}</span>
+              {r.emailed ? null : <span className="pill dim">Not emailed</span>}
+              <span className="muted tech">{fmtWhen(new Date(r.created_at))}</span>
+            </div>
+            <div className="interest-main">
+              <a href={`tel:${r.phone}`}>{prettyPhone(r.phone)}</a>
+              <a className="btn btn-sm btn-ghost" href={`sms:${r.phone}`}>Text</a>
+              {r.notes ? <span className="muted">“{r.notes}”</span> : null}
+            </div>
+            <div className="btn-row">
+              <form action={setInterestDone}>
+                <input type="hidden" name="key" value={k} />
+                <input type="hidden" name="interest_id" value={r.id} />
+                {r.done ? null : <input type="hidden" name="done" value="on" />}
+                <button className="btn btn-sm btn-ghost">{r.done ? "Mark as new" : "Mark contacted"}</button>
+              </form>
+              <form action={deleteInterest}>
+                <input type="hidden" name="key" value={k} />
+                <input type="hidden" name="interest_id" value={r.id} />
+                <ConfirmButton message={`Remove ${r.name}'s interest in the ${name(r.product)}?`} className="btn btn-sm btn-ghost danger">
+                  Remove
+                </ConfirmButton>
+              </form>
+            </div>
+          </div>
+        ))}
+        {interest.length === 0 ? <div className="panel empty">No one has registered interest yet.</div> : null}
       </div>
     </>
   );

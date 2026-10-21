@@ -2,25 +2,23 @@
 
 import Image from "next/image";
 import { useRef, useState } from "react";
-
-export interface Product {
-  id: string;
-  name: string;
-  kind: string;
-  price: string;
-  blurb: string;
-  details: string[];
-  badge?: string;
-  /** Card image; leave out for "artwork coming" placeholder. */
-  image?: { src: string; w: number; h: number; bg?: string };
-  /** Full concept sheet shown in the viewer. */
-  sheet?: { src: string; w: number; h: number };
-}
+import type { Product } from "@/lib/shop";
+import { InterestForm } from "./InterestForm";
 
 /** Concept products: no checkout, just a way to register interest. */
-export function ShopGrid({ products, email }: { products: Product[]; email: string }) {
+export function ShopGrid({ products }: { products: Product[] }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState<Product | null>(null);
+  const interestDialog = useRef<HTMLDialogElement>(null);
+  const [interest, setInterest] = useState<Product | null>(null);
+  // Remount the form for each opening so a finished submission starts fresh next time.
+  const [formKey, setFormKey] = useState(0);
+
+  const ask = (p: Product) => {
+    setInterest(p);
+    setFormKey((k) => k + 1);
+    interestDialog.current?.showModal();
+  };
 
   const view = (p: Product) => {
     setOpen(p);
@@ -32,9 +30,6 @@ export function ShopGrid({ products, email }: { products: Product[]; email: stri
       <div className="shop-grid">
         {products.map((p) => {
           const art = p.sheet ?? p.image;
-          const mail = `mailto:${email}?subject=${encodeURIComponent(`Shop interest: ${p.name}`)}&body=${encodeURIComponent(
-            `Hi 88 Risers,\n\nI'd be keen on the ${p.name} (${p.price}) when it drops.\n\nName:\nSize / options:\n`,
-          )}`;
           return (
             <article key={p.id} className="product" data-reveal>
               {p.image ? (
@@ -67,9 +62,9 @@ export function ShopGrid({ products, email }: { products: Product[]; email: stri
                     <li key={d}>{d}</li>
                   ))}
                 </ul>
-                <a className="btn btn-primary product-cta" href={mail}>
+                <button type="button" className="btn btn-primary product-cta" onClick={() => ask(p)}>
                   Register interest
-                </a>
+                </button>
               </div>
             </article>
           );
@@ -100,6 +95,20 @@ export function ShopGrid({ products, email }: { products: Product[]; email: stri
           </figure>
         ) : null}
         <button type="button" className="lightbox-btn lightbox-close" onClick={() => dialog.current?.close()} aria-label="Close">
+          ×
+        </button>
+      </dialog>
+      <dialog
+        ref={interestDialog}
+        className="interest-dialog"
+        aria-label="Register interest"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) interestDialog.current?.close();
+        }}
+        onClose={() => setInterest(null)}
+      >
+        {interest ? <InterestForm key={formKey} product={interest} onClose={() => interestDialog.current?.close()} /> : null}
+        <button type="button" className="lightbox-btn lightbox-close" onClick={() => interestDialog.current?.close()} aria-label="Close">
           ×
         </button>
       </dialog>

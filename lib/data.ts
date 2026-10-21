@@ -245,6 +245,26 @@ export async function listReels(opts: { includeHidden?: boolean } = {}) {
   );
 }
 
+/* ─────────── Shop interest (admin only) ─────────── */
+
+export interface ShopInterest {
+  id: number;
+  product: string;
+  name: string;
+  phone: string;
+  notes: string | null;
+  emailed: boolean;
+  done: boolean;
+  created_at: string;
+}
+
+export async function listShopInterest() {
+  const d = await db();
+  return d.query<ShopInterest>(
+    `SELECT id, product, name, phone, notes, emailed, done, created_at FROM shop_interest ORDER BY created_at DESC`,
+  );
+}
+
 /* ─────────── Registrations (admin only) ─────────── */
 
 export async function listRegistrations() {

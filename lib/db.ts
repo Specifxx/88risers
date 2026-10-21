@@ -105,6 +105,17 @@ CREATE TABLE IF NOT EXISTS tv_reels (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS shop_interest (
+  id          serial PRIMARY KEY,
+  product     text NOT NULL,
+  name        text NOT NULL,
+  phone       text NOT NULL,
+  notes       text,
+  emailed     boolean NOT NULL DEFAULT false,
+  done        boolean NOT NULL DEFAULT false,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS meta (
   key    text PRIMARY KEY,
   value  text
@@ -143,7 +154,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v7";
+const MIGRATION_MARKER = "founders_v8";
 
 async function migrate(db: Db) {
   // Fast path for every cold start after the first: one tiny query instead of the whole schema.

@@ -9,7 +9,7 @@ import { savePhoto, photoUrl } from "@/lib/photos";
 import { fromSydneyInput } from "@/lib/schedule";
 import { videoEmbed } from "@/lib/video";
 
-type Tab = "registrations" | "pullers" | "matches" | "events" | "tv";
+type Tab = "registrations" | "pullers" | "matches" | "events" | "tv" | "shop";
 
 const str = (f: FormData, k: string) => {
   const v = f.get(k);
@@ -328,4 +328,20 @@ export async function deleteReel(form: FormData) {
   const db = await getDb();
   await db.query(`DELETE FROM tv_reels WHERE id = $1`, [int(form, "reel_id")]);
   done(key, "tv", "Reel removed.");
+}
+
+/* ─────────── Shop interest ─────────── */
+
+export async function setInterestDone(form: FormData) {
+  const key = guard(form);
+  const db = await getDb();
+  await db.query(`UPDATE shop_interest SET done = $2 WHERE id = $1`, [int(form, "interest_id"), bool(form, "done")]);
+  done(key, "shop", "Updated.");
+}
+
+export async function deleteInterest(form: FormData) {
+  const key = guard(form);
+  const db = await getDb();
+  await db.query(`DELETE FROM shop_interest WHERE id = $1`, [int(form, "interest_id")]);
+  done(key, "shop", "Removed.");
 }

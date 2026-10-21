@@ -1,7 +1,9 @@
 "use server";
 
 import { getDb } from "@/lib/db";
-import { normalisePhone } from "@/lib/phone";
+import { sendClubMail } from "@/lib/mail";
+import { normalisePhone, prettyPhone } from "@/lib/phone";
+import { productById } from "@/lib/shop";
 import { savePhoto } from "@/lib/photos";
 
 export type JoinState =
@@ -49,4 +51,62 @@ export async function register(_prev: JoinState, form: FormData): Promise<JoinSt
     console.error("register failed", err);
     return { status: "error", message: "Something went wrong on our side. Try again, or DM us on Instagram." };
   }
+}
+
+/* ─────────── Shop: register interest ─────────── */
+
+export type InterestState =
+  | { status: "idle" }
+  | { status: "error"; message: string; field?: "name" | "phone" }
+  | { status: "ok"; name: string };
+
+export async function registerInterest(_prev: InterestState, form: FormData): Promise<InterestState> {
+  if (String(form.get("company") ?? "").trim()) return { status: "ok", name: "" };
+
+  const product = productById(String(form.get("product") ?? ""));
+  const name = String(form.get("name") ?? "").trim().replace(/\s+/g, " ");
+  const phone = normalisePhone(String(form.get("phone") ?? ""));
+  const notes = String(form.get("notes") ?? "").trim().slice(0, 300) || null;
+
+  if (!product) return { status: "error", message: "That product isn't available. Refresh the page and try again." };
+  if (name.length < 2 || name.length > 80) return { status: "error", field: "name", message: "Tell us your name." };
+  if (!phone) return { status: "error", field: "phone", message: "That number doesn't look right. Try something like 0412 345 678." };
+
+  let id: number;
+  try {
+    const db = await getDb();
+    const [row] = await db.query<{ id: number }>(
+      `INSERT INTO shop_interest (product, name, phone, notes) VALUES ($1, $2, $3, $4) RETURNING id`,
+      [product.id, name, phone, notes],
+    );
+    id = row.id;
+  } catch (err) {
+    console.error("registerInterest failed", err);
+    return { status: "error", message: "Something went wrong on our side. Try again, or DM us on Instagram." };
+  }
+
+  // The interest is saved either way; the email is a notification on top.
+  try {
+    const sent = await sendClubMail({
+      subject: `Shop interest: ${product.name} (${product.price}) from ${name}`,
+      text: [
+        `${name} registered interest in the ${product.name} (${product.price}).`,
+        "",
+        `Name:   ${name}`,
+        `Mobile: ${prettyPhone(phone)}`,
+        notes ? `Notes:  ${notes}` : null,
+        "",
+        "Everyone who registered interest is also listed in the admin dashboard under Shop.",
+      ]
+        .filter((l) => l !== null)
+        .join("\n"),
+    });
+    if (sent) {
+      const db = await getDb();
+      await db.query(`UPDATE shop_interest SET emailed = true WHERE id = $1`, [id]);
+    }
+  } catch (err) {
+    console.error("shop interest email failed", err);
+  }
+  return { status: "ok", name: name.split(" ")[0] };
 }
