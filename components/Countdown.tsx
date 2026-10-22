@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export function Countdown({ to }: { to: string }) {
+export function Countdown({ to, label = "Time until next session" }: { to: string; label?: string }) {
   const target = new Date(to).getTime();
   const [now, setNow] = useState<number | null>(null);
 
@@ -21,7 +21,7 @@ export function Countdown({ to }: { to: string }) {
   ] as const;
 
   return (
-    <div className="countdown" role="timer" aria-label="Time until next session">
+    <div className="countdown" role="timer" aria-label={label}>
       {parts.map(([label, v]) => (
         <div key={label}>
           <b suppressHydrationWarning>{now === null ? "––" : String(v).padStart(2, "0")}</b>

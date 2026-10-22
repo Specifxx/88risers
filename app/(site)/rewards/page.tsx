@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BuyButton } from "@/components/BuyButton";
+import { GiveawayCounter } from "@/components/GiveawayCounter";
 import { currentAccount } from "@/lib/auth";
-import { DAILY_GAME_COINS, STORE, WELCOME_COINS, coinLeaders, redemptionsOf } from "@/lib/coins";
+import { DAILY_GAME_COINS, STORE, WELCOME_COINS, coinLeaders, itemById, redemptionsOf } from "@/lib/coins";
+import { GIVEAWAY_ITEM, getGiveaway } from "@/lib/giveaway";
 
 export const dynamic = "force-dynamic";
 
@@ -14,12 +16,12 @@ export const metadata: Metadata = {
 const GROUPS = [
   { kind: ["frame", "title", "badge"], title: "Card cosmetics", note: "Show off on your member pass and the leaderboards." },
   { kind: ["perk"], title: "Club perks", note: "You get a code; show it to an organiser at table time." },
-  { kind: ["entry"], title: "Giveaways", note: "Entries into the next draw. Winners are drawn by the organisers and announced on Instagram." },
+  { kind: ["entry"], title: "Giveaways", note: "Entries into the End of Year Giveaway. More entries, better odds. The winner is drawn by the organisers and announced on Instagram." },
 ] as const;
 
 export default async function RewardsPage() {
   const me = await currentAccount();
-  const [mine, leaders] = await Promise.all([me ? redemptionsOf(me.id) : [], coinLeaders(5)]);
+  const [mine, leaders, giveaway] = await Promise.all([me ? redemptionsOf(me.id) : [], coinLeaders(5), getGiveaway(me?.id)]);
   const owned = (id: string) => mine.filter((r) => r.item === id).length;
 
   return (
@@ -61,6 +63,7 @@ export default async function RewardsPage() {
 
       <section className="section" style={{ paddingTop: 40 }}>
         <div className="wrap">
+          <GiveawayCounter g={giveaway} loggedIn={!!me} cost={itemById(GIVEAWAY_ITEM)?.cost ?? 0} />
           {GROUPS.map((g) => (
             <div key={g.title} className="store-group">
               <div className="store-head">
@@ -72,7 +75,7 @@ export default async function RewardsPage() {
                   const n = owned(i.id);
                   const maxed = i.kind !== "title" && n >= i.limit;
                   return (
-                    <article key={i.id} className={`store-item store-${i.kind}${i.style ? ` store-${i.style}` : ""}`}>
+                    <article key={i.id} id={i.id === GIVEAWAY_ITEM ? GIVEAWAY_ITEM : undefined} className={`store-item store-${i.kind}${i.style ? ` store-${i.style}` : ""}`}>
                       <div className="store-swatch" aria-hidden />
                       <h3>{i.name}</h3>
                       <p>{i.blurb}</p>

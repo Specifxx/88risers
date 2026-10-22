@@ -7,6 +7,7 @@ import { recomputeElo } from "@/lib/data";
 import { getDb, type Db } from "@/lib/db";
 import { savePhoto, photoUrl } from "@/lib/photos";
 import { fromSydneyInput } from "@/lib/schedule";
+import { setGiveawayDrawAt } from "@/lib/giveaway";
 import { videoEmbed } from "@/lib/video";
 import { mailConfigured, mailStatus, sendClubMail } from "@/lib/mail";
 import { hashPassword } from "@/lib/auth";
@@ -496,6 +497,14 @@ export async function setRedemptionUsed(form: FormData) {
 }
 
 /** Random draw among the open entries for a giveaway item. Each entry is one ticket. */
+export async function setGiveawayDate(form: FormData) {
+  const key = guard(form);
+  const at = fromSydneyInput(str(form, "draw_at") ?? "");
+  if (!at) done(key, "coins", "Pick a draw date and time.", true);
+  await setGiveawayDrawAt(at.toISOString());
+  done(key, "coins", "Giveaway draw date saved.");
+}
+
 export async function drawGiveaway(form: FormData) {
   const key = guard(form);
   const item = itemById(str(form, "item") ?? "");

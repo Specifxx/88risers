@@ -7,9 +7,11 @@ import { Arrow, ArrowUpRight, Bolt, Calendar, Instagram, Pin, Search, Shield, Tr
 import { JoinForm } from "@/components/JoinForm";
 import { Leaderboard } from "@/components/Leaderboard";
 import { PullerSlab } from "@/components/PullerSlab";
+import { GiveawayStrip } from "@/components/GiveawayCounter";
 import { Slab } from "@/components/Slab";
 import { KIND_LABEL, upcomingCalendar } from "@/lib/calendar";
 import { getClubStats, getLeaderboard, listPullers } from "@/lib/data";
+import { getGiveaway } from "@/lib/giveaway";
 import { fmtDay, fmtDayNum, fmtMonth, fmtTime, fmtWeekday } from "@/lib/schedule";
 import { SITE, formatId } from "@/lib/site";
 
@@ -58,11 +60,12 @@ const FAQ = [
 ] as const;
 
 export default async function Home() {
-  const [stats, leaders, founders, calendar] = await Promise.all([
+  const [stats, leaders, founders, calendar, giveaway] = await Promise.all([
     getClubStats(),
     getLeaderboard(5),
     listPullers().then((ps) => ps.filter((p) => p.is_founder)),
     upcomingCalendar(3),
+    getGiveaway(),
   ]);
   const taken = new Set(stats.taken);
   const next = calendar.find((c) => !c.cancelled) ?? calendar[0];
@@ -157,6 +160,7 @@ export default async function Home() {
         <span>Pick the winner, win 88 coins</span>
         <span className="sm-strip-go">Vote →</span>
       </Link>
+      <GiveawayStrip g={giveaway} />
 
       {/* ───────── THE 88 ───────── */}
       <section className="section eighty-eight" id="the-88">

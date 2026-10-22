@@ -9,6 +9,7 @@ import { prettyPhone } from "@/lib/phone";
 import { fmtShortDate, toSydneyInput } from "@/lib/schedule";
 import { mailStatus } from "@/lib/mail";
 import { type AdminAccount, type AdminRedemption, STORE, adminAccounts, adminRedemptions, itemById } from "@/lib/coins";
+import { type Giveaway, getGiveaway } from "@/lib/giveaway";
 import { type Backer, type Supermatch, listBackers, listSupermatches } from "@/lib/supermatch";
 import { PRODUCTS } from "@/lib/shop";
 import { SITE, formatId } from "@/lib/site";
@@ -23,6 +24,7 @@ import {
   grantCoins,
   resetAccountPassword,
   saveSupermatch,
+  setGiveawayDate,
   setRedemptionUsed,
   settleSupermatch,
   deleteRegistration,
@@ -71,7 +73,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
   const k = decodeURIComponent(key);
   const base = `/admin/${encodeURIComponent(k)}`;
 
-  const [stats, regs, pullers, matches, events, reels, interest, sms, accts, redeems, backers] = await Promise.all([
+  const [stats, regs, pullers, matches, events, reels, interest, sms, accts, redeems, backers, giveaway] = await Promise.all([
     getClubStats(),
     listRegistrations(),
     listPullers({ includeHidden: true }),
@@ -83,6 +85,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
     adminAccounts(),
     adminRedemptions(),
     listBackers(),
+    getGiveaway(),
   ]);
   const newRegs = regs.filter((r) => r.status === "new").length;
   const newInterest = interest.filter((r) => !r.done).length;
@@ -142,7 +145,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
         {tab === "events" ? <Events events={events} k={k} /> : null}
         {tab === "tv" ? <Tv reels={reels} k={k} /> : null}
         {tab === "shop" ? <Shop interest={interest} k={k} /> : null}
-        {tab === "coins" ? <Coins sms={sms} accts={accts} redeems={redeems} pullers={pullers} backers={backers} k={k} /> : null}
+        {tab === "coins" ? <Coins sms={sms} accts={accts} redeems={redeems} pullers={pullers} backers={backers} giveaway={giveaway} k={k} /> : null}
 
         <p className="fine" style={{ marginTop: 60 }}>
           Anyone with this link can manage the club, so share it only with organisers. To change the link, set a new
@@ -848,6 +851,7 @@ function Coins({
   redeems,
   pullers,
   backers,
+  giveaway,
   k,
 }: {
   sms: Supermatch[];
@@ -855,6 +859,7 @@ function Coins({
   redeems: AdminRedemption[];
   pullers: Puller[];
   backers: Backer[];
+  giveaway: Giveaway;
   k: string;
 }) {
   const nameOf = (id: number | null) => pullers.find((p) => p.id === id)?.name ?? (id ? `#${id}` : "");
@@ -978,6 +983,14 @@ function Coins({
 
       <div className="panel">
         <h2 className="panel-title">Giveaway draws</h2>
+        <form action={setGiveawayDate} className="btn-row" style={{ marginBottom: 16 }}>
+          <input type="hidden" name="key" value={k} />
+          <label className="muted" htmlFor="draw_at">
+            End of Year Giveaway draw <em>(Sydney time, shown as a countdown on the homepage and /rewards)</em>
+          </label>
+          <input id="draw_at" name="draw_at" type="datetime-local" defaultValue={toSydneyInput(new Date(giveaway.drawAt))} required />
+          <button className="btn btn-sm">Save date</button>
+        </form>
         {entries.map((i) => {
           const open = redeems.filter((r) => r.item === i.id && !r.fulfilled).length;
           const winners = redeems.filter((r) => r.item === i.id && r.won);
