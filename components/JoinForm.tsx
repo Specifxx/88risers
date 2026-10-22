@@ -1,6 +1,7 @@
 "use client";
 
-import { startTransition, useActionState, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState } from "react";
+import { lionSays } from "@/lib/lion";
 import { register, type JoinState } from "@/app/actions";
 import { SITE } from "@/lib/site";
 import { Arrow, Camera, Check, Instagram } from "./Icons";
@@ -34,6 +35,10 @@ export function JoinForm({ nextId }: { nextId: number }) {
     if (photo.current) fd.set("photo", photo.current);
     startTransition(() => action(fd));
   }
+
+  useEffect(() => {
+    if (state.status === "ok" && !state.updated) lionSays("roar", `ROAR! Welcome${state.name ? `, ${state.name}` : ""}.`);
+  }, [state]);
 
   if (state.status === "ok") {
     return (

@@ -7,6 +7,8 @@ Website for 88 Risers, a social arm wrestling club in Rhodes, NSW. We're looking
 - **Riser Database** (`/pullers`, `/pullers/8`) — every puller has a permanent Riser ID. Profiles show Elo, rating tier, W–L (by arm), titles, an Elo history chart and match history with embedded videos.
 - **88RisersTV** (`/tv`) — the club's reels as a TV channel: featured player, channel guide, every episode. Reels are added in the admin.
 - **Events** (`/events`, `/events/<slug>`) — the first-Sunday table time is generated automatically; tournaments and socials are added by admins. Past events show results with videos. `/api/calendar` serves an `.ics` file.
+- **Accounts & coins** (`/account`, `/supermatch`, `/rewards`) — free member accounts (username + password). 88Risers coins are free play money: 25 to start, earned by calling supermatches (plus double any stake) and the first Pin Run each day, spent on card frames, titles, the lion badge, club perks and giveaway entries. Coins can't be bought or cashed out.
+- **Pin Run** (`/play`) — a one-button arm wrestling platformer with a high-score table.
 - **Admin** (`/admin/<ADMIN_KEY>`) — a private link, no sign-in.
 
 ## Admin dashboard
@@ -21,6 +23,7 @@ Open `https://<site>/admin/<ADMIN_KEY>`. Anyone with the link is an admin, so sh
 | Events | Publish tournaments, socials and other events. An event of type *Table time* on a first Sunday replaces that month's auto-generated session, which is how you move, rename or cancel one. |
 | 88RisersTV | Paste Instagram reel links (or YouTube Shorts / TikTok) with a title, caption and date. They play on `/tv`; the lowest order number (then newest) is the featured broadcast. Hide or remove any time. |
 | Shop | Everyone who registered interest in a concept product: counts per product, name, mobile (tap to call or text) and size/notes. Mark contacted or remove. Each one is also emailed to the club once `GMAIL_USER` and `GMAIL_APP_PASSWORD` are set. |
+| Coins | Run supermatches (create, edit, settle the result to pay out coins, cancel with stake refunds), draw giveaway winners, check reward codes, and manage member accounts (adjust coins, reset passwords). |
 
 Registration photos and phone numbers are only visible through the admin link. A registrant's photo becomes public once they're added to the database (it's their profile photo).
 

@@ -2,24 +2,49 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { LionMood } from "@/lib/lion";
 
 const HIDE_KEY = "88r-merch-lion-hidden";
 const LINES = ["Fresh gear from the den.", "Rep the table. See the merch.", "The lion approves this drip."];
 
+type Mood = LionMood | "idle" | "sleepy";
+
+/** Sydney hour, so the lion keeps club time wherever the visitor is. */
+const sydneyHour = () => Number(new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", hourCycle: "h23" }).format(new Date()));
+
 /**
- * A lion-head badge in the corner that nudges visitors to the shop. It peeks in after a short
- * delay (longer on the homepage, so it doesn't fight the hero lion intro), shows a speech
- * bubble, and can be dismissed. Hidden on the shop itself and in the admin.
+ * The club's lion mascot in the corner. It nudges visitors to the shop, and reacts:
+ * roars when someone claims a Riser ID or locks in a supermatch pick, cheers on rewards,
+ * flexes on the leaderboards, and dozes off late at night (Sydney time).
+ * Other components trigger reactions with lionSays() from lib/lion.
  */
 export function MerchLion() {
   const path = usePathname();
   const [show, setShow] = useState(false);
   const [talk, setTalk] = useState(false);
+  const [mood, setMood] = useState<Mood>("idle");
   const [line, setLine] = useState(LINES[0]);
+  const [sub, setSub] = useState("Club tees, comp jerseys & grip gear");
+  const hideTalk = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const off = path.startsWith("/shop") || path.startsWith("/admin");
+  const off = path.startsWith("/shop") || path.startsWith("/admin") || path.startsWith("/play");
+  const board = path.startsWith("/pullers") || path.startsWith("/supermatch");
 
+  const say = (m: Mood, text: string, subtext: string, ms = 7000) => {
+    setMood(m);
+    setLine(text);
+    setSub(subtext);
+    setShow(true);
+    setTalk(true);
+    clearTimeout(hideTalk.current);
+    hideTalk.current = setTimeout(() => {
+      setTalk(false);
+      setMood((cur) => (cur === "sleepy" ? cur : "idle"));
+    }, ms);
+  };
+
+  // Ambient appearance per page.
   useEffect(() => {
     if (off) return;
     let hidden = false;
@@ -27,13 +52,28 @@ export function MerchLion() {
       hidden = sessionStorage.getItem(HIDE_KEY) === "1";
     } catch {}
     if (hidden) return;
-    setLine(LINES[Math.floor(Math.random() * LINES.length)]);
+    const h = sydneyHour();
+    const night = h >= 22 || h < 6;
     const wait = path === "/" ? 7000 : 2500;
-    const t1 = setTimeout(() => setShow(true), wait);
-    const t2 = setTimeout(() => setTalk(true), wait + 700);
-    const t3 = setTimeout(() => setTalk(false), wait + 7700);
-    return () => [t1, t2, t3].forEach(clearTimeout);
+    const t = setTimeout(() => {
+      if (night) say("sleepy", "Yawn… the table's closed.", "Come pull on the first Sunday. Merch is in the shop.");
+      else if (board) say("flex", "Strong table up top.", "Climb the ranks, then rep it in club gear.");
+      else say("idle", LINES[Math.floor(Math.random() * LINES.length)], "Club tees, comp jerseys & grip gear");
+    }, wait);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, off]);
+
+  // Reactions from elsewhere on the site.
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<{ mood: LionMood; text: string }>).detail;
+      if (!d) return;
+      say(d.mood, d.text, d.mood === "roar" ? "Welcome to the pride." : "Spend your coins in the reward store.", 6000);
+    };
+    window.addEventListener("88r:lion", on);
+    return () => window.removeEventListener("88r:lion", on);
+  }, []);
 
   if (off || !show) return null;
 
@@ -45,21 +85,34 @@ export function MerchLion() {
   };
 
   return (
-    <div className="merch-lion" onMouseEnter={() => setTalk(true)} onMouseLeave={() => setTalk(false)}>
+    <div className={`merch-lion mood-${mood}`} onMouseEnter={() => setTalk(true)} onMouseLeave={() => setTalk(false)}>
       <div className={`merch-bubble${talk ? " on" : ""}`} role="status">
         <b>{line}</b>
-        <span>Club tees, comp jerseys &amp; grip gear</span>
-        <Link href="/shop" className="merch-go">
-          Visit the shop →
+        <span>{sub}</span>
+        <Link href={mood === "cheer" ? "/rewards" : "/shop"} className="merch-go">
+          {mood === "cheer" ? "Reward store →" : "Visit the shop →"}
         </Link>
       </div>
       <Link href="/shop" className="merch-badge" aria-label="Check out 88 Risers club merch in the shop">
         <span className="merch-face" aria-hidden />
+        {mood === "sleepy" ? (
+          <span className="merch-zzz" aria-hidden>
+            <i>z</i>
+            <i>z</i>
+            <i>Z</i>
+          </span>
+        ) : null}
+        {mood === "roar" ? <span className="merch-roar" aria-hidden /> : null}
+        {mood === "flex" ? (
+          <span className="merch-flex" aria-hidden>
+            💪
+          </span>
+        ) : null}
         <span className="merch-tag" aria-hidden>
-          MERCH
+          {mood === "sleepy" ? "ZZZ" : "MERCH"}
         </span>
       </Link>
-      <button type="button" className="merch-x" onClick={dismiss} aria-label="Hide the merch lion">
+      <button type="button" className="merch-x" onClick={dismiss} aria-label="Hide the lion">
         ×
       </button>
     </div>

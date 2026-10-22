@@ -32,6 +32,10 @@ export function SiteFooter() {
               <li><Link href="/tv">88RisersTV</Link></li>
               <li><Link href="/gallery">Gallery</Link></li>
               <li><Link href="/shop">Shop</Link></li>
+              <li><Link href="/supermatch">Supermatch</Link></li>
+              <li><Link href="/play">Pin Run</Link></li>
+              <li><Link href="/rewards">Rewards</Link></li>
+              <li><Link href="/account">Account</Link></li>
             </ul>
           </div>
           <div>

@@ -7,6 +7,8 @@ import { getClubStats, listEvents, listPullers, listRecentMatches, listReels, li
 import { prettyPhone } from "@/lib/phone";
 import { fmtShortDate, toSydneyInput } from "@/lib/schedule";
 import { mailStatus } from "@/lib/mail";
+import { type AdminAccount, type AdminRedemption, STORE, adminAccounts, adminRedemptions, itemById } from "@/lib/coins";
+import { type Supermatch, listSupermatches } from "@/lib/supermatch";
 import { PRODUCTS } from "@/lib/shop";
 import { SITE, formatId } from "@/lib/site";
 import {
@@ -15,6 +17,13 @@ import {
   deleteMatch,
   deletePuller,
   deleteReel,
+  deleteSupermatch,
+  drawGiveaway,
+  grantCoins,
+  resetAccountPassword,
+  saveSupermatch,
+  setRedemptionUsed,
+  settleSupermatch,
   deleteRegistration,
   promoteRegistration,
   saveEvent,
@@ -43,6 +52,7 @@ const TABS = [
   ["events", "Events"],
   ["tv", "88RisersTV"],
   ["shop", "Shop"],
+  ["coins", "Coins"],
 ] as const;
 type Tab = (typeof TABS)[number][0];
 
@@ -60,7 +70,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
   const k = decodeURIComponent(key);
   const base = `/admin/${encodeURIComponent(k)}`;
 
-  const [stats, regs, pullers, matches, events, reels, interest] = await Promise.all([
+  const [stats, regs, pullers, matches, events, reels, interest, sms, accts, redeems] = await Promise.all([
     getClubStats(),
     listRegistrations(),
     listPullers({ includeHidden: true }),
@@ -68,6 +78,9 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
     listEvents("all"),
     listReels({ includeHidden: true }),
     listShopInterest(),
+    listSupermatches(),
+    adminAccounts(),
+    adminRedemptions(),
   ]);
   const newRegs = regs.filter((r) => r.status === "new").length;
   const newInterest = interest.filter((r) => !r.done).length;
@@ -127,6 +140,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
         {tab === "events" ? <Events events={events} k={k} /> : null}
         {tab === "tv" ? <Tv reels={reels} k={k} /> : null}
         {tab === "shop" ? <Shop interest={interest} k={k} /> : null}
+        {tab === "coins" ? <Coins sms={sms} accts={accts} redeems={redeems} pullers={pullers} k={k} /> : null}
 
         <p className="fine" style={{ marginTop: 60 }}>
           Anyone with this link can manage the club, so share it only with organisers. To change the link, set a new
@@ -823,5 +837,195 @@ function MailPanel({ k }: { k: string }) {
         </button>
       </form>
     </div>
+  );
+}
+
+function Coins({ sms, accts, redeems, pullers, k }: { sms: Supermatch[]; accts: AdminAccount[]; redeems: AdminRedemption[]; pullers: Puller[]; k: string }) {
+  const nameOf = (id: number | null) => pullers.find((p) => p.id === id)?.name ?? (id ? `#${id}` : "");
+  const SmFields = ({ m }: { m?: Supermatch }) => (
+    <div className="form-grid">
+      <div className="field span2">
+        <label>Title</label>
+        <input name="title" type="text" defaultValue={m?.title ?? ""} required placeholder="December Supermatch" />
+      </div>
+      <div className="field">
+        <label>Puller A</label>
+        <select name="a_id" defaultValue={m?.a_id ?? ""} required>
+          <option value="">Choose…</option>
+          {pullers.map((p) => (
+            <option key={p.id} value={p.id}>
+              {formatId(p.id)} {p.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="field">
+        <label>Puller B</label>
+        <select name="b_id" defaultValue={m?.b_id ?? ""} required>
+          <option value="">Choose…</option>
+          {pullers.map((p) => (
+            <option key={p.id} value={p.id}>
+              {formatId(p.id)} {p.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="field">
+        <label>Voting closes <em>Sydney time</em></label>
+        <input name="closes_at" type="datetime-local" defaultValue={m ? toSydneyInput(new Date(m.closes_at)) : ""} required />
+      </div>
+      <div className="field">
+        <label>Coins for a correct pick</label>
+        <input name="reward" type="number" min={0} defaultValue={m?.reward ?? 88} />
+      </div>
+      <div className="field span4">
+        <label>Blurb</label>
+        <textarea name="blurb" rows={2} defaultValue={m?.blurb ?? ""} />
+      </div>
+    </div>
+  );
+  const entries = STORE.filter((i) => i.kind === "entry");
+  return (
+    <>
+      <div className="admin-head">
+        <div>
+          <h1>Coins &amp; supermatches</h1>
+          <p className="muted">
+            88Risers coins are free play money. Settle a supermatch after the result to pay everyone who picked right
+            (reward + double their stake). Public pages: <Link href="/supermatch" target="_blank">/supermatch</Link>,{" "}
+            <Link href="/rewards" target="_blank">/rewards</Link>, <Link href="/play" target="_blank">/play</Link>.
+          </p>
+        </div>
+      </div>
+
+      <div className="panel">
+        <h2 className="panel-title">New supermatch</h2>
+        <form action={saveSupermatch}>
+          <input type="hidden" name="key" value={k} />
+          <SmFields />
+          <button className="btn btn-primary btn-sm">Create supermatch</button>
+        </form>
+      </div>
+      <div className="admin-rows">
+        {sms.map((m) => (
+          <details key={m.id} className="admin-row" open={!m.settled_at}>
+            <summary>
+              <b>{m.title}</b>
+              <span className="muted tech">
+                {nameOf(m.a_id)} {m.a_votes} · {m.b_votes} {nameOf(m.b_id)} · {m.pot} staked
+              </span>
+              {m.settled_at ? <span className="pill">Won by {nameOf(m.winner_id)}</span> : <span className="pill">Open</span>}
+            </summary>
+            {!m.settled_at ? (
+              <>
+                <form action={saveSupermatch}>
+                  <input type="hidden" name="key" value={k} />
+                  <input type="hidden" name="sm_id" value={m.id} />
+                  <SmFields m={m} />
+                  <button className="btn btn-sm">Save changes</button>
+                </form>
+                <form action={settleSupermatch} className="btn-row" style={{ marginTop: 16 }}>
+                  <input type="hidden" name="key" value={k} />
+                  <input type="hidden" name="sm_id" value={m.id} />
+                  <select name="winner_id" required defaultValue="">
+                    <option value="">Who won?</option>
+                    <option value={m.a_id}>{nameOf(m.a_id)}</option>
+                    <option value={m.b_id}>{nameOf(m.b_id)}</option>
+                  </select>
+                  <ConfirmButton message="Record this result and pay out coins? This can't be undone." className="btn btn-sm btn-primary">
+                    Settle &amp; pay out
+                  </ConfirmButton>
+                </form>
+                <form action={deleteSupermatch} style={{ marginTop: 12 }}>
+                  <input type="hidden" name="key" value={k} />
+                  <input type="hidden" name="sm_id" value={m.id} />
+                  <ConfirmButton message={`Delete "${m.title}"? Stakes are refunded.`} className="btn btn-sm btn-ghost danger">
+                    Cancel supermatch
+                  </ConfirmButton>
+                </form>
+              </>
+            ) : null}
+          </details>
+        ))}
+      </div>
+
+      <div className="panel">
+        <h2 className="panel-title">Giveaway draws</h2>
+        {entries.map((i) => {
+          const open = redeems.filter((r) => r.item === i.id && !r.fulfilled).length;
+          const winners = redeems.filter((r) => r.item === i.id && r.won);
+          return (
+            <form key={i.id} action={drawGiveaway} className="btn-row">
+              <input type="hidden" name="key" value={k} />
+              <input type="hidden" name="item" value={i.id} />
+              <b>{i.name}</b>
+              <span className="muted tech">{open} open entries</span>
+              <ConfirmButton message={`Draw a winner from ${open} entries? This closes the round.`} className="btn btn-sm btn-primary">
+                Draw winner
+              </ConfirmButton>
+              {winners.length ? <span className="muted">Past winners: {winners.map((w) => w.display_name).join(", ")}</span> : null}
+            </form>
+          );
+        })}
+      </div>
+
+      <div className="panel">
+        <h2 className="panel-title">Reward codes</h2>
+        {redeems.length ? (
+          <div className="admin-rows">
+            {redeems.map((r) => (
+              <div key={r.id} className={`admin-row interest-row${r.fulfilled ? " is-done" : ""}`}>
+                <div className="interest-main">
+                  <b>{r.code}</b>
+                  <span>{itemById(r.item)?.name ?? r.item}</span>
+                  <span className="muted">
+                    {r.display_name} (@{r.handle})
+                  </span>
+                  {r.won ? <span className="pill">Winner</span> : null}
+                  <form action={setRedemptionUsed}>
+                    <input type="hidden" name="key" value={k} />
+                    <input type="hidden" name="redemption_id" value={r.id} />
+                    {r.fulfilled ? null : <input type="hidden" name="used" value="on" />}
+                    <button className="btn btn-sm btn-ghost">{r.fulfilled ? "Mark unused" : "Mark used"}</button>
+                  </form>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">No perks or entries redeemed yet.</p>
+        )}
+      </div>
+
+      <div className="panel">
+        <h2 className="panel-title">Accounts ({accts.length})</h2>
+        <div className="admin-rows">
+          {accts.map((a) => (
+            <details key={a.id} className="admin-row">
+              <summary>
+                <b>{a.display_name}</b>
+                <span className="muted tech">
+                  @{a.handle} · {a.coins} coins · {a.picks} {a.picks === 1 ? "pick" : "picks"}{a.best ? ` · best ${a.best}` : ""}
+                </span>
+              </summary>
+              <form action={grantCoins} className="btn-row">
+                <input type="hidden" name="key" value={k} />
+                <input type="hidden" name="account_id" value={a.id} />
+                <input name="amount" type="number" placeholder="+50 or -20" style={{ width: 120 }} />
+                <input name="reason" type="text" placeholder="Reason (shown to them)" />
+                <button className="btn btn-sm">Adjust coins</button>
+              </form>
+              <form action={resetAccountPassword} className="btn-row" style={{ marginTop: 10 }}>
+                <input type="hidden" name="key" value={k} />
+                <input type="hidden" name="account_id" value={a.id} />
+                <input name="password" type="text" placeholder="New password (8+ chars)" minLength={8} />
+                <button className="btn btn-sm btn-ghost">Reset password</button>
+              </form>
+            </details>
+          ))}
+          {accts.length === 0 ? <div className="panel empty">No accounts yet.</div> : null}
+        </div>
+      </div>
+    </>
   );
 }

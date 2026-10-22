@@ -9,8 +9,10 @@ import { savePhoto, photoUrl } from "@/lib/photos";
 import { fromSydneyInput } from "@/lib/schedule";
 import { videoEmbed } from "@/lib/video";
 import { mailConfigured, mailStatus, sendClubMail } from "@/lib/mail";
+import { hashPassword } from "@/lib/auth";
+import { grant, itemById } from "@/lib/coins";
 
-type Tab = "registrations" | "pullers" | "matches" | "events" | "tv" | "shop";
+type Tab = "registrations" | "pullers" | "matches" | "events" | "tv" | "shop" | "coins";
 
 const str = (f: FormData, k: string) => {
   const v = f.get(k);
@@ -368,4 +370,133 @@ export async function sendTestEmail(form: FormData) {
   }
   if (error) done(key, "shop", error, true);
   done(key, "shop", `Test email sent to ${mailStatus().to}. Check that inbox (and spam).`);
+}
+
+/* ─────────── Coins, supermatches, rewards ─────────── */
+
+export async function saveSupermatch(form: FormData) {
+  const key = guard(form);
+  const id = int(form, "sm_id");
+  const title = str(form, "title");
+  const a = int(form, "a_id");
+  const b = int(form, "b_id");
+  const closes = fromSydneyInput(str(form, "closes_at") ?? "");
+  const reward = int(form, "reward") ?? 88;
+  if (!title || !a || !b || a === b) done(key, "coins", "Give it a title and two different pullers.", true);
+  if (!closes) done(key, "coins", "Set when voting closes.", true);
+  try {
+    const db = await getDb();
+    if (id) {
+      await db.query(`UPDATE supermatches SET title=$1, blurb=$2, a_id=$3, b_id=$4, closes_at=$5, reward=$6 WHERE id=$7 AND settled_at IS NULL`, [
+        title, str(form, "blurb"), a, b, closes, reward, id,
+      ]);
+    } else {
+      const slug = `${slugify(title)}-${closes.toISOString().slice(0, 10)}`;
+      await db.query(`INSERT INTO supermatches (slug, title, blurb, a_id, b_id, closes_at, reward) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [
+        slug, title, str(form, "blurb"), a, b, closes, reward,
+      ]);
+    }
+  } catch (err) {
+    done(key, "coins", friendly(err), true);
+  }
+  done(key, "coins", id ? "Supermatch updated." : "Supermatch created. It's now featured on /supermatch.");
+}
+
+/** Records the winner and pays out: reward to every correct pick, plus double their stake. Runs once. */
+export async function settleSupermatch(form: FormData) {
+  const key = guard(form);
+  const id = int(form, "sm_id");
+  const winner = int(form, "winner_id");
+  let paid = 0;
+  try {
+    const db = await getDb();
+    const res = await db.transaction(async (tx) => {
+      const [m] = await tx.query<{ a_id: number; b_id: number; reward: number; settled_at: string | null }>(
+        `SELECT a_id, b_id, reward, settled_at FROM supermatches WHERE id = $1 FOR UPDATE`,
+        [id],
+      );
+      if (!m) return "Supermatch not found.";
+      if (m.settled_at) return "Already settled.";
+      if (winner !== m.a_id && winner !== m.b_id) return "Pick the winner.";
+      await tx.query(`UPDATE supermatches SET winner_id = $2, settled_at = now() WHERE id = $1`, [id, winner]);
+      const right = await tx.query<{ account_id: number; stake: number }>(
+        `SELECT account_id, stake FROM predictions WHERE match_id = $1 AND pick_id = $2`,
+        [id, winner],
+      );
+      for (const r of right) {
+        await grant(tx, r.account_id, m.reward, "Called the supermatch", `sm:${id}:reward`);
+        if (r.stake > 0) await grant(tx, r.account_id, r.stake * 2, "Supermatch stake doubled", `sm:${id}:payout`);
+        paid++;
+      }
+      return null;
+    });
+    if (res) done(key, "coins", res, true);
+  } catch (err) {
+    done(key, "coins", friendly(err), true);
+  }
+  done(key, "coins", `Settled. Paid out to ${paid} ${paid === 1 ? "account" : "accounts"}.`);
+}
+
+export async function deleteSupermatch(form: FormData) {
+  const key = guard(form);
+  const db = await getDb();
+  const id = int(form, "sm_id");
+  // Refund any stakes before removing an unsettled match.
+  await db.transaction(async (tx) => {
+    const staked = await tx.query<{ account_id: number; stake: number }>(
+      `SELECT p.account_id, p.stake FROM predictions p JOIN supermatches m ON m.id = p.match_id
+       WHERE p.match_id = $1 AND p.stake > 0 AND m.settled_at IS NULL`,
+      [id],
+    );
+    for (const r of staked) await grant(tx, r.account_id, r.stake, "Supermatch cancelled: stake refunded", `sm:${id}:refund`);
+    await tx.query(`DELETE FROM supermatches WHERE id = $1`, [id]);
+  });
+  done(key, "coins", "Supermatch removed. Any stakes were refunded.");
+}
+
+export async function grantCoins(form: FormData) {
+  const key = guard(form);
+  const id = int(form, "account_id");
+  const raw = str(form, "amount") ?? "";
+  const amount = /^-?\d+$/.test(raw) ? Number(raw) : 0;
+  if (!id || !amount || Math.abs(amount) > 100000) done(key, "coins", "Enter a whole number of coins (negative to remove).", true);
+  const db = await getDb();
+  await grant(db, id, amount, str(form, "reason") ?? (amount > 0 ? "Bonus from the club" : "Adjustment"), null);
+  done(key, "coins", `${amount > 0 ? "Granted" : "Removed"} ${Math.abs(amount)} coins.`);
+}
+
+export async function resetAccountPassword(form: FormData) {
+  const key = guard(form);
+  const id = int(form, "account_id");
+  const pw = str(form, "password") ?? "";
+  if (!id || pw.length < 8) done(key, "coins", "New password needs at least 8 characters.", true);
+  const db = await getDb();
+  await db.query(`UPDATE accounts SET pass_hash = $2 WHERE id = $1`, [id, await hashPassword(pw)]);
+  await db.query(`DELETE FROM sessions WHERE account_id = $1`, [id]);
+  done(key, "coins", "Password reset. Send it to the member privately and ask them to keep it safe.");
+}
+
+export async function setRedemptionUsed(form: FormData) {
+  const key = guard(form);
+  const db = await getDb();
+  await db.query(`UPDATE redemptions SET fulfilled = $2 WHERE id = $1`, [int(form, "redemption_id"), bool(form, "used")]);
+  done(key, "coins", "Updated.");
+}
+
+/** Random draw among the open entries for a giveaway item. Each entry is one ticket. */
+export async function drawGiveaway(form: FormData) {
+  const key = guard(form);
+  const item = itemById(str(form, "item") ?? "");
+  if (!item || item.kind !== "entry") done(key, "coins", "Unknown giveaway.", true);
+  const db = await getDb();
+  const [w] = await db.query<{ id: number; display_name: string; handle: string; code: string }>(
+    `SELECT r.id, a.display_name, a.handle, r.code FROM redemptions r JOIN accounts a ON a.id = r.account_id
+     WHERE r.item = $1 AND NOT r.fulfilled ORDER BY random() LIMIT 1`,
+    [item.id],
+  );
+  if (!w) done(key, "coins", "No open entries to draw from.", true);
+  await db.query(`UPDATE redemptions SET won = true WHERE id = $1`, [w.id]);
+  // Close out this round: every entry for it is marked used.
+  await db.query(`UPDATE redemptions SET fulfilled = true WHERE item = $1 AND NOT fulfilled`, [item.id]);
+  done(key, "coins", `Winner: ${w.display_name} (@${w.handle}), ticket ${w.code}. All entries for this round are now closed.`);
 }

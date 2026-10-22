@@ -149,6 +149,15 @@ export default async function Home() {
         </div>
       </div>
 
+      <Link href="/supermatch" className="sm-strip">
+        <span className="sm-strip-tag">November Supermatch</span>
+        <b>
+          Bhavya <i>vs</i> Harry
+        </b>
+        <span>Pick the winner, win 88 coins</span>
+        <span className="sm-strip-go">Vote →</span>
+      </Link>
+
       {/* ───────── THE 88 ───────── */}
       <section className="section eighty-eight" id="the-88">
         <div className="ink ink-lion-line ink-88" aria-hidden />

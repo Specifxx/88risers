@@ -166,8 +166,29 @@ CREATE TABLE IF NOT EXISTS predictions (
   match_id    integer NOT NULL REFERENCES supermatches(id) ON DELETE CASCADE,
   account_id  integer NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
   pick_id     integer NOT NULL,
+  stake       integer NOT NULL DEFAULT 0,
   created_at  timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (match_id, account_id)
+);
+
+-- Coin store purchases: cosmetics (equipped on the account card), perks (a code the club honours)
+-- and giveaway entries. code is shown to the member and checked by organisers.
+CREATE TABLE IF NOT EXISTS redemptions (
+  id          serial PRIMARY KEY,
+  account_id  integer NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  item        text NOT NULL,
+  cost        integer NOT NULL,
+  code        text NOT NULL UNIQUE,
+  fulfilled   boolean NOT NULL DEFAULT false,
+  won         boolean NOT NULL DEFAULT false,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS account_style (
+  account_id  integer PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+  frame       text,
+  title       text,
+  badge       boolean NOT NULL DEFAULT false
 );
 
 CREATE TABLE IF NOT EXISTS game_scores (

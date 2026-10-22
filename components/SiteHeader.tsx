@@ -6,14 +6,24 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Menu } from "./Icons";
 
+/** Desktop bar: the main destinations. */
 const NAV = [
-  { href: "/#club", label: "Club" },
   { href: "/events", label: "Events" },
   { href: "/pullers", label: "Database" },
-  { href: "/#founders", label: "Founders" },
+  { href: "/supermatch", label: "Supermatch" },
+  { href: "/play", label: "Play" },
   { href: "/tv", label: "TV" },
-  { href: "/gallery", label: "Gallery" },
   { href: "/shop", label: "Shop" },
+];
+/** Phone menu: everything. */
+const MENU = [
+  { href: "/#club", label: "Club" },
+  ...NAV.slice(0, 2),
+  { href: "/#founders", label: "Founders" },
+  ...NAV.slice(2),
+  { href: "/gallery", label: "Gallery" },
+  { href: "/rewards", label: "Rewards" },
+  { href: "/account", label: "Account" },
 ];
 
 export function SiteHeader() {
@@ -49,6 +59,9 @@ export function SiteHeader() {
             </Link>
           ))}
         </nav>
+        <Link href="/account" className="header-acct" aria-label="Your account and coins" aria-current={path.startsWith("/account") ? "page" : undefined}>
+          <span className="coin" aria-hidden />
+        </Link>
         <Link href="/join" className="btn btn-primary header-cta">
           Join
         </Link>
@@ -57,9 +70,9 @@ export function SiteHeader() {
             <Menu />
           </summary>
           <div className="menu-panel">
-            {NAV.map((n, i) => (
+            {MENU.map((n, i) => (
               <Link key={n.href} href={n.href} onClick={() => menu.current?.removeAttribute("open")}>
-                {n.label} <span>0{i + 1}</span>
+                {n.label} <span>{String(i + 1).padStart(2, "0")}</span>
               </Link>
             ))}
             <a href="https://www.instagram.com/88risers_/" target="_blank" rel="noreferrer">
