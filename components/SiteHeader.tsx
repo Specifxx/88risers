@@ -13,6 +13,7 @@ const NAV = [
   { href: "/supermatch", label: "Supermatch" },
   { href: "/play", label: "Play" },
   { href: "/tv", label: "TV" },
+  { href: "/gallery", label: "Gallery" },
   { href: "/shop", label: "Shop" },
 ];
 /** Phone menu: everything. */
@@ -21,7 +22,6 @@ const MENU = [
   ...NAV.slice(0, 2),
   { href: "/#founders", label: "Founders" },
   ...NAV.slice(2),
-  { href: "/gallery", label: "Gallery" },
   { href: "/rewards", label: "Rewards" },
   { href: "/account", label: "Account" },
 ];
@@ -60,7 +60,7 @@ export function SiteHeader() {
           ))}
         </nav>
         <Link href="/account" className="header-acct" aria-label="Your account and coins" aria-current={path.startsWith("/account") ? "page" : undefined}>
-          <span className="coin" aria-hidden />
+          <span className="acct-ball" aria-hidden />
         </Link>
         <Link href="/join" className="btn btn-primary header-cta">
           Join

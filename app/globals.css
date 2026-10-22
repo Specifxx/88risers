@@ -346,6 +346,22 @@ a {
   color: var(--bone);
   background: rgba(213, 182, 122, 0.08);
 }
+.brand {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+@media (max-width: 1180px) {
+  .site-header .wrap {
+    gap: 16px;
+  }
+  .nav {
+    gap: 0;
+  }
+  .nav a {
+    padding: 10px 9px;
+    letter-spacing: 0.1em;
+  }
+}
 .header-cta {
   min-height: 42px;
   padding: 0 18px;
@@ -400,7 +416,7 @@ a {
   color: var(--faint);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   .nav {
     display: none;
   }
@@ -4454,7 +4470,26 @@ button.product-media:focus-visible .product-zoom {
 .header-acct:hover,
 .header-acct[aria-current] {
   border-color: var(--gold);
-  transform: rotate(-12deg);
+}
+/* The carved 88 ball from under the stone lion's paw. Rolls on hover. */
+.acct-ball {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: url("/ball-88.webp") center / cover no-repeat;
+  box-shadow: inset -4px -5px 8px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.5);
+  transition: transform 0.5s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.header-acct:hover .acct-ball {
+  transform: rotate(-200deg);
+}
+.header-acct[aria-current] .acct-ball {
+  box-shadow: inset -4px -5px 8px rgba(0, 0, 0, 0.45), 0 0 12px rgba(213, 182, 122, 0.55);
+}
+@media (prefers-reduced-motion: reduce) {
+  .header-acct:hover .acct-ball {
+    transform: none;
+  }
 }
 
 /* homepage strip */
