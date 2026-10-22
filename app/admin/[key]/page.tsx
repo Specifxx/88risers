@@ -10,6 +10,7 @@ import { fmtShortDate, toSydneyInput } from "@/lib/schedule";
 import { mailStatus } from "@/lib/mail";
 import { type AdminAccount, type AdminRedemption, STORE, adminAccounts, adminRedemptions, itemById } from "@/lib/coins";
 import { type Giveaway, getGiveaway } from "@/lib/giveaway";
+import { type CompResult, allResults, placeLabel } from "@/lib/results";
 import { CHALK, chalkboard, chalkSettings, currentSeason, listMeets, meetAttendees, sydneyToday } from "@/lib/chalk";
 import { type Backer, type Supermatch, listBackers, listSupermatches } from "@/lib/supermatch";
 import { PRODUCTS } from "@/lib/shop";
@@ -27,6 +28,8 @@ import {
   saveSupermatch,
   setGiveawayDate,
   openCheckin,
+  addResult,
+  deleteResult,
   linkPullerAccount,
   setCheckinOpen,
   setMeetTournament,
@@ -83,7 +86,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
   const k = decodeURIComponent(key);
   const base = `/admin/${encodeURIComponent(k)}`;
 
-  const [stats, regs, pullers, matches, events, reels, interest, sms, accts, redeems, backers, giveaway] = await Promise.all([
+  const [stats, regs, pullers, matches, events, reels, interest, sms, accts, redeems, backers, giveaway, results] = await Promise.all([
     getClubStats(),
     listRegistrations(),
     listPullers({ includeHidden: true }),
@@ -96,6 +99,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
     adminRedemptions(),
     listBackers(),
     getGiveaway(),
+    allResults(),
   ]);
   const newRegs = regs.filter((r) => r.status === "new").length;
   const newInterest = interest.filter((r) => !r.done).length;
@@ -150,7 +154,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
         {err ? <div className="flash bad">{err}</div> : null}
 
         {tab === "registrations" ? <Registrations regs={regs} k={k} base={base} filter={filter} nextId={stats.next_id} /> : null}
-        {tab === "pullers" ? <Pullers pullers={pullers} accts={accts} k={k} nextId={stats.next_id} /> : null}
+        {tab === "pullers" ? <Pullers pullers={pullers} accts={accts} results={results} k={k} nextId={stats.next_id} /> : null}
         {tab === "matches" ? <Matches matches={matches} pullers={pullers} events={events} k={k} /> : null}
         {tab === "events" ? <Events events={events} k={k} /> : null}
         {tab === "tv" ? <Tv reels={reels} k={k} /> : null}
@@ -378,7 +382,7 @@ function PullerFields({ p, nextId }: { p?: Puller; nextId: number }) {
   );
 }
 
-function Pullers({ pullers, accts, k, nextId }: { pullers: Puller[]; accts: AdminAccount[]; k: string; nextId: number }) {
+function Pullers({ pullers, accts, results, k, nextId }: { pullers: Puller[]; accts: AdminAccount[]; results: CompResult[]; k: string; nextId: number }) {
   return (
     <>
       <div className="admin-head">
@@ -436,6 +440,40 @@ function Pullers({ pullers, accts, k, nextId }: { pullers: Puller[]; accts: Admi
               </select>
               <button className="btn btn-sm">Save link</button>
             </form>
+            <div className="admin-results">
+              <h4>Competition results</h4>
+              {results
+                .filter((r) => r.puller_id === p.id)
+                .map((r) => (
+                  <form key={r.id} action={deleteResult} className="btn-row">
+                    <input type="hidden" name="key" value={k} />
+                    <input type="hidden" name="result_id" value={r.id} />
+                    <span>
+                      <b>{placeLabel(r.place)}</b> · {r.event}
+                      {r.division ? ` · ${r.division}` : ""} · {r.played_on ?? r.season}
+                    </span>
+                    <ConfirmButton message={`Remove ${placeLabel(r.place)} at ${r.event}? Its Chalk is removed too.`} className="btn btn-sm btn-ghost danger">
+                      Remove
+                    </ConfirmButton>
+                  </form>
+                ))}
+              <form action={addResult} className="btn-row">
+                <input type="hidden" name="key" value={k} />
+                <input type="hidden" name="puller_id" value={p.id} />
+                <input name="event" type="text" placeholder="Competition, e.g. NSW State Titles" required />
+                <input name="division" type="text" placeholder="Division, e.g. 85kg+ left" style={{ width: 170 }} />
+                <select name="place" defaultValue="1">
+                  <option value="1">1st</option>
+                  <option value="2">2nd</option>
+                  <option value="3">3rd</option>
+                  <option value="4">4th</option>
+                  <option value="5">5th</option>
+                  <option value="6">6th+</option>
+                </select>
+                <input name="played_on" type="date" />
+                <button className="btn btn-sm">Add result</button>
+              </form>
+            </div>
             <form action={deletePuller} style={{ marginTop: 12 }}>
               <input type="hidden" name="key" value={k} />
               <input type="hidden" name="id" value={p.id} />

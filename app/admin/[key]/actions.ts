@@ -8,6 +8,7 @@ import { getDb, type Db } from "@/lib/db";
 import { savePhoto, photoUrl } from "@/lib/photos";
 import { fromSydneyInput } from "@/lib/schedule";
 import { setGiveawayDrawAt } from "@/lib/giveaway";
+import { awardResultsChalk } from "@/lib/results";
 import { CHALK, awardChalk, currentSeason, meetLabel, newMeetCode, recordCheckin, saveChalkSettings, sydneyToday } from "@/lib/chalk";
 import { videoEmbed } from "@/lib/video";
 import { mailConfigured, mailStatus, sendClubMail } from "@/lib/mail";
@@ -647,8 +648,42 @@ export async function linkPullerAccount(form: FormData) {
   const db = await getDb();
   try {
     await db.query(`UPDATE pullers SET account_id = $2 WHERE id = $1`, [puller, account]);
+    if (account && puller) await awardResultsChalk(db, puller);
   } catch (err) {
     done(key, "pullers", /unique|duplicate/i.test(String(err)) ? "That member is already linked to another Riser." : friendly(err), true);
   }
   done(key, "pullers", account ? "Member account linked." : "Member account unlinked.");
+}
+
+/** Adds a competition placing to a Riser; a podium pays Chalk to their linked account. */
+export async function addResult(form: FormData) {
+  const key = guard(form);
+  const puller = int(form, "puller_id");
+  const event = str(form, "event");
+  const place = int(form, "place");
+  const date = str(form, "played_on");
+  const season = date ? Number(date.slice(0, 4)) : (int(form, "season") ?? currentSeason());
+  if (!puller || !event || !place) done(key, "pullers", "Add the competition name and placing.", true);
+  const db = await getDb();
+  try {
+    await db.query(
+      `INSERT INTO comp_results (puller_id, event, division, place, played_on, season, notes) VALUES ($1, $2, $3, $4, $5::date, $6, $7)`,
+      [puller, event, str(form, "division"), place, date, season, str(form, "notes")],
+    );
+    await awardResultsChalk(db, puller);
+  } catch (err) {
+    done(key, "pullers", friendly(err), true);
+  }
+  done(key, "pullers", place <= 3 ? "Result added. Podium Chalk paid if their member account is linked." : "Result added.");
+}
+
+export async function deleteResult(form: FormData) {
+  const key = guard(form);
+  const id = int(form, "result_id");
+  const db = await getDb();
+  await db.transaction(async (tx) => {
+    await tx.query(`DELETE FROM chalk_tx WHERE ref = $1`, [`result:${id}`]);
+    await tx.query(`DELETE FROM comp_results WHERE id = $1`, [id]);
+  });
+  done(key, "pullers", "Result removed (and its Chalk).");
 }

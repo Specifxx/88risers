@@ -7,6 +7,7 @@ import { PullerSlab } from "@/components/PullerSlab";
 import { VideoToggle } from "@/components/VideoToggle";
 import { getPuller, getPullerMatches, type MatchView } from "@/lib/data";
 import { chalkOf, currentSeason } from "@/lib/chalk";
+import { medal, placeLabel, podiumChalk, resultsFor } from "@/lib/results";
 import { fmtShortDate } from "@/lib/schedule";
 import { formatId } from "@/lib/site";
 
@@ -59,7 +60,8 @@ export default async function PullerPage({ params }: PageProps<"/pullers/[id]">)
   if (raw !== String(id)) permanentRedirect(`/pullers/${id}`);
   const p = await getPuller(id);
   if (!p) notFound();
-  const matches = await getPullerMatches(id);
+  const [matches, results] = await Promise.all([getPullerMatches(id), resultsFor(id)]);
+  const podiums = results.filter((r) => r.place <= 3);
   const s = summary(id, matches);
   const total = p.wins + p.losses;
   const season = currentSeason();
@@ -85,6 +87,12 @@ export default async function PullerPage({ params }: PageProps<"/pullers/[id]">)
             <div className="profile-tags">
               {p.is_founder ? <span className="pill red">Founding member</span> : null}
               {p.title ? <span className="pill">{p.title}</span> : null}
+              {podiums.slice(0, 3).map((r) => (
+                <span key={r.id} className="pill gold-pill">
+                  {medal(r.place)} {placeLabel(r.place)} · {r.event}
+                  {r.division ? ` ${r.division}` : ""}
+                </span>
+              ))}
               {p.weight_class ? <span className="pill dim">{p.weight_class}</span> : null}
               {p.dominant_arm ? <span className="pill dim">{p.dominant_arm} arm</span> : null}
               {p.instagram ? (
@@ -135,6 +143,32 @@ export default async function PullerPage({ params }: PageProps<"/pullers/[id]">)
                 <small>{p.titles ? "Title matches won" : "Current run"}</small>
               </div>
             </div>
+
+            {results.length ? (
+              <div className="panel">
+                <h2 className="panel-title">
+                  Tournament record <small>{podiums.length} {podiums.length === 1 ? "PODIUM" : "PODIUMS"}</small>
+                </h2>
+                <ul className="results-list">
+                  {results.map((r) => (
+                    <li key={r.id} className={r.place <= 3 ? `place-${r.place}` : undefined}>
+                      <span className="res-medal" aria-hidden>
+                        {medal(r.place)}
+                      </span>
+                      <span className="res-main">
+                        <b>
+                          {placeLabel(r.place)} · {r.event}
+                        </b>
+                        <small>
+                          {[r.division, r.played_on ? day(r.played_on) : String(r.season), r.notes].filter(Boolean).join(" · ")}
+                        </small>
+                      </span>
+                      {podiumChalk(r.place) ? <span className="res-chalk">+{podiumChalk(r.place)} Chalk</span> : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
 
             <div className="panel">
               <h2 className="panel-title">

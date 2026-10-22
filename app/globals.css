@@ -6295,3 +6295,84 @@ b.gold {
   font-size: 12px;
   color: var(--muted);
 }
+.admin-results {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.admin-results h4 {
+  margin: 0;
+  font: 600 11px/1 var(--f-tech);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ─────────── Tournament record ─────────── */
+.gold-pill {
+  border-color: rgba(213, 182, 122, 0.6);
+  color: var(--gold-hi);
+}
+.results-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.results-list li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.results-list li:last-child {
+  border-bottom: 0;
+}
+.res-medal {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: 50%;
+  font-size: 22px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line-strong);
+}
+.place-1 .res-medal {
+  border-color: #e9c46a;
+  box-shadow: 0 0 14px rgba(233, 196, 106, 0.35);
+}
+.place-2 .res-medal {
+  border-color: #c9ced6;
+  box-shadow: 0 0 14px rgba(201, 206, 214, 0.3);
+}
+.place-3 .res-medal {
+  border-color: #c98a4a;
+  box-shadow: 0 0 14px rgba(201, 138, 74, 0.3);
+}
+.res-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+.res-main b {
+  font: 900 20px/1.1 var(--f-display);
+  text-transform: uppercase;
+  color: var(--bone);
+}
+.res-main small {
+  font: 600 11px/1.3 var(--f-tech);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.res-chalk {
+  font: 700 12px/1 var(--f-tech);
+  letter-spacing: 0.08em;
+  color: var(--gold);
+  white-space: nowrap;
+}

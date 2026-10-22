@@ -1,5 +1,6 @@
 import "server-only";
 import { quoteOdds } from "./odds";
+import { awardResultsChalk } from "./results";
 
 /**
  * Database access.
@@ -229,6 +230,18 @@ CREATE TABLE IF NOT EXISTS chalk_tx (
 );
 CREATE INDEX IF NOT EXISTS chalk_tx_season ON chalk_tx (season, account_id);
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS invited_by integer REFERENCES accounts(id) ON DELETE SET NULL;
+-- Placings at competitions (outside comps included), shown on Riser profiles.
+CREATE TABLE IF NOT EXISTS comp_results (
+  id          serial PRIMARY KEY,
+  puller_id   integer NOT NULL REFERENCES pullers(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  event       text NOT NULL,
+  division    text,
+  place       integer NOT NULL CHECK (place > 0),
+  played_on   date,
+  season      integer NOT NULL,
+  notes       text,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
 -- A Riser's member account, so supermatches and podiums can award them Chalk.
 ALTER TABLE pullers ADD COLUMN IF NOT EXISTS account_id integer UNIQUE REFERENCES accounts(id) ON DELETE SET NULL;
 CREATE TABLE IF NOT EXISTS arcade_scores (
@@ -283,7 +296,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v15";
+const MIGRATION_MARKER = "founders_v16";
 
 async function migrate(db: Db) {
   // Fast path for every cold start after the first: one tiny query instead of the whole schema.
@@ -375,6 +388,20 @@ async function migrate(db: Db) {
         pools[side] += bet.stake;
       }
     }
+    // Kelvin Gian (#005): 2nd at Bushy's Amateur comp, 85kg+. Once only; editable in admin.
+    const [kelvinDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'result_kelvin_bushys'`);
+    if (!kelvinDone) {
+      await tx.query(
+        `INSERT INTO comp_results (puller_id, event, division, place, season)
+         SELECT 5, 'Bushy''s Amateur Comp', '85kg+', 2, 2026 WHERE EXISTS (SELECT 1 FROM pullers WHERE id = 5)`,
+      );
+      await tx.query(`INSERT INTO meta (key, value) VALUES ('result_kelvin_bushys', now()::text)`);
+    }
+    // Pay podium Chalk for results whose Riser is linked to an account (refs make it once only).
+    const linked = await tx.query<{ id: number }>(
+      `SELECT DISTINCT p.id FROM pullers p JOIN comp_results r ON r.puller_id = p.id WHERE p.account_id IS NOT NULL`,
+    );
+    for (const { id } of linked) await awardResultsChalk(tx, id);
     // The November supermatch is left arm. Once only, so a later admin edit isn't overwritten.
     const [armDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'sm_arm_v1'`);
     if (!armDone) {
