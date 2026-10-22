@@ -104,6 +104,19 @@ export function PullerSearch({ hero, board, entries }: { hero: ReactNode; board:
               <Search /> Search
             </button>
           </form>
+          {q ? (
+            <p className="search-hint" aria-live="polite">
+              {shown.length} {shown.length === 1 ? "Riser" : "Risers"}
+              {members.length ? (
+                <>
+                  {" · "}
+                  <a href="#members">
+                    {members.length} {members.length === 1 ? "member" : "members"} found ↓
+                  </a>
+                </>
+              ) : null}
+            </p>
+          ) : null}
         </div>
       </section>
 
@@ -132,7 +145,7 @@ export function PullerSearch({ hero, board, entries }: { hero: ReactNode; board:
           )}
 
           {q && members.length ? (
-            <div className="member-results">
+            <div className="member-results" id="members">
               <div className="panel-title" style={{ margin: "48px 0 20px" }}>
                 <span>Members</span>
                 <small>{members.length} FOUND</small>

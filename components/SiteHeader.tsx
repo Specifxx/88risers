@@ -42,10 +42,18 @@ export function SiteHeader() {
     menu.current?.removeAttribute("open");
   }, [path]);
 
+  // Clicking the link for the page you're already on scrolls back to the top.
+  const toTop = (href: string) => (e: React.MouseEvent) => {
+    if (href === path && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   return (
     <header className="site-header" data-scrolled={scrolled || path !== "/"}>
       <div className="wrap">
-        <Link href="/" className="brand" aria-label="88 Risers home">
+        <Link href="/" className="brand" aria-label="88 Risers home" onClick={toTop("/")}>
           <Image src="/crest.jpg" alt="" width={42} height={42} priority />
           <span>
             <b>88 Risers</b>
@@ -54,7 +62,7 @@ export function SiteHeader() {
         </Link>
         <nav className="nav" aria-label="Main">
           {NAV.map((n) => (
-            <Link key={n.href} href={n.href} aria-current={path.startsWith(n.href) && !n.href.includes("#") ? "page" : undefined}>
+            <Link key={n.href} href={n.href} onClick={toTop(n.href)} aria-current={path.startsWith(n.href) && !n.href.includes("#") ? "page" : undefined}>
               {n.label}
             </Link>
           ))}

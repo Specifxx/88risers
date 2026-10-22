@@ -37,7 +37,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-AU" suppressHydrationWarning className={`${display.variable} ${tech.variable} ${body.variable}`}>
+    <html lang="en-AU" data-scroll-behavior="smooth" suppressHydrationWarning className={`${display.variable} ${tech.variable} ${body.variable}`}>
       <body>
         {children}
         <SiteAnalytics />

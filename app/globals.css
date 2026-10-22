@@ -5989,3 +5989,16 @@ a.cl-name:hover {
   color: var(--red-hi, #ff4a4f);
   text-decoration: none;
 }
+.search-hint {
+  margin-top: 12px;
+  font: 600 12px/1.4 var(--f-tech);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.search-hint a {
+  color: var(--gold);
+}
+.member-results {
+  scroll-margin-top: 90px;
+}

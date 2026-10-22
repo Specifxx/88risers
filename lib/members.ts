@@ -24,10 +24,11 @@ export async function searchMembers(q: string, limit = 12) {
   return db.query<MemberCard>(
     `SELECT ${CARD_COLS}
      FROM accounts a LEFT JOIN account_style s ON s.account_id = a.id
-     WHERE a.handle ILIKE $1 OR a.display_name ILIKE $1
+     WHERE a.handle ILIKE $1 OR a.display_name ILIKE $1 OR a.handle ILIKE $4
      ORDER BY (a.handle ILIKE $2) DESC, a.display_name ASC
      LIMIT $3`,
-    [`%${term}%`, `${term}%`, limit],
+    // Usernames can't contain spaces, so "hydraulic press" also tries "hydraulic_press".
+    [`%${term}%`, `${term}%`, limit, `%${term.replace(/\s+/g, "\\_")}%`],
   );
 }
 
