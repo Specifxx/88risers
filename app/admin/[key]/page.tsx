@@ -1,4 +1,4 @@
-import { fmtOdds, oddsOf, payoutFor } from "@/lib/odds";
+import { fmtOdds, oddsOf, payoutAt } from "@/lib/odds";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -1070,6 +1070,7 @@ function Backers({ m, rows, nameOf }: { m: Supermatch; rows: Backer[]; nameOf: (
             <th>Member</th>
             <th>Backed</th>
             <th className="num">Stake</th>
+            <th className="num">Odds</th>
             <th className="num">{m.settled_at ? "Paid" : "Pays if right"}</th>
           </tr>
         </thead>
@@ -1077,16 +1078,18 @@ function Backers({ m, rows, nameOf }: { m: Supermatch; rows: Backer[]; nameOf: (
           {rows.map((r) => {
             const side = r.pick_id === m.a_id ? "a" : "b";
             const lost = m.winner_id != null && r.pick_id !== m.winner_id;
-            const pays = lost ? 0 : m.reward + payoutFor(r.stake, side, pools);
+            const at = r.odds ?? odds[side];
+            const pays = lost ? 0 : m.reward + payoutAt(r.stake, at);
             return (
               <tr key={r.handle}>
                 <td>
                   {r.display_name} <span className="muted">@{r.handle}</span>
                 </td>
                 <td>
-                  {nameOf(r.pick_id)} <span className="muted">{fmtOdds(odds[side])}</span>
+                  {nameOf(r.pick_id)}
                 </td>
                 <td className="num">{r.stake}</td>
+                <td className="num">{r.stake ? fmtOdds(at) : "—"}</td>
                 <td className="num">{lost ? "—" : pays}</td>
               </tr>
             );

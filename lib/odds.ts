@@ -1,9 +1,11 @@
 /**
- * Supermatch odds, pool style (like a tote): every coin staked on either side goes into one
- * pool, and the winning side splits it in proportion to their stakes. The less-backed puller
- * pays more. The lion seeds each side with POOL_SEED coins, so odds open at 2.00× and stay
- * sane when one side has no backers. Odds are live until voting closes; payouts use the
- * final pool. Shared by the server (settling) and the browser (live estimates).
+ * Supermatch odds. The price on each puller comes from the stake pools (like a tote): the
+ * less-backed puller is priced higher. The lion seeds each side with POOL_SEED coins, so odds
+ * open at 2.00× and stay sane when one side has no backers.
+ *
+ * Each bet locks in the odds at the moment it's placed (counting its own stake), and pays
+ * stake × locked odds if right. Later bets move the price for everyone after, not before.
+ * Shared by the server (locking, settling) and the browser (live estimates).
  */
 export const POOL_SEED = 100;
 
@@ -12,22 +14,22 @@ export interface Pools {
   b: number;
 }
 
-/** Decimal odds: coins returned per coin staked, stake included. */
+/** Odds are quoted and locked to 2 decimal places, so what you see is what you get. */
+const round2 = (x: number) => Math.round(x * 100) / 100;
+
+/** Current decimal odds: coins returned per coin staked, stake included. */
 export function oddsOf(p: Pools) {
   const A = p.a + POOL_SEED;
   const B = p.b + POOL_SEED;
-  return { a: (A + B) / A, b: (A + B) / B };
+  return { a: round2((A + B) / A), b: round2((A + B) / B) };
 }
 
-/** What a winning stake pays back (stake included), from the pools at settlement. */
-export function payoutFor(stake: number, side: "a" | "b", p: Pools) {
-  if (stake <= 0) return 0;
-  return Math.floor(stake * oddsOf(p)[side]);
+/** The odds a new bet of `stake` on `side` locks in (your own coins shift the price). */
+export function quoteOdds(stake: number, side: "a" | "b", p: Pools) {
+  return oddsOf({ a: p.a + (side === "a" ? stake : 0), b: p.b + (side === "b" ? stake : 0) })[side];
 }
 
-/** Estimated return if you add `stake` on `side` now (your own coins shift the odds). */
-export function estimateReturn(stake: number, side: "a" | "b", p: Pools) {
-  return payoutFor(stake, side, { a: p.a + (side === "a" ? stake : 0), b: p.b + (side === "b" ? stake : 0) });
-}
+/** What a winning stake pays back (stake included) at the given locked odds. */
+export const payoutAt = (stake: number, odds: number) => (stake > 0 ? Math.floor(stake * odds + 1e-9) : 0);
 
 export const fmtOdds = (x: number) => `${x.toFixed(2)}×`;

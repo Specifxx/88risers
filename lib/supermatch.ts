@@ -46,8 +46,8 @@ export async function listSupermatches() {
 
 export async function myPick(matchId: number, accountId: number) {
   const db = await getDb();
-  const [p] = await db.query<{ pick_id: number; stake: number }>(
-    `SELECT pick_id, stake FROM predictions WHERE match_id = $1 AND account_id = $2`,
+  const [p] = await db.query<{ pick_id: number; stake: number; odds: number | null }>(
+    `SELECT pick_id, stake, odds::float8 AS odds FROM predictions WHERE match_id = $1 AND account_id = $2`,
     [matchId, accountId],
   );
   return p ?? null;
@@ -59,6 +59,7 @@ export interface Backer {
   match_id: number;
   pick_id: number;
   stake: number;
+  odds: number | null;
   created_at: string;
   display_name: string;
   handle: string;
@@ -68,7 +69,7 @@ export interface Backer {
 export async function listBackers() {
   const db = await getDb();
   return db.query<Backer>(
-    `SELECT p.match_id, p.pick_id, p.stake, p.created_at, a.display_name, a.handle
+    `SELECT p.match_id, p.pick_id, p.stake, p.odds::float8 AS odds, p.created_at, a.display_name, a.handle
      FROM predictions p JOIN accounts a ON a.id = p.account_id
      ORDER BY p.match_id, p.stake DESC, p.created_at ASC`,
   );

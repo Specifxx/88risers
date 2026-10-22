@@ -8,7 +8,7 @@ import { currentAccount } from "@/lib/auth";
 import { MAX_STAKE, coinLeaders } from "@/lib/coins";
 import { type Puller, getPuller } from "@/lib/data";
 import { tierFor } from "@/lib/elo";
-import { POOL_SEED, fmtOdds, oddsOf, payoutFor } from "@/lib/odds";
+import { POOL_SEED, fmtOdds, oddsOf, payoutAt } from "@/lib/odds";
 import { fmtDay, fmtTime } from "@/lib/schedule";
 import { formatId } from "@/lib/site";
 import { armLabel, featuredSupermatch, isOpen, myPick } from "@/lib/supermatch";
@@ -66,6 +66,9 @@ export default async function SupermatchPage() {
   const pools = { a: m.a_pot, b: m.b_pot };
   const odds = oddsOf(pools);
   const mySide = mine ? (mine.pick_id === m.a_id ? "a" : "b") : null;
+  // Bets from before odds were locked fall back to the current price (as at settlement).
+  const myOdds = mine && mySide ? (mine.odds ?? odds[mySide]) : 0;
+  const myPayout = mine ? payoutAt(mine.stake, myOdds) : 0;
   const closes = new Date(m.closes_at);
   const won = m.winner_id && mine ? mine.pick_id === m.winner_id : null;
 
@@ -123,8 +126,8 @@ export default async function SupermatchPage() {
                 {mine ? (
                   <p className="vote-lede">
                     {won
-                      ? `You called it! +${m.reward} coins${mine.stake ? `, plus ${payoutFor(mine.stake, mySide!, pools)} from your ${mine.stake}-coin stake at ${fmtOdds(odds[mySide!])}` : ""}.`
-                      : mine.stake ? "Not this time. Your stake went to the winners' pool." : "Not this time."}
+                      ? `You called it! +${m.reward} coins${mine.stake ? `, plus ${myPayout} from your ${mine.stake}-coin stake at ${fmtOdds(myOdds)}` : ""}.`
+                      : mine.stake ? "Not this time. Your stake went to the lion." : "Not this time."}
                   </p>
                 ) : null}
               </div>
@@ -134,9 +137,9 @@ export default async function SupermatchPage() {
                 <h3>{mine.pick_id === a.id ? a.name : b.name}</h3>
                 <p className="vote-lede">
                   {mine.stake
-                    ? `${mine.stake} coins staked. At the current ${fmtOdds(odds[mySide!])} that returns ${payoutFor(mine.stake, mySide!, pools)} coins if ${(mySide === "a" ? a : b).name.split(" ")[0]} wins; odds keep moving until voting closes. `
+                    ? `${mine.stake} coins at ${fmtOdds(myOdds)}, locked in. Pays ${myPayout} coins if ${(mySide === "a" ? a : b).name.split(" ")[0]} wins. `
                     : ""}
-                  Locked in. Coins land in your account when the result is in.
+                  {mine.stake ? "" : "Locked in. "}Coins land in your account when the result is in.
                 </p>
               </div>
             ) : open ? (
@@ -190,9 +193,9 @@ export default async function SupermatchPage() {
             </div>
           </div>
           <p className="fine" style={{ marginTop: 28 }}>
-            How the odds work: every staked coin goes into one pool, and whoever backed the winner splits it in
-            proportion to their stake, so the less-backed puller pays more. The lion puts {POOL_SEED} coins on each
-            side to start. Odds move live as people back each puller and lock when voting closes.
+            How the odds work: prices move with the coins staked on each side, so the less-backed puller pays more.
+            The lion puts {POOL_SEED} coins on each side to start (2.00× each). Your bet locks in the odds at the
+            moment you place it; later bets change the price for the next person, not for you.
           </p>
           <p className="fine" style={{ marginTop: 10 }}>
             Free to play. 88Risers coins are play money for predictions and club rewards; they can&apos;t be bought,

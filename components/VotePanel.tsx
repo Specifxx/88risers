@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { startTransition, useActionState, useEffect, useState } from "react";
 import { type FormState, castPick } from "@/app/(site)/account/actions";
 import { lionSays } from "@/lib/lion";
-import { type Pools, estimateReturn, fmtOdds, oddsOf } from "@/lib/odds";
+import { type Pools, fmtOdds, oddsOf, payoutAt, quoteOdds } from "@/lib/odds";
 
 interface Side {
   id: number;
@@ -41,7 +41,8 @@ export function VotePanel({
   const router = useRouter();
   const odds = oddsOf(pools);
   const side = pick === a.id ? "a" : pick === b.id ? "b" : null;
-  const est = side && stake > 0 ? estimateReturn(stake, side, pools) : 0;
+  const quote = side && stake > 0 ? quoteOdds(stake, side, pools) : 0;
+  const est = payoutAt(stake, quote);
 
   useEffect(() => {
     if (state.status !== "ok") return;
@@ -95,7 +96,7 @@ export function VotePanel({
       </div>
       <div className="vote-stake">
         <label htmlFor="stake">
-          Stake coins <em>optional · paid at the odds when voting closes</em>
+          Stake coins <em>optional · odds lock in when you bet</em>
         </label>
         <div className="stake-row">
           <input
@@ -118,8 +119,8 @@ export function VotePanel({
         <p className="vote-est" aria-live="polite">
           {side ? (
             <>
-              If {(side === "a" ? a : b).name.split(" ")[0]} wins you&apos;d get back <b>{est.toLocaleString("en-AU")}</b> coins
-              at today&apos;s odds ({fmtOdds(est / stake)}), plus the {reward}-coin bonus.
+              Lock in <b>{fmtOdds(quote)}</b>: if {(side === "a" ? a : b).name.split(" ")[0]} wins you get back{" "}
+              <b>{est.toLocaleString("en-AU")}</b> coins, plus the {reward}-coin bonus.
             </>
           ) : (
             "Choose a puller to see your return."

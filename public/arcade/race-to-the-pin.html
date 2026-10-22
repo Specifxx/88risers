@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Race to the Pin · 88 Risers</title>
+    <link rel="preload" href="/fonts/saira-extra-condensed-900.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="./game.css">
+</head>
+
+<body>
+    <main aria-label="Race to the Pin game" data-level="rookie">
+        <h1><span class="scrap paper">Race</span> <span class="scrap ink">to the</span> <span class="scrap tone">Pin</span></h1>
+        <section class="card" aria-label="Armwrestling timing game">
+            <div class="grain" aria-hidden="true"></div>
+            <div class="top">
+                <strong id="round" class="round" aria-live="polite" aria-atomic="true">Ready to pull?</strong>
+                <div class="top-controls">
+                    <label class="level"><span>Difficulty</span>
+                        <select id="difficulty">
+                            <option value="rookie">Rookie</option>
+                            <option value="club">Club</option>
+                            <option value="elite">Elite</option>
+                            <option value="kelvinator">Kelvinator</option>
+                        </select></label>
+                    <div class="match-controls"><button id="pause" class="secondary" disabled>Pause</button><button id="reset" class="secondary" aria-label="Reset match">Reset</button></div>
+                </div>
+            </div>
+            <div class="match-view">
+                <figure class="arm-art">
+                <div class="scene">
+                    <svg class="moving-arena" viewBox="0 0 760 390" preserveAspectRatio="xMidYMax slice" role="img"
+                aria-label="Two moving arms at a tournament table with padded elbow and pin pads, a referee and a crowd">
+                        <defs>
+                            <linearGradient id="pad" x2="0" y2="1">
+                            <stop stop-color="#3b483a" />
+                            <stop offset="1" stop-color="#141c17" />
+                            </linearGradient>
+                            <radialGradient id="light">
+                            <stop stop-color="#628340" stop-opacity=".28" />
+                            <stop offset="1" stop-color="#101512" stop-opacity="0" />
+                            </radialGradient>
+                            <linearGradient id="tabletop" x1="0" y1="0" x2="0" y2="1">
+                            <stop stop-color="#555959" />
+                            <stop offset=".18" stop-color="#343a3b" />
+                            <stop offset="1" stop-color="#151a1c" />
+                            </linearGradient>
+                            <linearGradient id="table-edge" x2="0" y2="1">
+                            <stop stop-color="#677173" />
+                            <stop offset=".15" stop-color="#293033" />
+                            <stop offset=".8" stop-color="#101517" />
+                            <stop offset="1" stop-color="#505b5e" />
+                            </linearGradient>
+                            <linearGradient id="steel">
+                            <stop stop-color="#151e22" />
+                            <stop offset=".25" stop-color="#9ca9ac" />
+                            <stop offset=".4" stop-color="#d7ddda" />
+                            <stop offset=".65" stop-color="#58656a" />
+                            <stop offset="1" stop-color="#11181c" />
+                            </linearGradient>
+                            <linearGradient id="leather" x2="0" y2="1">
+                            <stop stop-color="#505653" />
+                            <stop offset=".2" stop-color="#323936" />
+                            <stop offset=".7" stop-color="#161c1a" />
+                            <stop offset="1" stop-color="#0a1010" />
+                            </linearGradient>
+                            <filter id="leather-grain" x="0" y="0" width="100%" height="100%">
+                            <feTurbulence type="fractalNoise" baseFrequency=".65" numOctaves="3" seed="11"
+                            result="grain" />
+                            <feColorMatrix in="grain" type="saturate" values="0" />
+                            <feComposite in2="SourceGraphic" operator="in" result="texture" />
+                            <feBlend in="SourceGraphic" in2="texture" mode="soft-light" />
+                            </filter>
+                            <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%">
+                            <feDropShadow dx="0" dy="6" stdDeviation="5" flood-opacity=".45" />
+                            </filter>
+                        </defs>
+                        <image href="./arena.webp" x="0" y="0" width="760" height="390"
+                        preserveAspectRatio="xMidYMid slice" />
+                        <rect width="760" height="390" fill="#09130e" opacity=".13" />
+                        <path d="M47 293H713L750 351H10Z" fill="url(#tabletop)" stroke="#74807c" stroke-width="2" />
+                        <path d="M47 293H713M18 343H743" stroke="#b5c2b5" stroke-opacity=".4" stroke-width="2" />
+                        <path d="M10 351H750V378H10Z" fill="url(#table-edge)" stroke="#0d1516" stroke-width="2" />
+                        <path d="M67 378H89V390H67ZM671 378H693V390H671Z" fill="url(#steel)" />
+                        <path d="M350 308L410 338M410 308L350 338" stroke="#869382" stroke-opacity=".16"
+                        stroke-width="3" />
+                        <text x="380" y="369" fill="#d7e0cd" font-size="12" font-weight="800" letter-spacing="4"
+                        text-anchor="middle">88 RISERS</text>
+                        <circle cx="30" cy="363" r="3.5" fill="url(#steel)" stroke="#111" />
+                        <path d="M28 363h4" stroke="#253035" />
+                        <circle cx="80" cy="363" r="3.5" fill="url(#steel)" stroke="#111" />
+                        <path d="M78 363h4" stroke="#253035" />
+                        <circle cx="680" cy="363" r="3.5" fill="url(#steel)" stroke="#111" />
+                        <path d="M678 363h4" stroke="#253035" />
+                        <circle cx="730" cy="363" r="3.5" fill="url(#steel)" stroke="#111" />
+                        <path d="M728 363h4" stroke="#253035" />
+                        <g filter="url(#shadow)">
+                        <rect x="109" y="284" width="89" height="35" rx="9" fill="url(#leather)" stroke="#090e0c"
+                        stroke-width="2" />
+                        <rect x="111" y="285" width="85" height="25" rx="8" fill="url(#leather)"
+                        filter="url(#leather-grain)" />
+                        <rect x="115" y="289" width="77" height="18" rx="5" fill="none" stroke="#a1be73"
+                        stroke-opacity=".75" stroke-dasharray="2 3" />
+                        <path d="M117 312H190" stroke="#798276" stroke-opacity=".45" />
+                        </g>
+                        <g filter="url(#shadow)">
+                        <rect x="562" y="284" width="89" height="35" rx="9" fill="url(#leather)" stroke="#090e0c"
+                        stroke-width="2" />
+                        <rect x="564" y="285" width="85" height="25" rx="8" fill="url(#leather)"
+                        filter="url(#leather-grain)" />
+                        <rect x="568" y="289" width="77" height="18" rx="5" fill="none" stroke="#bd8a6e"
+                        stroke-opacity=".75" stroke-dasharray="2 3" />
+                        <path d="M570 312H643" stroke="#798276" stroke-opacity=".45" />
+                        </g>
+                        <g filter="url(#shadow)">
+                        <rect x="234" y="294" width="91" height="36" rx="9" fill="url(#leather)" stroke="#090e0c"
+                        stroke-width="2" />
+                        <rect x="236" y="295" width="87" height="26" rx="8" fill="url(#leather)"
+                        filter="url(#leather-grain)" />
+                        <rect x="240" y="299" width="79" height="19" rx="5" fill="none" stroke="#899981"
+                        stroke-opacity=".75" stroke-dasharray="2 3" />
+                        <path d="M242 323H317" stroke="#798276" stroke-opacity=".45" />
+                        </g>
+                        <g filter="url(#shadow)">
+                        <rect x="435" y="294" width="91" height="36" rx="9" fill="url(#leather)" stroke="#090e0c"
+                        stroke-width="2" />
+                        <rect x="437" y="295" width="87" height="26" rx="8" fill="url(#leather)"
+                        filter="url(#leather-grain)" />
+                        <rect x="441" y="299" width="79" height="19" rx="5" fill="none" stroke="#899981"
+                        stroke-opacity=".75" stroke-dasharray="2 3" />
+                        <path d="M443 323H518" stroke="#798276" stroke-opacity=".45" />
+                        </g>
+                        <g filter="url(#shadow)">
+                        <ellipse cx="80" cy="321" rx="14" ry="5" fill="#0b1214" />
+                        <rect x="72" y="251" width="16" height="69" rx="5" fill="url(#steel)" stroke="#11191c" />
+                        <rect x="71" y="255" width="18" height="45" rx="5" fill="#202927" stroke="#6a7570" />
+                        <path d="M73 260h14" stroke="#839084" stroke-opacity=".35" />
+                        <path d="M73 265h14" stroke="#839084" stroke-opacity=".35" />
+                        <path d="M73 270h14" stroke="#839084" stroke-opacity=".35" />
+                        <path d="M73 275h14" stroke="#839084" stroke-opacity=".35" />
+                        <path d="M73 280h14" stroke="#839084" stroke-opacity=".35" />
+                        <path d="M73 285h14" stroke="#839084" stroke-opacity=".35" />
+                        <path d="M73 290h14" stroke="#839084" stroke-opacity=".35" />
+                        <path d="M73 295h14" stroke="#839084" stroke-opacity=".35" />
+                        </g>
+                        <g filter="url(#shadow)">
+                        <ellipse cx="680" cy="321" rx="14" ry="5" fill="#0b1214" />
+                        <rect x="672" y="251" width="16" height="69" rx="5" fill="url(#steel)" stroke="#11191c" />
+                        <rect x="671" y="255" width="18" height="45" rx="5" fill="#202927" stroke="#6a7570" />
+                        <path d="M673 260h14" stroke="#839084" stroke-opacity=".35" />
+                        <path d="M673 265h14" stroke="#839084" stroke-opacity=".35" />
+                        <path d="M673 270h14" stroke="#839084" stroke-opacity=".35" />
+                        <path d="M673 275h14" stroke="#839084" stroke-opacity=".35" />
+                        <path d="M673 280h14" stroke="#839084" stroke-opacity=".35" />
+                        <path d="M673 285h14" stroke="#839084" stroke-opacity=".35" />
+                        <path d="M673 290h14" stroke="#839084" stroke-opacity=".35" />
+                        <path d="M673 295h14" stroke="#839084" stroke-opacity=".35" />
+                        </g>
+                    </svg>
+                    <div class="tint" aria-hidden="true"></div>
+                    <div class="lift" aria-hidden="true"></div>
+                    <div class="halftone" aria-hidden="true"></div>
+                </div>
+                <!-- Arms animate every frame, so they are inked in the duotone directly rather than filtered. -->
+                <svg class="moving-arms" viewBox="0 0 760 390" preserveAspectRatio="xMidYMax slice" aria-hidden="true" focusable="false">
+                    <defs>
+                        <linearGradient id="skinL" x1="0" y1="0" x2="1" y2="0">
+                        <stop stop-color="#583b29" />
+                        <stop offset=".28" stop-color="#b28560" />
+                        <stop offset=".55" stop-color="#e4b88d" />
+                        <stop offset=".8" stop-color="#aa7956" />
+                        <stop offset="1" stop-color="#62412e" />
+                        </linearGradient>
+                        <linearGradient id="skinR" x1="0" y1="0" x2="1" y2="0">
+                        <stop stop-color="#68442e" />
+                        <stop offset=".25" stop-color="#bf8e65" />
+                        <stop offset=".5" stop-color="#eac49c" />
+                        <stop offset=".8" stop-color="#ad7751" />
+                        <stop offset="1" stop-color="#5f3f2d" />
+                        </linearGradient>
+                        <filter id="arm-shadow" x="-40%" y="-40%" width="180%" height="180%">
+                        <feDropShadow dx="0" dy="6" stdDeviation="5" flood-opacity=".45" />
+                        </filter>
+                    </defs>
+                    <!-- Upper arms terminate at the planted elbows. -->
+                    <path
+                    d="M-20 179C43 144 96 166 144 207C181 242 220 253 281 281C305 291 307 311 290 320C260 334 222 312 190 301C122 280 74 257 17 245Z"
+                    fill="url(#skinL)" stroke="#654731" stroke-width="2" filter="url(#arm-shadow)" />
+                    <path d="M15 197C70 170 118 204 141 230C105 212 78 213 46 229M161 246C187 280 230 290 271 295"
+                    fill="none" stroke="#efc7a0" stroke-opacity=".38" stroke-width="4" />
+                    <path d="M31 242C85 245 115 259 140 270M187 286C221 294 244 310 274 309" fill="none"
+                    stroke="#5a3929" stroke-opacity=".55" stroke-width="3" />
+                    <path
+                    d="M780 179C717 144 664 166 616 207C579 242 540 253 479 281C455 291 453 311 470 320C500 334 538 312 570 301C638 280 686 257 743 245Z"
+                    fill="url(#skinR)" stroke="#654731" stroke-width="2" filter="url(#arm-shadow)" />
+                    <path
+                    d="M745 197C690 170 642 204 619 230C655 212 682 213 714 229M599 246C573 280 530 290 489 295"
+                    fill="none" stroke="#efc7a0" stroke-opacity=".38" stroke-width="4" />
+                    <g id="forearmL" filter="url(#arm-shadow)">
+                    <path
+                    d="M-29 0C-43-30-40-64-32-100C-25-135-18-160-17-190L17-190C18-160 25-135 32-100C40-64 43-30 29 0Q0 24-29 0Z"
+                    fill="url(#skinL)" stroke="#704a33" stroke-width="2" />
+                    <path d="M-21-12C-31-52-22-97-12-145L-9-182M8-174C12-130 30-84 23-35" fill="none"
+                    stroke="#f3cba5" stroke-opacity=".45" stroke-width="4" />
+                    <path d="M-10-5C-19-55-5-103-4-168M17-18C25-67 11-107 10-165" fill="none" stroke="#6e4935"
+                    stroke-opacity=".55" stroke-width="2" />
+                    <path d="M-18-42L-7-69L-12-88L1-110L-4-143M-7-69L7-80M1-110L12-118" fill="none"
+                    stroke="#738274" stroke-opacity=".55" stroke-width="2" />
+                    <path d="M-16-178Q0-173 16-178M-17-184Q0-179 17-184" fill="none" stroke="#704a33"
+                    stroke-opacity=".7" stroke-width="1.5" />
+                    <g stroke="#503829" stroke-opacity=".35" stroke-width="1">
+                    <path d="M-22 -25l-2 -5" />
+                    <path d="M-10 -33l-2 -5" />
+                    <path d="M2 -41l-2 -5" />
+                    <path d="M14 -49l-2 -5" />
+                    <path d="M-22 -57l-2 -5" />
+                    <path d="M-10 -65l-2 -5" />
+                    <path d="M2 -73l-2 -5" />
+                    <path d="M14 -81l-2 -5" />
+                    <path d="M-22 -89l-2 -5" />
+                    <path d="M-10 -97l-2 -5" />
+                    <path d="M2 -105l-2 -5" />
+                    <path d="M14 -113l-2 -5" />
+                    <path d="M-22 -121l-2 -5" />
+                    <path d="M-10 -129l-2 -5" />
+                    <path d="M2 -137l-2 -5" />
+                    </g>
+                    </g>
+                    <g id="forearmR" filter="url(#arm-shadow)">
+                    <path
+                    d="M-29 0C-43-30-40-64-32-100C-25-135-18-160-17-190L17-190C18-160 25-135 32-100C40-64 43-30 29 0Q0 24-29 0Z"
+                    fill="url(#skinR)" stroke="#704a33" stroke-width="2" />
+                    <path d="M-21-12C-31-52-22-97-12-145L-9-182M8-174C12-130 30-84 23-35" fill="none"
+                    stroke="#f3cba5" stroke-opacity=".45" stroke-width="4" />
+                    <path d="M-10-5C-19-55-5-103-4-168M17-18C25-67 11-107 10-165" fill="none" stroke="#6e4935"
+                    stroke-opacity=".55" stroke-width="2" />
+                    <path d="M-18-42L-7-69L-12-88L1-110L-4-143M-7-69L7-80M1-110L12-118" fill="none"
+                    stroke="#738274" stroke-opacity=".55" stroke-width="2" />
+                    <path d="M-16-178Q0-173 16-178M-17-184Q0-179 17-184" fill="none" stroke="#704a33"
+                    stroke-opacity=".7" stroke-width="1.5" />
+                    <g stroke="#503829" stroke-opacity=".35" stroke-width="1">
+                    <path d="M-22 -25l-2 -5" />
+                    <path d="M-10 -33l-2 -5" />
+                    <path d="M2 -41l-2 -5" />
+                    <path d="M14 -49l-2 -5" />
+                    <path d="M-22 -57l-2 -5" />
+                    <path d="M-10 -65l-2 -5" />
+                    <path d="M2 -73l-2 -5" />
+                    <path d="M14 -81l-2 -5" />
+                    <path d="M-22 -89l-2 -5" />
+                    <path d="M-10 -97l-2 -5" />
+                    <path d="M2 -105l-2 -5" />
+                    <path d="M14 -113l-2 -5" />
+                    <path d="M-22 -121l-2 -5" />
+                    <path d="M-10 -129l-2 -5" />
+                    <path d="M2 -137l-2 -5" />
+                    </g>
+                    </g>
+                    <g id="hands" filter="url(#arm-shadow)">
+                    <path d="M-31 30L-37 5Q-43-16-27-32L-13-50Q-7-56 0-51L16-35L34-15L27 25L10 39Z"
+                    fill="url(#skinL)" stroke="#765039" stroke-width="2" />
+                    <path d="M30 34L40 8Q45-12 34-25L14-45Q4-51-2-43L-20-23L-23 0L-6 24L8 38Z"
+                    fill="url(#skinR)" stroke="#765039" stroke-width="2" />
+                    <path d="M-26-29Q-42-36-44-23Q-43-15-22-10L-3-6Q6-8 3-16Z" fill="url(#skinR)"
+                    stroke="#8a6045" stroke-width="1.5" />
+                    <path d="M-31-10Q-46-14-44-1Q-42 7-20 9L-3 12Q6 10 3 2Z" fill="url(#skinR)" stroke="#8a6045"
+                    stroke-width="1.5" />
+                    <path d="M-28 9Q-43 7-39 20Q-36 27-17 28L-3 28Q6 24 2 17Z" fill="url(#skinR)"
+                    stroke="#8a6045" stroke-width="1.5" />
+                    <path d="M-18 27Q-30 24-28 34Q-25 42-10 43L2 39Q8 33 0 29Z" fill="url(#skinR)"
+                    stroke="#8a6045" stroke-width="1.5" />
+                    <path d="M26-19Q16-36 7-30Q1-25 8-14L21 6Q33 13 36 4Z" fill="url(#skinL)" stroke="#86583c"
+                    stroke-width="2" />
+                    <path d="M-9-33L0-24M-15-15L-12-6M-15 5L-12 13M-9 23L-7 30M17-19L24-11" stroke="#f5d3b0"
+                    stroke-opacity=".5" stroke-width="2" />
+                    <path d="M13 13L3 24M21 16L12 29" stroke="#806049" stroke-width="1.5" />
+                    </g>
+                </svg>
+                </figure>
+                <div class="vignette" aria-hidden="true"></div>
+                <p class="instruction" id="instruction">Wide arc: hit. Narrow centre: perfect.</p>
+                <div class="meter" id="meter"><svg class="dial" viewBox="0 0 280 280" role="img"
+                        aria-label="Circular skill check with a rotating needle, a pale success arc and a coloured perfect zone">
+                        <defs>
+                            <radialGradient id="dial-shade">
+                                <stop offset=".5" stop-color="#000" stop-opacity=".12" />
+                                <stop offset=".72" stop-color="#000" stop-opacity=".72" />
+                                <stop offset="1" stop-color="#000" stop-opacity=".9" />
+                            </radialGradient>
+                            <pattern id="dial-dots" width="7" height="7" patternUnits="userSpaceOnUse">
+                                <circle cx="3.5" cy="3.5" r="1.3" fill="currentColor" />
+                            </pattern>
+                        </defs>
+                        <circle class="dial-back" cx="140" cy="140" r="134" />
+                        <circle class="dial-dots" cx="140" cy="140" r="134" fill="url(#dial-dots)" />
+                        <circle class="dial-orbit" cx="140" cy="140" r="129" />
+                        <g class="dial-ticks" id="ticks"></g>
+                        <circle class="dial-ring" cx="140" cy="140" r="105" />
+                        <path class="target" id="target" />
+                        <path class="perfect-border" id="perfect-border" />
+                        <path class="perfect" id="perfect" />
+                        <g id="marker">
+                            <path class="needle" d="M140 150L133.5 58L140 14L146.5 58Z" />
+                            <circle class="needle-tip" cx="140" cy="30" r="4.5" />
+                        </g>
+                        <circle class="hub" cx="140" cy="140" r="17" />
+                        <circle class="hub-core" cx="140" cy="140" r="6.5" />
+                    </svg><strong class="dial-caption" id="dial-direction">Ready</strong></div>
+                <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+                <div class="banner" id="banner" aria-hidden="true"></div>
+                <div class="flash" id="flash" aria-hidden="true"></div>
+                <div class="confetti" id="confetti" aria-hidden="true"></div>
+                <div class="tug">
+                    <span>Opponent leads</span>
+                    <div class="progress" role="meter" aria-label="Match advantage" aria-valuemin="-100"
+                        aria-valuemax="100" aria-valuenow="0"><i id="position"></i></div>
+                    <span>You lead</span>
+                </div>
+            </div>
+            <div class="skill-view">
+                <div class="stats">
+                    <div class="stat"><span>Score</span><strong id="score">0</strong></div>
+                    <div class="stat"><span>Streak</span><strong id="streak">0</strong></div>
+                    <div class="stat"><span>Best</span><strong id="best">0</strong></div>
+                </div>
+                <div class="play-controls">
+                    <button id="action" class="action" aria-describedby="play-help" disabled>Start match</button>
+                    <p class="help" id="play-help">Tap or press Space</p>
+                </div>
+            </div>
+        </section>
+        <div id="pause-overlay" class="pause-overlay" hidden>
+            <div>
+                <h2>Paused</h2>
+                <p>The needle waits for you.</p>
+                <button id="resume" class="action">Resume match</button>
+            </div>
+        </div>
+    </main>
+    <script type="module" src="./game.js"></script>
+</body>
+
+</html>

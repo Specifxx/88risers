@@ -5462,3 +5462,24 @@ button.product-media:focus-visible .product-zoom {
     letter-spacing: 0.08em;
   }
 }
+
+/* ─────────── Race to the Pin (arcade frame on /play) ─────────── */
+.arcade-wrap {
+  margin-top: 28px;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  background: #0b0a09;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+.arcade-frame {
+  display: block;
+  width: 100%;
+  height: min(760px, 88vh);
+  border: 0;
+}
+@media (max-width: 720px) {
+  .arcade-frame {
+    height: min(720px, 86vh);
+  }
+}

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { cleanHandle, currentAccount, endSession, hashPassword, startSession, verifyPassword } from "@/lib/auth";
 import { DAILY_GAME_COINS, MAX_STAKE, WELCOME_COINS, balanceOf, grant, itemById, lockAccount, newCode } from "@/lib/coins";
 import { getDb } from "@/lib/db";
+import { fmtOdds, payoutAt, quoteOdds } from "@/lib/odds";
 import { SITE } from "@/lib/site";
 
 export type FormState = { status: "idle" } | { status: "error"; message: string; field?: string } | { status: "ok"; message: string };
@@ -89,10 +90,12 @@ export async function castPick(_prev: FormState, form: FormData): Promise<FormSt
     return { status: "error", message: `Stakes are 0–${MAX_STAKE} coins.` };
 
   const db = await getDb();
+  let locked = 0;
   try {
     const res = await db.transaction(async (tx) => {
+      // Row lock: bets on one match are priced one at a time, so each sees the previous ones.
       const [m] = await tx.query<{ a_id: number; b_id: number; closes_at: string; settled_at: string | null }>(
-        `SELECT a_id, b_id, closes_at, settled_at FROM supermatches WHERE id = $1`,
+        `SELECT a_id, b_id, closes_at, settled_at FROM supermatches WHERE id = $1 FOR UPDATE`,
         [matchId],
       );
       if (!m) return "That match doesn't exist.";
@@ -102,7 +105,16 @@ export async function castPick(_prev: FormState, form: FormData): Promise<FormSt
       const [already] = await tx.query(`SELECT 1 FROM predictions WHERE match_id = $1 AND account_id = $2`, [matchId, me.id]);
       if (already) return "You've already locked in your pick.";
       if (stake > 0 && (await balanceOf(tx, me.id)) < stake) return "You don't have that many coins.";
-      await tx.query(`INSERT INTO predictions (match_id, account_id, pick_id, stake) VALUES ($1, $2, $3, $4)`, [matchId, me.id, pick, stake]);
+      const [pools] = await tx.query<{ a: number; b: number }>(
+        `SELECT coalesce(sum(stake) FILTER (WHERE pick_id = $2), 0)::int AS a,
+                coalesce(sum(stake) FILTER (WHERE pick_id = $3), 0)::int AS b
+         FROM predictions WHERE match_id = $1`,
+        [matchId, m.a_id, m.b_id],
+      );
+      locked = quoteOdds(stake, pick === m.a_id ? "a" : "b", pools);
+      await tx.query(`INSERT INTO predictions (match_id, account_id, pick_id, stake, odds) VALUES ($1, $2, $3, $4, $5)`, [
+        matchId, me.id, pick, stake, locked,
+      ]);
       if (stake > 0) await grant(tx, me.id, -stake, "Supermatch stake", `sm:${matchId}:stake`);
       return null;
     });
@@ -111,7 +123,12 @@ export async function castPick(_prev: FormState, form: FormData): Promise<FormSt
     console.error("castPick failed", err);
     return { status: "error", message: "Something went wrong on our side. Try again." };
   }
-  return { status: "ok", message: stake ? `Locked in with ${stake} coins on the line.` : "Pick locked in." };
+  return {
+    status: "ok",
+    message: stake
+      ? `Locked in: ${stake} coins at ${fmtOdds(locked)}. Pays ${payoutAt(stake, locked)} if you're right.`
+      : "Pick locked in.",
+  };
 }
 
 /* ─────────── Reward store ─────────── */

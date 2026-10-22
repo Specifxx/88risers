@@ -174,6 +174,8 @@ CREATE TABLE IF NOT EXISTS predictions (
 ALTER TABLE predictions ADD COLUMN IF NOT EXISTS stake integer NOT NULL DEFAULT 0;
 -- Which arm the supermatch is pulled with ('left' or 'right').
 ALTER TABLE supermatches ADD COLUMN IF NOT EXISTS arm text NOT NULL DEFAULT 'right';
+-- Odds locked in when the bet was placed (null on bets from before odds were locked).
+ALTER TABLE predictions ADD COLUMN IF NOT EXISTS odds numeric(8, 2);
 
 -- Coin store purchases: cosmetics (equipped on the account card), perks (a code the club honours)
 -- and giveaway entries. code is shown to the member and checked by organisers.
@@ -239,7 +241,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v11";
+const MIGRATION_MARKER = "founders_v12";
 
 async function migrate(db: Db) {
   // Fast path for every cold start after the first: one tiny query instead of the whole schema.

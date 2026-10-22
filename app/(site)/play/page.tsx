@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ArcadeFrame } from "@/components/ArcadeFrame";
 import { PinRun } from "@/components/PinRun";
 import { currentAccount } from "@/lib/auth";
 import { DAILY_GAME_COINS } from "@/lib/coins";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Pin Run",
-  description: "Pin Run: the 88 Risers arm wrestling platformer. Jump the tables, win the grip fights, chase the high score.",
+  description: "Pin Run and Race to the Pin: the 88 Risers arm wrestling games. Jump the tables, win the grip fights, pin the Kelvinator.",
 };
 
 export default async function PlayPage() {
@@ -34,7 +35,8 @@ export default async function PlayPage() {
           </h1>
           <p className="lede">
             One button. Jump the tables, win the grip fights, don&apos;t fall in the chalk pit. Logged-in Risers earn{" "}
-            {DAILY_GAME_COINS} coins for their first run each day.
+            {DAILY_GAME_COINS} coins for their first run each day. Prefer a straight-up arm wrestle?{" "}
+            <a href="#race-to-the-pin">Play Race to the Pin</a>.
           </p>
         </div>
       </section>
@@ -58,6 +60,26 @@ export default async function PlayPage() {
                 Log in to post a score <span>→</span>
               </Link>
             ) : null}
+          </div>
+        </div>
+      </section>
+
+      <section className="section" id="race-to-the-pin" style={{ paddingTop: 24 }}>
+        <div className="wrap">
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">88 Risers Arcade</p>
+              <h2 className="display">
+                Race to <span className="gold-text">the Pin.</span>
+              </h2>
+            </div>
+            <p className="lede">
+              Time your pulls to drive their hand to the pad before they pin you. Four levels, from Rookie up to
+              Kelvinator. Tap the button or press Space.
+            </p>
+          </div>
+          <div className="arcade-wrap">
+            <ArcadeFrame />
           </div>
         </div>
       </section>
