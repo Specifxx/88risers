@@ -11,7 +11,7 @@ import { tierFor } from "@/lib/elo";
 import { POOL_SEED, fmtOdds, oddsOf, payoutAt } from "@/lib/odds";
 import { fmtDay, fmtTime } from "@/lib/schedule";
 import { formatId } from "@/lib/site";
-import { armLabel, featuredSupermatch, isOpen, myPick } from "@/lib/supermatch";
+import { armLabel, featuredSupermatch, isOpen, myPick, predictionRecord, recordLabel, topPredictors } from "@/lib/supermatch";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +45,7 @@ function Fighter({ p, side, winner, odds, live }: { p: Puller; side: "a" | "b"; 
 }
 
 export default async function SupermatchPage() {
-  const [m, me, leaders] = await Promise.all([featuredSupermatch(), currentAccount(), coinLeaders(10)]);
+  const [m, me, leaders, predictors] = await Promise.all([featuredSupermatch(), currentAccount(), coinLeaders(10), topPredictors(5)]);
   if (!m) {
     return (
       <section className="page-hero">
@@ -58,7 +58,12 @@ export default async function SupermatchPage() {
       </section>
     );
   }
-  const [a, b, mine] = await Promise.all([getPuller(m.a_id, true), getPuller(m.b_id, true), me ? myPick(m.id, me.id) : null]);
+  const [a, b, mine, rec] = await Promise.all([
+    getPuller(m.a_id, true),
+    getPuller(m.b_id, true),
+    me ? myPick(m.id, me.id) : null,
+    me ? predictionRecord(me.id) : null,
+  ]);
   if (!a || !b) return null;
   const open = isOpen(m);
   const total = m.a_votes + m.b_votes;
@@ -171,6 +176,28 @@ export default async function SupermatchPage() {
                   <Countdown to={m.closes_at} />
                 </div>
               ) : null}
+              <div className="panel">
+                <h2 className="panel-title">Top predictors</h2>
+                {rec ? (
+                  <p className="my-record">
+                    Your record: <b>{recordLabel(rec) ?? "no results yet"}</b>
+                    {rec.streak > 1 ? <span> · {rec.streak} in a row 🔥</span> : null}
+                  </p>
+                ) : null}
+                <ol className="coin-leaders">
+                  {predictors.map((p, i) => (
+                    <li key={p.handle}>
+                      <span className="cl-rank">{i === 0 ? "♛" : i + 1}</span>
+                      <span className="cl-name">
+                        {p.display_name}
+                        {p.badge ? <i className="cl-lion" aria-label="Lion badge" /> : null}
+                      </span>
+                      <b>{recordLabel(p)}</b>
+                    </li>
+                  ))}
+                  {predictors.length === 0 ? <li className="muted">The first results land after this supermatch.</li> : null}
+                </ol>
+              </div>
               <div className="panel">
                 <h2 className="panel-title">Coin leaders</h2>
                 <ol className="coin-leaders">

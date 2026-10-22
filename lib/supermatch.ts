@@ -76,3 +76,99 @@ export async function listBackers() {
 }
 
 export const armLabel = (m: Pick<Supermatch, "arm">) => (m.arm === "left" ? "Left arm" : "Right arm");
+
+/* ─────────── Prediction record ─────────── */
+
+export interface PickHistory {
+  match_id: number;
+  title: string;
+  arm: "left" | "right";
+  closes_at: string;
+  settled_at: string | null;
+  winner_id: number | null;
+  pick_id: number;
+  pick_name: string;
+  stake: number;
+  odds: number | null;
+  /** Coins this pick made or lost overall (stake, bonus and payout), straight from the ledger. */
+  net: number;
+}
+
+export interface PredictionRecord {
+  picks: number;
+  settled: number;
+  correct: number;
+  /** 0–100, or null before any result. */
+  rate: number | null;
+  streak: number;
+  bestStreak: number;
+  net: number;
+  history: PickHistory[];
+}
+
+export async function predictionRecord(accountId: number): Promise<PredictionRecord> {
+  const db = await getDb();
+  const history = await db.query<PickHistory>(
+    `SELECT m.id AS match_id, m.title, m.arm, m.closes_at, m.settled_at, m.winner_id, p.pick_id, pu.name AS pick_name,
+            p.stake, p.odds::float8 AS odds,
+            coalesce((SELECT sum(amount) FROM coin_tx t WHERE t.account_id = p.account_id AND t.ref LIKE 'sm:' || m.id || ':%'), 0)::int AS net
+     FROM predictions p
+     JOIN supermatches m ON m.id = p.match_id
+     JOIN pullers pu ON pu.id = p.pick_id
+     WHERE p.account_id = $1
+     ORDER BY m.closes_at DESC`,
+    [accountId],
+  );
+  // Results in the order they happened, oldest first, for streaks.
+  const results = history
+    .filter((h) => h.settled_at)
+    .sort((x, y) => new Date(x.settled_at!).getTime() - new Date(y.settled_at!).getTime())
+    .map((h) => h.pick_id === h.winner_id);
+  let run = 0;
+  let bestStreak = 0;
+  for (const r of results) {
+    run = r ? run + 1 : 0;
+    bestStreak = Math.max(bestStreak, run);
+  }
+  const correct = results.filter(Boolean).length;
+  return {
+    picks: history.length,
+    settled: results.length,
+    correct,
+    rate: results.length ? Math.round((correct / results.length) * 100) : null,
+    streak: run,
+    bestStreak,
+    net: history.filter((h) => h.settled_at).reduce((s, h) => s + h.net, 0),
+    history,
+  };
+}
+
+export interface Predictor {
+  display_name: string;
+  handle: string;
+  badge: boolean;
+  settled: number;
+  correct: number;
+}
+
+/** Best predictors: most correct calls, then the higher hit rate. */
+export async function topPredictors(limit = 5) {
+  const db = await getDb();
+  return db.query<Predictor>(
+    `SELECT a.display_name, a.handle, coalesce(s.badge, false) AS badge,
+            count(*)::int AS settled,
+            count(*) FILTER (WHERE p.pick_id = m.winner_id)::int AS correct
+     FROM predictions p
+     JOIN supermatches m ON m.id = p.match_id AND m.settled_at IS NOT NULL
+     JOIN accounts a ON a.id = p.account_id
+     LEFT JOIN account_style s ON s.account_id = a.id
+     GROUP BY a.id, a.display_name, a.handle, s.badge
+     ORDER BY correct DESC, (count(*) FILTER (WHERE p.pick_id = m.winner_id))::float / count(*) DESC, a.id ASC
+     LIMIT $1`,
+    [limit],
+  );
+}
+
+/** "3/4 · 75%" or null before any settled pick. */
+export const recordLabel = (r: { settled: number; correct: number }) =>
+  r.settled ? `${r.correct}/${r.settled} · ${Math.round((r.correct / r.settled) * 100)}%` : null;

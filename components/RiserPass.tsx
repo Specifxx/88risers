@@ -2,7 +2,20 @@ import Image from "next/image";
 import type { Style } from "@/lib/coins";
 
 /** The member's coin card: name, title, balance, and whatever frame/badge they've unlocked. */
-export function RiserPass({ name, handle, coins, style }: { name: string; handle: string; coins: number; style: Style }) {
+export function RiserPass({
+  name,
+  handle,
+  coins,
+  style,
+  record,
+}: {
+  name: string;
+  handle: string;
+  coins: number;
+  style: Style;
+  /** Supermatch prediction record, e.g. "3/4 · 75%". */
+  record?: string | null;
+}) {
   return (
     <div className={`pass${style.frame ? ` pass-${style.frame}` : ""}`}>
       <div className="pass-inner">
@@ -19,6 +32,9 @@ export function RiserPass({ name, handle, coins, style }: { name: string; handle
           <b>{coins.toLocaleString("en-AU")}</b>
           <small>coins</small>
         </div>
+        <p className="pass-record">
+          <span>Supermatch picks</span> <b>{record ?? "No results yet"}</b>
+        </p>
       </div>
     </div>
   );

@@ -4,7 +4,9 @@ import { AccountForms } from "@/components/AccountForms";
 import { RiserPass } from "@/components/RiserPass";
 import { currentAccount } from "@/lib/auth";
 import { STORE, coinHistory, itemById, redemptionsOf, styleOf } from "@/lib/coins";
+import { fmtOdds } from "@/lib/odds";
 import { fmtShortDate } from "@/lib/schedule";
+import { predictionRecord, recordLabel } from "@/lib/supermatch";
 import { equipFrame, logOut } from "./actions";
 
 export const metadata: Metadata = {
@@ -44,7 +46,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
     );
   }
 
-  const [history, style, items] = await Promise.all([coinHistory(me.id), styleOf(me.id), redemptionsOf(me.id)]);
+  const [history, style, items, rec] = await Promise.all([coinHistory(me.id), styleOf(me.id), redemptionsOf(me.id), predictionRecord(me.id)]);
   const ownedFrames = STORE.filter((i) => i.kind === "frame" && items.some((r) => r.item === i.id));
 
   return (
@@ -77,7 +79,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
       <section className="section" style={{ paddingTop: 48 }}>
         <div className="wrap account-grid">
           <div>
-            <RiserPass name={me.display_name} handle={me.handle} coins={me.coins} style={style} />
+            <RiserPass name={me.display_name} handle={me.handle} coins={me.coins} style={style} record={recordLabel(rec)} />
             {ownedFrames.length ? (
               <form action={equipFrame} className="frame-pick">
                 <label htmlFor="frame">Frame</label>
@@ -95,6 +97,62 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
           </div>
 
           <div className="account-cols">
+            <div className="panel picks-panel">
+              <h2 className="panel-title">Supermatch picks</h2>
+              <div className="pick-stats">
+                <div>
+                  <b>{rec.settled ? `${rec.correct}/${rec.settled}` : "–"}</b>
+                  <span>correct</span>
+                </div>
+                <div>
+                  <b>{rec.rate === null ? "–" : `${rec.rate}%`}</b>
+                  <span>hit rate</span>
+                </div>
+                <div>
+                  <b>{rec.streak}</b>
+                  <span>streak{rec.bestStreak > rec.streak ? ` · best ${rec.bestStreak}` : ""}</span>
+                </div>
+                <div>
+                  <b className={rec.net < 0 ? "neg" : rec.net > 0 ? "pos" : undefined}>
+                    {rec.net > 0 ? "+" : ""}
+                    {rec.net}
+                  </b>
+                  <span>coins from picks</span>
+                </div>
+              </div>
+              {rec.history.length ? (
+                <ul className="ledger">
+                  {rec.history.map((h) => {
+                    const status = !h.settled_at ? "pending" : h.pick_id === h.winner_id ? "won" : "lost";
+                    return (
+                      <li key={h.match_id}>
+                        <span>
+                          {h.title} · {h.arm === "left" ? "left arm" : "right arm"}
+                          <br />
+                          <small>
+                            Picked {h.pick_name}
+                            {h.stake ? ` · ${h.stake} at ${fmtOdds(h.odds ?? 2)}` : ""}
+                          </small>
+                        </span>
+                        <small className={`pick-${status}`}>{status === "pending" ? "Pending" : status === "won" ? "Called it" : "Missed"}</small>
+                        {status === "pending" ? (
+                          <b>{h.stake ? `−${h.stake}` : "0"}</b>
+                        ) : (
+                          <b className={h.net < 0 ? "neg" : "pos"}>
+                            {h.net > 0 ? "+" : ""}
+                            {h.net}
+                          </b>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p className="muted">
+                  No picks yet. <Link href="/supermatch">Make your first call →</Link>
+                </p>
+              )}
+            </div>
             <div className="panel">
               <h2 className="panel-title">Coin history</h2>
               <ul className="ledger">
