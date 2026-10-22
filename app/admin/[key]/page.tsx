@@ -1,3 +1,4 @@
+import { fmtOdds, oddsOf, payoutFor } from "@/lib/odds";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,7 +9,7 @@ import { prettyPhone } from "@/lib/phone";
 import { fmtShortDate, toSydneyInput } from "@/lib/schedule";
 import { mailStatus } from "@/lib/mail";
 import { type AdminAccount, type AdminRedemption, STORE, adminAccounts, adminRedemptions, itemById } from "@/lib/coins";
-import { type Supermatch, listSupermatches } from "@/lib/supermatch";
+import { type Backer, type Supermatch, listBackers, listSupermatches } from "@/lib/supermatch";
 import { PRODUCTS } from "@/lib/shop";
 import { SITE, formatId } from "@/lib/site";
 import {
@@ -70,7 +71,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
   const k = decodeURIComponent(key);
   const base = `/admin/${encodeURIComponent(k)}`;
 
-  const [stats, regs, pullers, matches, events, reels, interest, sms, accts, redeems] = await Promise.all([
+  const [stats, regs, pullers, matches, events, reels, interest, sms, accts, redeems, backers] = await Promise.all([
     getClubStats(),
     listRegistrations(),
     listPullers({ includeHidden: true }),
@@ -81,6 +82,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
     listSupermatches(),
     adminAccounts(),
     adminRedemptions(),
+    listBackers(),
   ]);
   const newRegs = regs.filter((r) => r.status === "new").length;
   const newInterest = interest.filter((r) => !r.done).length;
@@ -140,7 +142,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
         {tab === "events" ? <Events events={events} k={k} /> : null}
         {tab === "tv" ? <Tv reels={reels} k={k} /> : null}
         {tab === "shop" ? <Shop interest={interest} k={k} /> : null}
-        {tab === "coins" ? <Coins sms={sms} accts={accts} redeems={redeems} pullers={pullers} k={k} /> : null}
+        {tab === "coins" ? <Coins sms={sms} accts={accts} redeems={redeems} pullers={pullers} backers={backers} k={k} /> : null}
 
         <p className="fine" style={{ marginTop: 60 }}>
           Anyone with this link can manage the club, so share it only with organisers. To change the link, set a new
@@ -840,7 +842,21 @@ function MailPanel({ k }: { k: string }) {
   );
 }
 
-function Coins({ sms, accts, redeems, pullers, k }: { sms: Supermatch[]; accts: AdminAccount[]; redeems: AdminRedemption[]; pullers: Puller[]; k: string }) {
+function Coins({
+  sms,
+  accts,
+  redeems,
+  pullers,
+  backers,
+  k,
+}: {
+  sms: Supermatch[];
+  accts: AdminAccount[];
+  redeems: AdminRedemption[];
+  pullers: Puller[];
+  backers: Backer[];
+  k: string;
+}) {
   const nameOf = (id: number | null) => pullers.find((p) => p.id === id)?.name ?? (id ? `#${id}` : "");
   const SmFields = ({ m }: { m?: Supermatch }) => (
     <div className="form-grid">
@@ -892,7 +908,7 @@ function Coins({ sms, accts, redeems, pullers, k }: { sms: Supermatch[]; accts: 
           <h1>Coins &amp; supermatches</h1>
           <p className="muted">
             88Risers coins are free play money. Settle a supermatch after the result to pay everyone who picked right
-            (reward + double their stake). Public pages: <Link href="/supermatch" target="_blank">/supermatch</Link>,{" "}
+            (reward + their share of the stake pool at the final odds). Public pages: <Link href="/supermatch" target="_blank">/supermatch</Link>,{" "}
             <Link href="/rewards" target="_blank">/rewards</Link>, <Link href="/play" target="_blank">/play</Link>.
           </p>
         </div>
@@ -912,10 +928,12 @@ function Coins({ sms, accts, redeems, pullers, k }: { sms: Supermatch[]; accts: 
             <summary>
               <b>{m.title}</b>
               <span className="muted tech">
-                {nameOf(m.a_id)} {m.a_votes} · {m.b_votes} {nameOf(m.b_id)} · {m.pot} staked
+                {nameOf(m.a_id)} {m.a_votes} · {m.b_votes} {nameOf(m.b_id)} · {m.pot} staked · odds{" "}
+                {fmtOdds(oddsOf({ a: m.a_pot, b: m.b_pot }).a)} / {fmtOdds(oddsOf({ a: m.a_pot, b: m.b_pot }).b)}
               </span>
               {m.settled_at ? <span className="pill">Won by {nameOf(m.winner_id)}</span> : <span className="pill">Open</span>}
             </summary>
+            <Backers m={m} rows={backers.filter((r) => r.match_id === m.id)} nameOf={nameOf} />
             {!m.settled_at ? (
               <>
                 <form action={saveSupermatch}>
@@ -1027,5 +1045,45 @@ function Coins({ sms, accts, redeems, pullers, k }: { sms: Supermatch[]; accts: 
         </div>
       </div>
     </>
+  );
+}
+
+/** Who backed whom on one supermatch, with what each stake pays (or paid). */
+function Backers({ m, rows, nameOf }: { m: Supermatch; rows: Backer[]; nameOf: (id: number | null) => string }) {
+  if (!rows.length) return <p className="muted" style={{ marginTop: 12 }}>No picks yet.</p>;
+  const pools = { a: m.a_pot, b: m.b_pot };
+  const odds = oddsOf(pools);
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table className="sm-backers">
+        <thead>
+          <tr>
+            <th>Member</th>
+            <th>Backed</th>
+            <th className="num">Stake</th>
+            <th className="num">{m.settled_at ? "Paid" : "Pays if right"}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => {
+            const side = r.pick_id === m.a_id ? "a" : "b";
+            const lost = m.winner_id != null && r.pick_id !== m.winner_id;
+            const pays = lost ? 0 : m.reward + payoutFor(r.stake, side, pools);
+            return (
+              <tr key={r.handle}>
+                <td>
+                  {r.display_name} <span className="muted">@{r.handle}</span>
+                </td>
+                <td>
+                  {nameOf(r.pick_id)} <span className="muted">{fmtOdds(odds[side])}</span>
+                </td>
+                <td className="num">{r.stake}</td>
+                <td className="num">{lost ? "—" : pays}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }

@@ -7,7 +7,7 @@ Website for 88 Risers, a social arm wrestling club in Rhodes, NSW. We're looking
 - **Riser Database** (`/pullers`, `/pullers/8`) — every puller has a permanent Riser ID. Profiles show Elo, rating tier, W–L (by arm), titles, an Elo history chart and match history with embedded videos.
 - **88RisersTV** (`/tv`) — the club's reels as a TV channel: featured player, channel guide, every episode. Reels are added in the admin.
 - **Events** (`/events`, `/events/<slug>`) — the first-Sunday table time is generated automatically; tournaments and socials are added by admins. Past events show results with videos. `/api/calendar` serves an `.ics` file.
-- **Accounts & coins** (`/account`, `/supermatch`, `/rewards`) — free member accounts (username + password). 88Risers coins are free play money: 25 to start, earned by calling supermatches (plus double any stake) and the first Pin Run each day, spent on card frames, titles, the lion badge, club perks and giveaway entries. Coins can't be bought or cashed out.
+- **Accounts & coins** (`/account`, `/supermatch`, `/rewards`) — free member accounts (username + password). 88Risers coins are free play money: 25 to start, earned by calling supermatches (stakes pay out at live pool odds: the less-backed puller pays more) and the first Pin Run each day, spent on card frames, titles, the lion badge, club perks and giveaway entries. Coins can't be bought or cashed out.
 - **Pin Run** (`/play`) — a one-button arm wrestling platformer with a high-score table.
 - **Admin** (`/admin/<ADMIN_KEY>`) — a private link, no sign-in.
 

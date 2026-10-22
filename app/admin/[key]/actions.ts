@@ -11,6 +11,7 @@ import { videoEmbed } from "@/lib/video";
 import { mailConfigured, mailStatus, sendClubMail } from "@/lib/mail";
 import { hashPassword } from "@/lib/auth";
 import { grant, itemById } from "@/lib/coins";
+import { fmtOdds, oddsOf, payoutFor } from "@/lib/odds";
 
 type Tab = "registrations" | "pullers" | "matches" | "events" | "tv" | "shop" | "coins";
 
@@ -402,7 +403,7 @@ export async function saveSupermatch(form: FormData) {
   done(key, "coins", id ? "Supermatch updated." : "Supermatch created. It's now featured on /supermatch.");
 }
 
-/** Records the winner and pays out: reward to every correct pick, plus double their stake. Runs once. */
+/** Records the winner and pays out: reward to every correct pick, plus their share of the stake pool (see lib/odds). Runs once. */
 export async function settleSupermatch(form: FormData) {
   const key = guard(form);
   const id = int(form, "sm_id");
@@ -419,13 +420,22 @@ export async function settleSupermatch(form: FormData) {
       if (m.settled_at) return "Already settled.";
       if (winner !== m.a_id && winner !== m.b_id) return "Pick the winner.";
       await tx.query(`UPDATE supermatches SET winner_id = $2, settled_at = now() WHERE id = $1`, [id, winner]);
+      const [pools] = await tx.query<{ a: number; b: number }>(
+        `SELECT coalesce(sum(stake) FILTER (WHERE pick_id = $2), 0)::int AS a,
+                coalesce(sum(stake) FILTER (WHERE pick_id = $3), 0)::int AS b
+         FROM predictions WHERE match_id = $1`,
+        [id, m.a_id, m.b_id],
+      );
+      const side = winner === m.a_id ? "a" : "b";
+      const odds = fmtOdds(oddsOf(pools)[side]);
       const right = await tx.query<{ account_id: number; stake: number }>(
         `SELECT account_id, stake FROM predictions WHERE match_id = $1 AND pick_id = $2`,
         [id, winner],
       );
       for (const r of right) {
         await grant(tx, r.account_id, m.reward, "Called the supermatch", `sm:${id}:reward`);
-        if (r.stake > 0) await grant(tx, r.account_id, r.stake * 2, "Supermatch stake doubled", `sm:${id}:payout`);
+        if (r.stake > 0)
+          await grant(tx, r.account_id, payoutFor(r.stake, side, pools), `Supermatch stake paid at ${odds}`, `sm:${id}:payout`);
         paid++;
       }
       return null;

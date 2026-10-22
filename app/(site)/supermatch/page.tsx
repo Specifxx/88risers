@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { Countdown } from "@/components/Countdown";
+import { LiveRefresh } from "@/components/LiveRefresh";
 import { VotePanel } from "@/components/VotePanel";
 import { currentAccount } from "@/lib/auth";
 import { MAX_STAKE, coinLeaders } from "@/lib/coins";
 import { type Puller, getPuller } from "@/lib/data";
 import { tierFor } from "@/lib/elo";
+import { POOL_SEED, fmtOdds, oddsOf, payoutFor } from "@/lib/odds";
 import { fmtDay, fmtTime } from "@/lib/schedule";
 import { formatId } from "@/lib/site";
 import { featuredSupermatch, isOpen, myPick } from "@/lib/supermatch";
@@ -18,7 +20,7 @@ export const metadata: Metadata = {
   description: "Pick the winner of the 88 Risers supermatch and earn 88Risers coins.",
 };
 
-function Fighter({ p, side, winner }: { p: Puller; side: "a" | "b"; winner: number | null }) {
+function Fighter({ p, side, winner, odds, live }: { p: Puller; side: "a" | "b"; winner: number | null; odds: number; live: boolean }) {
   const cls = winner ? (winner === p.id ? " is-winner" : " is-loser") : "";
   return (
     <div className={`sm-fighter sm-${side}${cls}`}>
@@ -28,6 +30,9 @@ function Fighter({ p, side, winner }: { p: Puller; side: "a" | "b"; winner: numb
       <p className="sm-id">{formatId(p.id)}</p>
       <h2 className="sm-name">{p.name}</h2>
       {p.title ? <p className="sm-title">{p.title}</p> : null}
+      <p className="sm-odds" title="Coins returned per coin staked, stake included">
+        {live ? "Pays" : "Paid"} <b>{fmtOdds(odds)}</b>
+      </p>
       <p className="sm-stats">
         <span>{p.elo} Elo</span>
         <span>{tierFor(p.elo).name}</span>
@@ -58,7 +63,9 @@ export default async function SupermatchPage() {
   const open = isOpen(m);
   const total = m.a_votes + m.b_votes;
   const pctA = total ? Math.round((m.a_votes / total) * 100) : 50;
-  const showSplit = !open || !!mine;
+  const pools = { a: m.a_pot, b: m.b_pot };
+  const odds = oddsOf(pools);
+  const mySide = mine ? (mine.pick_id === m.a_id ? "a" : "b") : null;
   const closes = new Date(m.closes_at);
   const won = m.winner_id && mine ? mine.pick_id === m.winner_id : null;
 
@@ -80,29 +87,28 @@ export default async function SupermatchPage() {
       <section className="section" style={{ paddingTop: 40 }}>
         <div className="wrap">
           <div className="sm-arena">
-            <Fighter p={a} side="a" winner={m.winner_id} />
+            <Fighter p={a} side="a" winner={m.winner_id} odds={odds.a} live={!m.winner_id} />
             <div className="sm-vs" aria-hidden>
               VS
             </div>
-            <Fighter p={b} side="b" winner={m.winner_id} />
+            <Fighter p={b} side="b" winner={m.winner_id} odds={odds.b} live={!m.winner_id} />
           </div>
 
-          {showSplit ? (
-            <div className="sm-split" aria-label={`Crowd: ${pctA}% ${a.name}, ${100 - pctA}% ${b.name}`}>
+          {open ? <LiveRefresh seconds={20} /> : null}
+          <div className="sm-split" aria-label={`Crowd: ${pctA}% ${a.name}, ${100 - pctA}% ${b.name}`}>
               <div className="sm-split-bar">
                 <span style={{ width: `${pctA}%` }} />
               </div>
               <div className="sm-split-labels">
                 <span>
-                  {pctA}% · {m.a_votes} {m.a_votes === 1 ? "pick" : "picks"}
+                  {pctA}% · {m.a_votes} {m.a_votes === 1 ? "pick" : "picks"} · {m.a_pot} coins
                 </span>
-                <span>{m.pot ? `${m.pot} coins staked` : "The crowd's pick"}</span>
+                <span>{m.pot ? `${m.pot} coins in the pool` : "No stakes yet"}</span>
                 <span>
-                  {m.b_votes} {m.b_votes === 1 ? "pick" : "picks"} · {100 - pctA}%
+                  {m.b_pot} coins · {m.b_votes} {m.b_votes === 1 ? "pick" : "picks"} · {100 - pctA}%
                 </span>
               </div>
-            </div>
-          ) : null}
+          </div>
 
           <div className="sm-panel">
             {m.winner_id ? (
@@ -112,8 +118,8 @@ export default async function SupermatchPage() {
                 {mine ? (
                   <p className="vote-lede">
                     {won
-                      ? `You called it! +${m.reward} coins${mine.stake ? `, plus ${mine.stake * 2} back from your stake` : ""}.`
-                      : "Not this time. Your stake went to the lion."}
+                      ? `You called it! +${m.reward} coins${mine.stake ? `, plus ${payoutFor(mine.stake, mySide!, pools)} from your ${mine.stake}-coin stake at ${fmtOdds(odds[mySide!])}` : ""}.`
+                      : mine.stake ? "Not this time. Your stake went to the winners' pool." : "Not this time."}
                   </p>
                 ) : null}
               </div>
@@ -122,7 +128,10 @@ export default async function SupermatchPage() {
                 <p className="eyebrow">Your pick</p>
                 <h3>{mine.pick_id === a.id ? a.name : b.name}</h3>
                 <p className="vote-lede">
-                  {mine.stake ? `${mine.stake} coins staked. ` : ""}Locked in. Coins land in your account when the result is in.
+                  {mine.stake
+                    ? `${mine.stake} coins staked. At the current ${fmtOdds(odds[mySide!])} that returns ${payoutFor(mine.stake, mySide!, pools)} coins if ${(mySide === "a" ? a : b).name.split(" ")[0]} wins; odds keep moving until voting closes. `
+                    : ""}
+                  Locked in. Coins land in your account when the result is in.
                 </p>
               </div>
             ) : open ? (
@@ -134,6 +143,7 @@ export default async function SupermatchPage() {
                 balance={me?.coins ?? 0}
                 maxStake={MAX_STAKE}
                 reward={m.reward}
+                pools={pools}
               />
             ) : (
               <div className="vote-box">
@@ -174,6 +184,11 @@ export default async function SupermatchPage() {
             </div>
           </div>
           <p className="fine" style={{ marginTop: 28 }}>
+            How the odds work: every staked coin goes into one pool, and whoever backed the winner splits it in
+            proportion to their stake, so the less-backed puller pays more. The lion puts {POOL_SEED} coins on each
+            side to start. Odds move live as people back each puller and lock when voting closes.
+          </p>
+          <p className="fine" style={{ marginTop: 10 }}>
             Free to play. 88Risers coins are play money for predictions and club rewards; they can&apos;t be bought,
             sold or exchanged for cash.
           </p>

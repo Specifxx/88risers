@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { startTransition, useActionState, useEffect, useState } from "react";
 import { type FormState, castPick } from "@/app/(site)/account/actions";
 import { lionSays } from "@/lib/lion";
+import { type Pools, estimateReturn, fmtOdds, oddsOf } from "@/lib/odds";
 
 interface Side {
   id: number;
   name: string;
 }
 
-/** Pick a winner, optionally stake coins. Picks are final once locked. */
+/** Pick a winner, optionally stake coins at the live pool odds. Picks are final once locked. */
 export function VotePanel({
   matchId,
   a,
@@ -20,6 +21,7 @@ export function VotePanel({
   balance,
   maxStake,
   reward,
+  pools,
 }: {
   matchId: number;
   a: Side;
@@ -28,12 +30,16 @@ export function VotePanel({
   balance: number;
   maxStake: number;
   reward: number;
+  pools: Pools;
 }) {
   const [pick, setPick] = useState<number | null>(null);
   const [stake, setStake] = useState(0);
   const [state, action, pending] = useActionState<FormState, FormData>(castPick, { status: "idle" });
   const cap = Math.min(balance, maxStake);
   const router = useRouter();
+  const odds = oddsOf(pools);
+  const side = pick === a.id ? "a" : pick === b.id ? "b" : null;
+  const est = side && stake > 0 ? estimateReturn(stake, side, pools) : 0;
 
   useEffect(() => {
     if (state.status !== "ok") return;
@@ -48,7 +54,7 @@ export function VotePanel({
     return (
       <div className="vote-box">
         <p className="vote-lede">
-          Pick the winner and earn <b>{reward} coins</b> if you&apos;re right. Stake extra coins to double them.
+          Pick the winner and earn <b>{reward} coins</b> if you&apos;re right. Stake coins at live odds: the less-backed puller pays more.
         </p>
         <div className="btn-row">
           <Link className="btn btn-primary" href="/account?next=/supermatch">
@@ -81,12 +87,13 @@ export function VotePanel({
         {[a, b].map((s) => (
           <button type="button" key={s.id} className="vote-pick" aria-pressed={pick === s.id} onClick={() => setPick(s.id)}>
             {s.name}
+            <small>pays {fmtOdds(s.id === a.id ? odds.a : odds.b)}</small>
           </button>
         ))}
       </div>
       <div className="vote-stake">
         <label htmlFor="stake">
-          Stake coins <em>optional · win and get double back</em>
+          Stake coins <em>optional · paid at the odds when voting closes</em>
         </label>
         <div className="stake-row">
           <input
@@ -105,6 +112,18 @@ export function VotePanel({
           </b>
         </div>
       </div>
+      {stake > 0 ? (
+        <p className="vote-est" aria-live="polite">
+          {side ? (
+            <>
+              If {(side === "a" ? a : b).name.split(" ")[0]} wins you&apos;d get back <b>{est.toLocaleString("en-AU")}</b> coins
+              at today&apos;s odds ({fmtOdds(est / stake)}), plus the {reward}-coin bonus.
+            </>
+          ) : (
+            "Choose a puller to see your return."
+          )}
+        </p>
+      ) : null}
       {state.status === "error" ? <div className="form-error">{state.message}</div> : null}
       {state.status === "ok" ? <div className="form-ok">{state.message}</div> : null}
       <button className="btn btn-primary submit" disabled={!pick || pending || state.status === "ok"}>

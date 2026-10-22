@@ -5387,3 +5387,54 @@ button.product-media:focus-visible .product-zoom {
     animation: none;
   }
 }
+
+/* ─────────── Supermatch odds ─────────── */
+.sm-odds {
+  margin-top: 8px;
+  font: 600 12px/1 var(--f-tech);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.sm-odds b {
+  font: 900 26px/1 var(--f-display);
+  letter-spacing: 0.02em;
+  color: var(--gold);
+  margin-left: 4px;
+}
+.vote-pick small {
+  display: block;
+  margin-top: 8px;
+  font: 600 11px/1 var(--f-tech);
+  letter-spacing: 0.12em;
+  color: var(--gold);
+}
+.vote-est {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(213, 182, 122, 0.08);
+  border: 1px solid rgba(213, 182, 122, 0.25);
+  font-size: 14px;
+  color: var(--muted);
+}
+.vote-est b {
+  color: var(--gold);
+}
+.sm-backers {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin-top: 12px;
+}
+.sm-backers th,
+.sm-backers td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.sm-backers td.num,
+.sm-backers th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

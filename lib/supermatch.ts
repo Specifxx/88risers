@@ -15,12 +15,17 @@ export interface Supermatch {
   a_votes: number;
   b_votes: number;
   pot: number;
+  /** Coins staked on each side. */
+  a_pot: number;
+  b_pot: number;
 }
 
 const COLS = `m.id, m.slug, m.title, m.blurb, m.a_id, m.b_id, m.closes_at, m.reward, m.winner_id, m.settled_at,
   (SELECT count(*)::int FROM predictions p WHERE p.match_id = m.id AND p.pick_id = m.a_id) AS a_votes,
   (SELECT count(*)::int FROM predictions p WHERE p.match_id = m.id AND p.pick_id = m.b_id) AS b_votes,
-  (SELECT coalesce(sum(stake), 0)::int FROM predictions p WHERE p.match_id = m.id) AS pot`;
+  (SELECT coalesce(sum(stake), 0)::int FROM predictions p WHERE p.match_id = m.id) AS pot,
+  (SELECT coalesce(sum(stake), 0)::int FROM predictions p WHERE p.match_id = m.id AND p.pick_id = m.a_id) AS a_pot,
+  (SELECT coalesce(sum(stake), 0)::int FROM predictions p WHERE p.match_id = m.id AND p.pick_id = m.b_id) AS b_pot`;
 
 /** The supermatch to feature: the next open one, otherwise the most recent. */
 export async function featuredSupermatch() {
@@ -48,3 +53,22 @@ export async function myPick(matchId: number, accountId: number) {
 }
 
 export const isOpen = (m: Supermatch) => !m.settled_at && new Date(m.closes_at).getTime() > Date.now();
+
+export interface Backer {
+  match_id: number;
+  pick_id: number;
+  stake: number;
+  created_at: string;
+  display_name: string;
+  handle: string;
+}
+
+/** Every pick on every supermatch, for admin HQ. Biggest stakes first. */
+export async function listBackers() {
+  const db = await getDb();
+  return db.query<Backer>(
+    `SELECT p.match_id, p.pick_id, p.stake, p.created_at, a.display_name, a.handle
+     FROM predictions p JOIN accounts a ON a.id = p.account_id
+     ORDER BY p.match_id, p.stake DESC, p.created_at ASC`,
+  );
+}
