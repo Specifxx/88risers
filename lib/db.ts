@@ -362,7 +362,7 @@ async function connectPglite(): Promise<Db> {
   const { mkdirSync } = await import("node:fs");
   // During `next build` several workers prerender in parallel; give them a throwaway database.
   const building = process.env.NEXT_PHASE === "phase-production-build";
-  const dir = building ? "memory://" : process.env.PGLITE_DIR || "./.data/pglite";
+  const dir = building || isPreview() ? "memory://" : process.env.PGLITE_DIR || "./.data/pglite";
   if (!building) mkdirSync(dir, { recursive: true });
   const pg = await PGlite.create(dir);
   type Q = Pick<typeof pg, "query" | "exec">;
@@ -413,13 +413,22 @@ function resilient(db: Db): Db {
   };
 }
 
+/** Vercel preview/development deployments. They never get the live database (see getDb). */
+const isPreview = () => !!process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production";
+
 const globalForDb = globalThis as unknown as { __risersDb?: Promise<Db> };
 
 export function getDb(): Promise<Db> {
   if (!globalForDb.__risersDb) {
     globalForDb.__risersDb = (async () => {
-      const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
-      if (!url && process.env.VERCEL) {
+      // Preview deployments share env vars with production, so ignore DATABASE_URL there:
+      // a half-finished branch must never migrate or write to the live database.
+      // Set PREVIEW_DATABASE_URL to give previews a separate Postgres; otherwise they get a
+      // throwaway in-memory database with the seed data.
+      const url = isPreview()
+        ? process.env.PREVIEW_DATABASE_URL
+        : process.env.DATABASE_URL || process.env.POSTGRES_URL;
+      if (!url && process.env.VERCEL && !isPreview()) {
         throw new Error("DATABASE_URL is not set. Connect a Postgres database in Vercel → Storage.");
       }
       const db = resilient(url ? await connectPostgres(url) : await connectPglite());
