@@ -18,6 +18,7 @@ export const isRtpLevel = (l: string): l is RtpLevel => RTP_LEVELS.some((x) => x
 export interface ArcadeRow {
   level: RtpLevel;
   display_name: string;
+  handle: string;
   best: number;
 }
 
@@ -25,8 +26,8 @@ export interface ArcadeRow {
 export async function rtpLeaders(perLevel = 5) {
   const db = await getDb();
   const rows = await db.query<ArcadeRow>(
-    `SELECT level, display_name, best FROM (
-       SELECT s.level, a.display_name, s.best,
+    `SELECT level, display_name, handle, best FROM (
+       SELECT s.level, a.display_name, a.handle, s.best,
               row_number() OVER (PARTITION BY s.level ORDER BY s.best DESC, s.updated_at ASC) AS rk
        FROM arcade_scores s JOIN accounts a ON a.id = s.account_id
        WHERE s.game = $1

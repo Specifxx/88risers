@@ -69,6 +69,9 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
             <Link className="btn btn-ghost" href="/play">
               Play Pin Run
             </Link>
+            <Link className="btn btn-ghost" href={`/members/${me.handle}`}>
+              Your public profile
+            </Link>
             <form action={logOut}>
               <button className="btn btn-ghost">Log out</button>
             </form>

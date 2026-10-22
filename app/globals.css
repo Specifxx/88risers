@@ -5823,3 +5823,76 @@ button.product-media:focus-visible .product-zoom {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* ─────────── Member search results & profile links ─────────── */
+.member-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.member-chip {
+  display: grid;
+  gap: 4px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--line-strong);
+  background: var(--ink-1);
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.2s, transform 0.2s var(--ease);
+}
+.member-chip:hover {
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+.member-chip b {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 900 22px/1 var(--f-display);
+  text-transform: uppercase;
+  color: var(--bone);
+}
+.member-chip > span {
+  font: 600 12px/1 var(--f-tech);
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.member-chip em {
+  font-style: normal;
+  font: 700 10px/1 var(--f-tech);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-hi);
+}
+.member-chip small {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--gold);
+}
+.member-chip small .coin {
+  width: 16px;
+  height: 16px;
+}
+.member-chip.mf-gold {
+  border-color: #d5b67a;
+  box-shadow: 0 0 18px rgba(213, 182, 122, 0.25);
+}
+.member-chip.mf-ink {
+  border-color: #d42a2f;
+  box-shadow: 0 0 18px rgba(212, 42, 47, 0.3);
+}
+.member-chip.mf-holo {
+  border-color: #6fe8d6;
+  box-shadow: 0 0 18px rgba(0, 255, 200, 0.2);
+}
+a.cl-name {
+  color: inherit;
+  text-decoration: none;
+}
+a.cl-name:hover {
+  color: var(--gold-hi);
+}

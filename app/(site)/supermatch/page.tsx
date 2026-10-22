@@ -188,10 +188,10 @@ export default async function SupermatchPage() {
                   {predictors.map((p, i) => (
                     <li key={p.handle}>
                       <span className="cl-rank">{i === 0 ? "♛" : i + 1}</span>
-                      <span className="cl-name">
+                      <Link className="cl-name" href={`/members/${p.handle}`}>
                         {p.display_name}
                         {p.badge ? <i className="cl-lion" aria-label="Lion badge" /> : null}
-                      </span>
+                      </Link>
                       <b>{recordLabel(p)}</b>
                     </li>
                   ))}
@@ -204,10 +204,10 @@ export default async function SupermatchPage() {
                   {leaders.map((l, i) => (
                     <li key={l.handle}>
                       <span className="cl-rank">{i === 0 ? "♛" : i + 1}</span>
-                      <span className="cl-name">
+                      <Link className="cl-name" href={`/members/${l.handle}`}>
                         {l.display_name}
                         {l.badge ? <i className="cl-lion" aria-label="Lion badge" /> : null}
-                      </span>
+                      </Link>
                       <b>{l.coins}</b>
                     </li>
                   ))}

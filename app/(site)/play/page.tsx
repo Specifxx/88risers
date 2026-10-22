@@ -18,8 +18,8 @@ export default async function PlayPage() {
   const me = await currentAccount();
   const db = await getDb();
   const [top, mine, rtpTop, rtpBest] = await Promise.all([
-    db.query<{ display_name: string; best: number }>(
-      `SELECT a.display_name, g.best FROM game_scores g JOIN accounts a ON a.id = g.account_id ORDER BY g.best DESC, g.updated_at ASC LIMIT 10`,
+    db.query<{ display_name: string; handle: string; best: number }>(
+      `SELECT a.display_name, a.handle, g.best FROM game_scores g JOIN accounts a ON a.id = g.account_id ORDER BY g.best DESC, g.updated_at ASC LIMIT 10`,
     ),
     me ? db.query<{ best: number }>(`SELECT best FROM game_scores WHERE account_id = $1`, [me.id]) : Promise.resolve([]),
     rtpLeaders(5),
@@ -52,7 +52,7 @@ export default async function PlayPage() {
               {top.map((t, i) => (
                 <li key={i}>
                   <span className="cl-rank">{i === 0 ? "♛" : i + 1}</span>
-                  <span className="cl-name">{t.display_name}</span>
+                  <Link className="cl-name" href={`/members/${t.handle}`}>{t.display_name}</Link>
                   <b>{t.best.toLocaleString("en-AU")}</b>
                 </li>
               ))}
@@ -92,7 +92,7 @@ export default async function PlayPage() {
                   {rtpTop[l.id].map((t, i) => (
                     <li key={i}>
                       <span className="cl-rank">{i === 0 ? "♛" : i + 1}</span>
-                      <span className="cl-name">{t.display_name}</span>
+                      <Link className="cl-name" href={`/members/${t.handle}`}>{t.display_name}</Link>
                       <b>{t.best.toLocaleString("en-AU")}</b>
                     </li>
                   ))}

@@ -24,9 +24,19 @@ function matches(e: SearchEntry, q: string) {
  * static (instant to load) instead of hitting the database on every visit.
  * ?q= in the URL still works and stays in sync for sharing.
  */
+interface Member {
+  handle: string;
+  display_name: string;
+  coins: number;
+  frame: string | null;
+  title: string | null;
+  badge: boolean;
+}
+
 export function PullerSearch({ hero, board, entries }: { hero: ReactNode; board: ReactNode; entries: SearchEntry[] }) {
   const [input, setInput] = useState("");
   const [query, setQuery] = useState("");
+  const [members, setMembers] = useState<Member[]>([]);
 
   useEffect(() => {
     const q = (new URLSearchParams(window.location.search).get("q") ?? "").slice(0, 60);
@@ -45,6 +55,26 @@ export function PullerSearch({ hero, board, entries }: { hero: ReactNode; board:
 
   const q = norm(query);
   const shown = entries.filter((e) => matches(e, q));
+
+  // Member accounts (people without a Riser ID too) come from the server, debounced.
+  useEffect(() => {
+    const term = query.trim().replace(/^@/, "");
+    if (term.length < 2) {
+      setMembers([]);
+      return;
+    }
+    const ctrl = new AbortController();
+    const t = setTimeout(() => {
+      fetch(`/api/members?q=${encodeURIComponent(term)}`, { signal: ctrl.signal })
+        .then((r) => (r.ok ? r.json() : []))
+        .then(setMembers)
+        .catch(() => {});
+    }, 200);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [query]);
 
   return (
     <>
@@ -67,7 +97,7 @@ export function PullerSearch({ hero, board, entries }: { hero: ReactNode; board:
                 setInput(e.target.value);
                 apply(e.target.value);
               }}
-              placeholder="Name or Riser ID, e.g. 008"
+              placeholder="Name, @username or Riser ID, e.g. 008"
               aria-label="Search pullers"
             />
             <button className="btn btn-primary btn-sm" type="submit">
@@ -93,13 +123,37 @@ export function PullerSearch({ hero, board, entries }: { hero: ReactNode; board:
                 </div>
               ))}
             </div>
-          ) : (
+          ) : members.length ? null : (
             <div className="empty panel">
               <b>No Riser found</b>
               Try a different name or number. Not in the database yet? <Link href="/join">Register</Link> and pull at our
               next event.
             </div>
           )}
+
+          {q && members.length ? (
+            <div className="member-results">
+              <div className="panel-title" style={{ margin: "48px 0 20px" }}>
+                <span>Members</span>
+                <small>{members.length} FOUND</small>
+              </div>
+              <div className="member-grid">
+                {members.map((m) => (
+                  <Link key={m.handle} href={`/members/${m.handle}`} className={`member-chip${m.frame ? ` mf-${m.frame}` : ""}`}>
+                    <b>
+                      {m.display_name}
+                      {m.badge ? <i className="cl-lion" aria-label="Lion badge" /> : null}
+                    </b>
+                    <span>@{m.handle}</span>
+                    {m.title ? <em>{m.title}</em> : null}
+                    <small>
+                      <span className="coin" aria-hidden /> {m.coins.toLocaleString("en-AU")}
+                    </small>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
     </>
