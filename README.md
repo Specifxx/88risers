@@ -41,7 +41,7 @@ Open http://localhost:3000 and http://localhost:3000/admin/dev-admin. Without `D
 
 1. Import this repository as a Vercel project (or connect it to the existing `88-risers` project).
 2. **Storage → Create Database → Neon (Postgres)** and connect it to the project. This sets `DATABASE_URL`. (Any Postgres works: Supabase, Railway, etc.)
-3. **Settings → Environment Variables**: add `ADMIN_KEY` (long and random, e.g. `openssl rand -base64 24 | tr -d '/+='`) and optionally `NEXT_PUBLIC_SITE_URL`.
+3. **Settings → Environment Variables**: add `ADMIN_KEY` (long and random, e.g. `openssl rand -base64 24 | tr -d '/+='`). The public address (www.88risers.com, used for the sitemap and link previews) is set in `lib/site.ts`.
 4. Deploy. Tables are created on the first request.
 
 Bookmark `https://<your-domain>/admin/<ADMIN_KEY>` on the organisers' phones.

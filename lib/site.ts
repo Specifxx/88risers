@@ -1,7 +1,7 @@
 export const SITE = {
   name: "88 Risers",
   tagline: "Arm Wrestling Club",
-  url: process.env.NEXT_PUBLIC_SITE_URL || "https://88-risers.vercel.app",
+  url: "https://www.88risers.com",
   email: "88risers@gmail.com",
   instagramHandle: "88risers_",
   instagramUrl: "https://www.instagram.com/88risers_/",
