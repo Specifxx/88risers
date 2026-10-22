@@ -5332,3 +5332,58 @@ button.product-media:focus-visible .product-zoom {
   flex: 1;
   min-width: 0;
 }
+
+/* ─────────── Page loading skeleton ─────────── */
+.page-loading {
+  min-height: 80vh;
+}
+.page-loading .wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.sk {
+  display: block;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(213, 182, 122, 0.06) 0%, rgba(213, 182, 122, 0.16) 50%, rgba(213, 182, 122, 0.06) 100%);
+  background-size: 200% 100%;
+  animation: sk-shine 1.1s linear infinite;
+}
+.sk-crumbs {
+  width: 140px;
+  height: 12px;
+  margin-bottom: 10px;
+}
+.sk-title {
+  width: min(560px, 90%);
+  height: clamp(44px, 7vw, 84px);
+}
+.sk-lede {
+  width: min(620px, 95%);
+  height: 16px;
+  margin-top: 6px;
+}
+.sk-short {
+  width: min(320px, 60%);
+}
+.sk-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 36px;
+  max-width: 900px;
+}
+.sk-card {
+  aspect-ratio: 3 / 4;
+  border-radius: 16px;
+}
+@keyframes sk-shine {
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk {
+    animation: none;
+  }
+}

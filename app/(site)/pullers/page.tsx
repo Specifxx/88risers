@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Search } from "@/components/Icons";
 import { Leaderboard } from "@/components/Leaderboard";
+import { PullerSearch } from "@/components/PullerSearch";
 import { PullerSlab } from "@/components/PullerSlab";
 import { getClubStats, getLeaderboard, listPullers } from "@/lib/data";
 import { TIERS } from "@/lib/elo";
+import { formatId } from "@/lib/site";
 
 export const revalidate = 60;
 
@@ -13,15 +14,13 @@ export const metadata: Metadata = {
   description: "Every 88 Risers puller, their permanent Riser ID, Elo rating, match record and match videos.",
 };
 
-export default async function PullersPage({ searchParams }: PageProps<"/pullers">) {
-  const { q } = await searchParams;
-  const query = typeof q === "string" ? q.slice(0, 60) : "";
-  const [pullers, leaders, stats] = await Promise.all([listPullers({ q: query }), getLeaderboard(20), getClubStats()]);
+export default async function PullersPage() {
+  const [pullers, leaders, stats] = await Promise.all([listPullers(), getLeaderboard(20), getClubStats()]);
 
   return (
-    <>
-      <section className="page-hero">
-        <div className="wrap">
+    <PullerSearch
+      hero={
+        <>
           <p className="crumbs">
             <Link href="/">Home</Link> / Riser Database
           </p>
@@ -32,16 +31,9 @@ export default async function PullersPage({ searchParams }: PageProps<"/pullers"
             {stats.members} Risers · {stats.matches} recorded matches. Every puller keeps their ID for life — look up a
             record, check the rankings, watch the pulls.
           </p>
-          <form className="search" role="search">
-            <input name="q" type="search" defaultValue={query} placeholder="Name or Riser ID, e.g. 008" aria-label="Search pullers" />
-            <button className="btn btn-primary btn-sm" type="submit">
-              <Search /> Search
-            </button>
-          </form>
-        </div>
-      </section>
-
-      {!query ? (
+        </>
+      }
+      board={
         <section className="section" id="leaderboard" style={{ paddingBottom: 40 }}>
           <div className="wrap db-band">
             <div>
@@ -66,29 +58,12 @@ export default async function PullersPage({ searchParams }: PageProps<"/pullers"
             <Leaderboard rows={leaders} />
           </div>
         </section>
-      ) : null}
-
-      <section className="section" style={{ paddingTop: query ? 60 : 40 }}>
-        <div className="wrap">
-          <div className="panel-title" style={{ marginBottom: 28 }}>
-            <span>{query ? `Results for “${query}”` : "All Risers"}</span>
-            <small>{pullers.length} FOUND</small>
-          </div>
-          {pullers.length ? (
-            <div className="puller-grid">
-              {pullers.map((p) => (
-                <PullerSlab key={p.id} p={p} />
-              ))}
-            </div>
-          ) : (
-            <div className="empty panel">
-              <b>No Riser found</b>
-              Try a different name or number. Not in the database yet? <Link href="/join">Register</Link> and pull at our
-              next event.
-            </div>
-          )}
-        </div>
-      </section>
-    </>
+      }
+      entries={pullers.map((p) => ({
+        id: p.id,
+        text: [p.name, p.nickname ?? "", formatId(p.id)].join(" ").toLowerCase(),
+        node: <PullerSlab p={p} />,
+      }))}
+    />
   );
 }
