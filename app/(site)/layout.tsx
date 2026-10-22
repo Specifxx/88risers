@@ -1,4 +1,5 @@
 import { SiteFooter } from "@/components/SiteFooter";
+import { MerchLion } from "@/components/MerchLion";
 import { SiteHeader } from "@/components/SiteHeader";
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
@@ -10,6 +11,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       <SiteHeader />
       <main id="main">{children}</main>
       <SiteFooter />
+      <MerchLion />
     </>
   );
 }

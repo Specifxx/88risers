@@ -4263,3 +4263,167 @@ button.product-media:focus-visible .product-zoom {
   font-style: normal;
   color: var(--faint);
 }
+
+/* ───────── Merch lion (corner nudge to the shop) ───────── */
+
+.merch-lion {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  animation: merch-in 0.7s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@keyframes merch-in {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.6) rotate(-12deg);
+  }
+}
+.merch-badge {
+  position: relative;
+  display: block;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  text-decoration: none;
+  background: var(--ink-1);
+  border: 2px solid var(--gold);
+  box-shadow:
+    0 0 0 4px rgba(212, 42, 47, 0.55),
+    0 14px 34px rgba(0, 0, 0, 0.6),
+    0 0 40px rgba(213, 182, 122, 0.25);
+  transition: transform 0.25s var(--ease);
+  animation: merch-breathe 3.2s ease-in-out 1s infinite;
+}
+.merch-badge:hover,
+.merch-badge:focus-visible {
+  transform: scale(1.08) rotate(-4deg);
+  animation-play-state: paused;
+}
+@keyframes merch-breathe {
+  50% {
+    box-shadow:
+      0 0 0 7px rgba(212, 42, 47, 0.35),
+      0 14px 34px rgba(0, 0, 0, 0.6),
+      0 0 50px rgba(213, 182, 122, 0.4);
+  }
+}
+.merch-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: url("/ink/lion-badge.webp") center / cover no-repeat;
+  overflow: hidden;
+}
+.merch-badge:hover .merch-face {
+  animation: merch-roar 0.45s ease-out;
+}
+@keyframes merch-roar {
+  30% {
+    transform: scale(1.12) rotate(-6deg);
+  }
+  60% {
+    transform: scale(0.97) rotate(3deg);
+  }
+}
+.merch-tag {
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  transform: translateX(-50%);
+  padding: 4px 8px 3px;
+  border-radius: 999px;
+  background: var(--red);
+  color: #fff;
+  font: 700 10px/1 var(--f-tech);
+  letter-spacing: 0.16em;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+.merch-bubble {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  max-width: 230px;
+  margin-bottom: 26px;
+  padding: 14px 16px;
+  border-radius: 16px 16px 4px 16px;
+  background: var(--ink-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transform: translateX(12px) scale(0.92);
+  transform-origin: bottom right;
+  pointer-events: none;
+  transition:
+    opacity 0.25s,
+    transform 0.3s var(--ease);
+}
+.merch-bubble.on {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.merch-bubble b {
+  font: 800 20px/1.05 var(--f-display);
+  text-transform: uppercase;
+  color: var(--bone);
+}
+.merch-bubble span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.merch-go {
+  margin-top: 4px;
+  font: 700 11px/1 var(--f-tech);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-decoration: none;
+}
+.merch-go:hover {
+  color: var(--gold-hi);
+}
+.merch-x {
+  position: absolute;
+  top: -8px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: var(--ink);
+  color: var(--muted);
+  font: 400 15px/1 var(--f-body);
+  cursor: pointer;
+}
+.merch-x:hover {
+  color: var(--bone);
+  border-color: var(--gold);
+}
+@media (max-width: 520px) {
+  .merch-badge {
+    width: 64px;
+    height: 64px;
+  }
+  .merch-bubble {
+    max-width: 190px;
+    padding: 12px 14px;
+  }
+  .merch-bubble b {
+    font-size: 17px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .merch-lion,
+  .merch-badge,
+  .merch-badge:hover .merch-face {
+    animation: none;
+  }
+}
