@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AchievementWall } from "@/components/AchievementWall";
 import { RiserPass } from "@/components/RiserPass";
-import { currentAccount } from "@/lib/auth";
+import { ACHIEVEMENTS, earnedAchievements } from "@/lib/achievements";
 import { RTP_LEVELS } from "@/lib/arcade";
-import { getMember } from "@/lib/members";
+import { currentAccount } from "@/lib/auth";
+import { type MemberProfile, getMember } from "@/lib/members";
 import { fmtShortDate } from "@/lib/schedule";
-import { predictionRecord, recordLabel } from "@/lib/supermatch";
+import { type PredictionRecord, predictionRecord, recordLabel } from "@/lib/supermatch";
 
 export const dynamic = "force-dynamic";
 
@@ -17,17 +19,53 @@ export async function generateMetadata({ params }: PageProps<"/members/[handle]"
   if (!m) return { title: "Member not found" };
   return {
     title: `${m.display_name} (@${m.handle})`,
-    description: `${m.display_name}'s 88 Risers member pass: coins, supermatch picks and game scores.`,
+    description: `${m.display_name}'s 88 Risers member pass: achievements, supermatch record and game scores.`,
     robots: { index: false },
   };
 }
 
+const earnedFor = (m: MemberProfile, rec: PredictionRecord) =>
+  earnedAchievements({
+    memberNo: m.member_no,
+    coins: m.coins,
+    rec,
+    pinRun: m.pinRun,
+    rtp: m.rtp,
+    items: m.items,
+    wonGiveaway: m.won_giveaway,
+  });
+
+const n = (v: number | null | undefined) => (v ? v.toLocaleString("en-AU") : "–");
+
 export default async function MemberPage({ params }: PageProps<"/members/[handle]">) {
   const m = await getMember(cleanHandle((await params).handle));
   if (!m) notFound();
-  const [rec, me] = await Promise.all([predictionRecord(m.id), currentAccount()]);
-  const settled = rec.history.filter((h) => h.settled_at);
+  const me = await currentAccount();
   const isMe = me?.handle === m.handle;
+  const [rec, mine, myRec] = await Promise.all([
+    predictionRecord(m.id),
+    me && !isMe ? getMember(me.handle) : null,
+    me && !isMe ? predictionRecord(me.id) : null,
+  ]);
+  const earned = earnedFor(m, rec);
+  const first = m.display_name.split(" ")[0];
+
+  // Head-to-head rows: [label, mine, theirs, link to go beat it]
+  const rows: [string, number, number, string | null][] =
+    mine && myRec
+      ? [
+          ["Supermatch calls", myRec.correct, rec.correct, "/supermatch"],
+          ["Best streak", myRec.bestStreak, rec.bestStreak, "/supermatch"],
+          ["Coins", mine.coins, m.coins, "/play"],
+          ["Achievements", earnedFor(mine, myRec).size, earned.size, null],
+          ["Pin Run", mine.pinRun ?? 0, m.pinRun ?? 0, "/play"],
+          ...RTP_LEVELS.map(
+            (l) => [`Race to the Pin · ${l.name}`, mine.rtp[l.id] ?? 0, m.rtp[l.id] ?? 0, "/play#race-to-the-pin"] as [string, number, number, string],
+          ),
+        ]
+      : [];
+  const wins = rows.filter(([, a, b]) => a > b).length;
+  const losses = rows.filter(([, a, b]) => b > a).length;
 
   return (
     <>
@@ -36,13 +74,14 @@ export default async function MemberPage({ params }: PageProps<"/members/[handle
           <p className="crumbs">
             <Link href="/">Home</Link> / <Link href="/pullers">Riser Database</Link> / @{m.handle}
           </p>
+          <p className="eyebrow">Member #{m.member_no}</p>
           <h1 className="display">
-            {m.display_name.split(" ")[0]}
+            {first}
             <span className="gold-text">.</span>
           </h1>
           <p className="lede">
-            @{m.handle} · member since {fmtShortDate(new Date(m.created_at))}. Riser IDs are earned by pulling at a
-            meet; <Link href="/join">register</Link> to get yours.
+            @{m.handle} · member since {fmtShortDate(new Date(m.created_at))} · {earned.size} of {ACHIEVEMENTS.length}{" "}
+            achievements
           </p>
           {isMe ? (
             <div className="btn-row" style={{ marginTop: 20 }}>
@@ -64,12 +103,57 @@ export default async function MemberPage({ params }: PageProps<"/members/[handle
             record={recordLabel(rec)}
           />
           <div className="account-cols">
-            <div className="panel picks-panel">
-              <h2 className="panel-title">Supermatch picks</h2>
+            <AchievementWall earned={earned} />
+
+            {rows.length ? (
+              <div className="panel h2h">
+                <h2 className="panel-title">
+                  You vs {first}
+                  <small>
+                    {wins}–{losses}
+                  </small>
+                </h2>
+                <table className="h2h-table">
+                  <thead>
+                    <tr>
+                      <th />
+                      <th className="num">You</th>
+                      <th className="num">{first}</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(([label, a, b, href]) => (
+                      <tr key={label}>
+                        <td>{label}</td>
+                        <td className={`num${a > b ? " lead" : ""}`}>{n(a)}</td>
+                        <td className={`num${b > a ? " lead" : ""}`}>{n(b)}</td>
+                        <td className="num">
+                          {href && b > a ? (
+                            <Link className="h2h-go" href={href}>
+                              Beat it →
+                            </Link>
+                          ) : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : !me ? (
+              <div className="panel">
+                <p className="muted" style={{ margin: 0 }}>
+                  <Link href={`/account?next=/members/${m.handle}`}>Log in</Link> to see how you stack up against {first}.
+                </p>
+              </div>
+            ) : null}
+
+            <div className="panel">
+              <h2 className="panel-title">Record &amp; scores</h2>
               <div className="pick-stats">
                 <div>
                   <b>{rec.settled ? `${rec.correct}/${rec.settled}` : "–"}</b>
-                  <span>correct</span>
+                  <span>supermatch calls</span>
                 </div>
                 <div>
                   <b>{rec.rate === null ? "–" : `${rec.rate}%`}</b>
@@ -77,50 +161,28 @@ export default async function MemberPage({ params }: PageProps<"/members/[handle
                 </div>
                 <div>
                   <b>{rec.streak}</b>
-                  <span>streak{rec.bestStreak > rec.streak ? ` · best ${rec.bestStreak}` : ""}</span>
+                  <span>streak</span>
                 </div>
                 <div>
-                  <b>{rec.picks - rec.settled}</b>
-                  <span>pending</span>
+                  <b>{rec.bestStreak}</b>
+                  <span>best streak</span>
                 </div>
               </div>
-              {settled.length ? (
-                <ul className="ledger">
-                  {settled.map((h) => {
-                    const won = h.pick_id === h.winner_id;
-                    return (
-                      <li key={h.match_id}>
-                        <span>
-                          {h.title} · {h.arm === "left" ? "left arm" : "right arm"}
-                          <br />
-                          <small>Picked {h.pick_name}</small>
-                        </span>
-                        <small className={won ? "pick-won" : "pick-lost"}>{won ? "Called it" : "Missed"}</small>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <p className="muted">No settled picks yet.</p>
-              )}
-            </div>
-            <div className="panel">
-              <h2 className="panel-title">Arcade bests</h2>
               <ul className="ledger">
                 <li>
                   <span>Pin Run</span>
-                  <b>{m.pinRun ? m.pinRun.toLocaleString("en-AU") : "–"}</b>
+                  <b>{n(m.pinRun)}</b>
                 </li>
                 {RTP_LEVELS.map((l) => (
                   <li key={l.id}>
                     <span>Race to the Pin · {l.name}</span>
-                    <b>{m.rtp[l.id] ? m.rtp[l.id]!.toLocaleString("en-AU") : "–"}</b>
+                    <b>{n(m.rtp[l.id])}</b>
                   </li>
                 ))}
               </ul>
-              <Link className="link-arrow" href="/play">
-                Beat these scores <span>→</span>
-              </Link>
+              <p className="fine" style={{ marginTop: 12 }}>
+                Who members back stays private; only the overall record is shown.
+              </p>
             </div>
           </div>
         </div>

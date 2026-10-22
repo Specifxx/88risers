@@ -5896,3 +5896,96 @@ a.cl-name {
 a.cl-name:hover {
   color: var(--gold-hi);
 }
+
+/* ─────────── Achievements & head-to-head ─────────── */
+.panel-title small {
+  margin-left: 10px;
+  font: 600 12px/1 var(--f-tech);
+  letter-spacing: 0.12em;
+  color: var(--gold);
+}
+.ach-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.ach {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 14px 10px;
+  border-radius: 14px;
+  border: 1px dashed var(--line-strong);
+  text-align: center;
+  opacity: 0.55;
+}
+.ach .ach-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  font-size: 22px;
+  background: rgba(255, 255, 255, 0.04);
+  filter: grayscale(1);
+}
+.ach b {
+  font: 800 13px/1.15 var(--f-tech);
+  letter-spacing: 0.04em;
+  color: var(--bone);
+}
+.ach small {
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--muted);
+}
+.ach.on {
+  opacity: 1;
+  border-style: solid;
+  border-color: rgba(213, 182, 122, 0.55);
+  background: radial-gradient(120% 100% at 50% 0%, rgba(213, 182, 122, 0.14), transparent 70%);
+}
+.ach.on .ach-icon {
+  filter: none;
+  background: radial-gradient(circle at 35% 30%, #3a2f1c, #17120b);
+  box-shadow: 0 0 0 2px var(--gold), 0 0 18px rgba(213, 182, 122, 0.4);
+}
+.ach.on small {
+  color: var(--gold);
+}
+.h2h-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.h2h-table th,
+.h2h-table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.h2h-table th {
+  font: 600 11px/1 var(--f-tech);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.h2h-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.h2h-table td.lead {
+  color: var(--gold-hi);
+  font-weight: 700;
+}
+.h2h-go {
+  font: 600 11px/1 var(--f-tech);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--red-hi, #ff4a4f);
+  text-decoration: none;
+}

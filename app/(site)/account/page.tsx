@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AccountForms } from "@/components/AccountForms";
+import { AchievementWall } from "@/components/AchievementWall";
 import { RiserPass } from "@/components/RiserPass";
+import { earnedAchievements } from "@/lib/achievements";
+import { getMember } from "@/lib/members";
 import { currentAccount } from "@/lib/auth";
 import { STORE, coinHistory, itemById, redemptionsOf, styleOf } from "@/lib/coins";
 import { fmtOdds } from "@/lib/odds";
@@ -46,7 +49,24 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
     );
   }
 
-  const [history, style, items, rec] = await Promise.all([coinHistory(me.id), styleOf(me.id), redemptionsOf(me.id), predictionRecord(me.id)]);
+  const [history, style, items, rec, profile] = await Promise.all([
+    coinHistory(me.id),
+    styleOf(me.id),
+    redemptionsOf(me.id),
+    predictionRecord(me.id),
+    getMember(me.handle),
+  ]);
+  const earned = profile
+    ? earnedAchievements({
+        memberNo: profile.member_no,
+        coins: profile.coins,
+        rec,
+        pinRun: profile.pinRun,
+        rtp: profile.rtp,
+        items: profile.items,
+        wonGiveaway: profile.won_giveaway,
+      })
+    : new Set<string>();
   const ownedFrames = STORE.filter((i) => i.kind === "frame" && items.some((r) => r.item === i.id));
 
   return (
@@ -100,6 +120,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
           </div>
 
           <div className="account-cols">
+            <AchievementWall earned={earned} title="Your achievements" />
             <div className="panel picks-panel">
               <h2 className="panel-title">Supermatch picks</h2>
               <div className="pick-stats">

@@ -34,14 +34,23 @@ export async function searchMembers(q: string, limit = 12) {
 export interface MemberProfile extends MemberCard {
   id: number;
   created_at: string;
+  /** Sign-up order: #1 is the first account ever made. */
+  member_no: number;
+  items: string[];
+  won_giveaway: boolean;
   pinRun: number | null;
   rtp: Partial<Record<RtpLevel, number>>;
 }
 
 export async function getMember(handle: string): Promise<MemberProfile | null> {
   const db = await getDb();
-  const [m] = await db.query<MemberCard & { id: number; created_at: string; pin_run: number | null }>(
+  const [m] = await db.query<
+    MemberCard & { id: number; created_at: string; member_no: number; items: string[] | null; won_giveaway: boolean; pin_run: number | null }
+  >(
     `SELECT a.id, a.created_at, ${CARD_COLS},
+            (SELECT count(*)::int FROM accounts b WHERE b.id <= a.id) AS member_no,
+            (SELECT array_agg(DISTINCT r.item) FROM redemptions r WHERE r.account_id = a.id) AS items,
+            EXISTS (SELECT 1 FROM redemptions r WHERE r.account_id = a.id AND r.won) AS won_giveaway,
             (SELECT best FROM game_scores g WHERE g.account_id = a.id) AS pin_run
      FROM accounts a LEFT JOIN account_style s ON s.account_id = a.id
      WHERE a.handle = $1`,
@@ -54,6 +63,6 @@ export async function getMember(handle: string): Promise<MemberProfile | null> {
   );
   const rtp: Partial<Record<RtpLevel, number>> = {};
   for (const r of rtpRows) if (RTP_LEVELS.some((l) => l.id === r.level)) rtp[r.level] = r.best;
-  const { pin_run, ...rest } = m;
-  return { ...rest, pinRun: pin_run, rtp };
+  const { pin_run, items, ...rest } = m;
+  return { ...rest, items: items ?? [], pinRun: pin_run, rtp };
 }
