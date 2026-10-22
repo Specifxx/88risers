@@ -111,7 +111,7 @@ export async function castPick(_prev: FormState, form: FormData): Promise<FormSt
          FROM predictions WHERE match_id = $1`,
         [matchId, m.a_id, m.b_id],
       );
-      locked = quoteOdds(stake, pick === m.a_id ? "a" : "b", pools);
+      locked = quoteOdds(pick === m.a_id ? "a" : "b", pools);
       await tx.query(`INSERT INTO predictions (match_id, account_id, pick_id, stake, odds) VALUES ($1, $2, $3, $4, $5)`, [
         matchId, me.id, pick, stake, locked,
       ]);

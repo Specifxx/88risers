@@ -65,13 +65,13 @@ export interface Backer {
   handle: string;
 }
 
-/** Every pick on every supermatch, for admin HQ. Biggest stakes first. */
+/** Every pick on every supermatch, for admin HQ, in the order they were placed. */
 export async function listBackers() {
   const db = await getDb();
   return db.query<Backer>(
     `SELECT p.match_id, p.pick_id, p.stake, p.odds::float8 AS odds, p.created_at, a.display_name, a.handle
      FROM predictions p JOIN accounts a ON a.id = p.account_id
-     ORDER BY p.match_id, p.stake DESC, p.created_at ASC`,
+     ORDER BY p.match_id, p.created_at ASC, p.account_id ASC`,
   );
 }
 

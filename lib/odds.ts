@@ -3,8 +3,9 @@
  * less-backed puller is priced higher. The lion seeds each side with POOL_SEED coins, so odds
  * open at 2.00× and stay sane when one side has no backers.
  *
- * Each bet locks in the odds at the moment it's placed (counting its own stake), and pays
- * stake × locked odds if right. Later bets move the price for everyone after, not before.
+ * Each bet locks in the price shown at the moment it's placed, and pays stake × those odds if
+ * right. The bet then moves the price for the next person (the first bet on a match always
+ * gets 2.00×).
  * Shared by the server (locking, settling) and the browser (live estimates).
  */
 export const POOL_SEED = 100;
@@ -24,9 +25,9 @@ export function oddsOf(p: Pools) {
   return { a: round2((A + B) / A), b: round2((A + B) / B) };
 }
 
-/** The odds a new bet of `stake` on `side` locks in (your own coins shift the price). */
-export function quoteOdds(stake: number, side: "a" | "b", p: Pools) {
-  return oddsOf({ a: p.a + (side === "a" ? stake : 0), b: p.b + (side === "b" ? stake : 0) })[side];
+/** The odds a new bet on `side` locks in: the current price, before the bet moves it. */
+export function quoteOdds(side: "a" | "b", p: Pools) {
+  return oddsOf(p)[side];
 }
 
 /** What a winning stake pays back (stake included) at the given locked odds. */

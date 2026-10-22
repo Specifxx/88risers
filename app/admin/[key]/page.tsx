@@ -1071,7 +1071,9 @@ function Backers({ m, rows, nameOf }: { m: Supermatch; rows: Backer[]; nameOf: (
             <th>Backed</th>
             <th className="num">Stake</th>
             <th className="num">Odds</th>
-            <th className="num">{m.settled_at ? "Paid" : "Pays if right"}</th>
+            <th className="num">Stake × odds</th>
+            <th className="num">Bonus</th>
+            <th className="num">{m.settled_at ? "Total paid" : "Total if right"}</th>
           </tr>
         </thead>
         <tbody>
@@ -1079,7 +1081,7 @@ function Backers({ m, rows, nameOf }: { m: Supermatch; rows: Backer[]; nameOf: (
             const side = r.pick_id === m.a_id ? "a" : "b";
             const lost = m.winner_id != null && r.pick_id !== m.winner_id;
             const at = r.odds ?? odds[side];
-            const pays = lost ? 0 : m.reward + payoutAt(r.stake, at);
+            const ret = payoutAt(r.stake, at);
             return (
               <tr key={r.handle}>
                 <td>
@@ -1090,7 +1092,11 @@ function Backers({ m, rows, nameOf }: { m: Supermatch; rows: Backer[]; nameOf: (
                 </td>
                 <td className="num">{r.stake}</td>
                 <td className="num">{r.stake ? fmtOdds(at) : "—"}</td>
-                <td className="num">{lost ? "—" : pays}</td>
+                <td className="num">{r.stake && !lost ? ret : "—"}</td>
+                <td className="num">{lost ? "—" : m.reward}</td>
+                <td className="num">
+                  <b>{lost ? 0 : ret + m.reward}</b>
+                </td>
               </tr>
             );
           })}

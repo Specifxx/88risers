@@ -41,7 +41,7 @@ export function VotePanel({
   const router = useRouter();
   const odds = oddsOf(pools);
   const side = pick === a.id ? "a" : pick === b.id ? "b" : null;
-  const quote = side && stake > 0 ? quoteOdds(stake, side, pools) : 0;
+  const quote = side && stake > 0 ? quoteOdds(side, pools) : 0;
   const est = payoutAt(stake, quote);
 
   useEffect(() => {

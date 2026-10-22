@@ -1,4 +1,5 @@
 import "server-only";
+import { quoteOdds } from "./odds";
 
 /**
  * Database access.
@@ -241,7 +242,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v12";
+const MIGRATION_MARKER = "founders_v13";
 
 async function migrate(db: Db) {
   // Fast path for every cold start after the first: one tiny query instead of the whole schema.
@@ -312,6 +313,27 @@ async function migrate(db: Db) {
         "2026-11-29T18:00:00+11:00",
       ],
     );
+    // Bets placed before odds were locked: replay each match in betting order and give every
+    // bet the price it would have been shown (the first bet on a match gets 2.00×).
+    const unpriced = await tx.query<{ match_id: number }>(`SELECT DISTINCT p.match_id FROM predictions p JOIN supermatches m ON m.id = p.match_id
+       WHERE p.odds IS NULL AND m.settled_at IS NULL`);
+    for (const { match_id } of unpriced) {
+      const [sm] = await tx.query<{ a_id: number }>(`SELECT a_id FROM supermatches WHERE id = $1`, [match_id]);
+      const bets = await tx.query<{ account_id: number; pick_id: number; stake: number; odds: string | null }>(
+        `SELECT account_id, pick_id, stake, odds FROM predictions WHERE match_id = $1 ORDER BY created_at, account_id`,
+        [match_id],
+      );
+      const pools = { a: 0, b: 0 };
+      for (const bet of bets) {
+        const side = bet.pick_id === sm.a_id ? "a" : "b";
+        if (bet.odds == null) {
+          await tx.query(`UPDATE predictions SET odds = $3 WHERE match_id = $1 AND account_id = $2`, [
+            match_id, bet.account_id, quoteOdds(side, pools),
+          ]);
+        }
+        pools[side] += bet.stake;
+      }
+    }
     // The November supermatch is left arm. Once only, so a later admin edit isn't overwritten.
     const [armDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'sm_arm_v1'`);
     if (!armDone) {
