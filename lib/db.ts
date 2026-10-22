@@ -116,6 +116,66 @@ CREATE TABLE IF NOT EXISTS shop_interest (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS accounts (
+  id            serial PRIMARY KEY,
+  handle        text NOT NULL UNIQUE,
+  display_name  text NOT NULL,
+  pass_hash     text NOT NULL,
+  created_at    timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  token_hash  text PRIMARY KEY,
+  account_id  integer NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  expires_at  timestamptz NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+  handle  text NOT NULL,
+  at      timestamptz NOT NULL DEFAULT now()
+);
+
+-- 88Risers coins: a ledger, so the balance is always the sum and every grant is traceable.
+-- ref makes payouts idempotent (one supermatch payout per account).
+CREATE TABLE IF NOT EXISTS coin_tx (
+  id          serial PRIMARY KEY,
+  account_id  integer NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  amount      integer NOT NULL,
+  reason      text NOT NULL,
+  ref         text,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (account_id, ref)
+);
+
+CREATE TABLE IF NOT EXISTS supermatches (
+  id          serial PRIMARY KEY,
+  slug        text NOT NULL UNIQUE,
+  title       text NOT NULL,
+  blurb       text,
+  a_id        integer NOT NULL REFERENCES pullers(id) ON UPDATE CASCADE,
+  b_id        integer NOT NULL REFERENCES pullers(id) ON UPDATE CASCADE,
+  closes_at   timestamptz NOT NULL,
+  reward      integer NOT NULL DEFAULT 88,
+  winner_id   integer REFERENCES pullers(id) ON UPDATE CASCADE,
+  settled_at  timestamptz,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS predictions (
+  match_id    integer NOT NULL REFERENCES supermatches(id) ON DELETE CASCADE,
+  account_id  integer NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  pick_id     integer NOT NULL,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (match_id, account_id)
+);
+
+CREATE TABLE IF NOT EXISTS game_scores (
+  account_id  integer PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+  best        integer NOT NULL,
+  updated_at  timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS meta (
   key    text PRIMARY KEY,
   value  text
@@ -154,7 +214,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v8";
+const MIGRATION_MARKER = "founders_v9";
 
 async function migrate(db: Db) {
   // Fast path for every cold start after the first: one tiny query instead of the whole schema.
@@ -212,6 +272,19 @@ async function migrate(db: Db) {
         [`https://www.instagram.com/reel/${code}/`, `Episode ${String(i + 1).padStart(2, "0")}`, i + 1, `%/${code}/%`],
       );
     }
+    // November Supermatch: Bhavya (#004) vs Harry (#001). Voting closes at the match; editable in admin.
+    await tx.query(
+      `INSERT INTO supermatches (slug, title, blurb, a_id, b_id, closes_at, reward)
+       SELECT $1, $2, $3, 4, 1, $4, 88
+       WHERE EXISTS (SELECT 1 FROM pullers WHERE id = 4) AND EXISTS (SELECT 1 FROM pullers WHERE id = 1)
+       ON CONFLICT (slug) DO NOTHING`,
+      [
+        "november-2026",
+        "November Supermatch",
+        "Silver medallist Bhavya takes on 70kg champion Harry. Two founders, one table, bragging rights for the year.",
+        "2026-11-29T18:00:00+11:00",
+      ],
+    );
   });
 }
 
