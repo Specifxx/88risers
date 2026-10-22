@@ -6112,28 +6112,17 @@ a.cl-name:hover {
   filter: grayscale(1) brightness(0.32) contrast(1.15);
 }
 .lift-lit {
-  transition: clip-path 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: lift-ink-in 1.4s ease-out both;
 }
-.lift-line {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #f2e1b6 15%, #fff7e0 50%, #f2e1b6 85%, transparent);
-  box-shadow: 0 0 12px rgba(242, 225, 182, 0.9), 0 0 30px rgba(242, 225, 182, 0.4);
-  transition: top 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-.lift-line span {
-  position: absolute;
-  right: 10px;
-  bottom: 6px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: rgba(10, 8, 7, 0.85);
-  border: 1px solid #f2e1b6;
-  font: 700 11px/1 var(--f-tech);
-  letter-spacing: 0.1em;
-  color: #f2e1b6;
+@keyframes lift-ink-in {
+  from {
+    opacity: 0;
+    filter: brightness(1.8) saturate(0.4);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+  }
 }
 .lift-done .lift-art {
   border-color: #f2e1b6;
@@ -6165,9 +6154,8 @@ a.cl-name:hover {
   white-space: nowrap;
 }
 @media (prefers-reduced-motion: reduce) {
-  .lift-lit,
-  .lift-line {
-    transition: none;
+  .lift-lit {
+    animation: none;
   }
   .lift-done .lift-art::after {
     animation: none;
