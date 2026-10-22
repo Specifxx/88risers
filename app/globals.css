@@ -4615,17 +4615,6 @@ button.product-media:focus-visible .product-zoom {
   background: var(--line-strong);
   box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
 }
-.pass-gold {
-  background: linear-gradient(135deg, #f2e1b6, #a8854a 40%, #f2e1b6 60%, #8d7448);
-}
-.pass-ink {
-  background: conic-gradient(from 200deg, #7d1216, #ff4a4f, #d42a2f, #7d1216, #ff4a4f);
-}
-.pass-holo {
-  background: linear-gradient(120deg, #ff4a4f, #f2e1b6, #00ffc8, #5078ff, #ff4a4f);
-  background-size: 300% 300%;
-  animation: holo 6s linear infinite;
-}
 @keyframes holo {
   to {
     background-position: 300% 0;
@@ -4634,13 +4623,175 @@ button.product-media:focus-visible .product-zoom {
 .pass-inner {
   position: relative;
   overflow: hidden;
-  padding: 24px;
+  isolation: isolate;
+  padding: 24px 24px 0;
   border-radius: 19px;
   background:
-    url("/ink/cloud.webp") 120% 110% / 60% no-repeat,
     radial-gradient(80% 60% at 20% 10%, rgba(212, 42, 47, 0.25), transparent 70%),
     var(--ink-1);
   min-height: 260px;
+}
+/* Decorative art sits behind the text, top-right, clear of the footer. */
+.pass-inner::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 22%;
+  right: -14%;
+  width: 62%;
+  aspect-ratio: 390 / 246;
+  background: url("/ink/cloud.webp") center / contain no-repeat;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* ── Gold: brushed gold, corner brackets, warm glow ── */
+.pass-gold {
+  padding: 5px;
+  background: linear-gradient(135deg, #fff1c9, #a8854a 30%, #f6dfa4 50%, #7a5f33 72%, #f2e1b6);
+  box-shadow:
+    0 0 0 1px rgba(242, 225, 182, 0.35),
+    0 0 40px rgba(213, 182, 122, 0.35),
+    0 30px 70px rgba(0, 0, 0, 0.6);
+}
+.pass-gold .pass-inner {
+  border-radius: 17px;
+  background:
+    radial-gradient(90% 70% at 85% 20%, rgba(213, 182, 122, 0.22), transparent 70%),
+    radial-gradient(70% 60% at 10% 100%, rgba(213, 182, 122, 0.12), transparent 70%),
+    linear-gradient(160deg, #1d1710, #0f0d0a);
+  box-shadow: inset 0 0 0 1px rgba(242, 225, 182, 0.4);
+}
+.pass-gold .pass-inner::before {
+  background-image: url("/ink/lion-line.webp");
+  aspect-ratio: 420 / 258;
+  opacity: 0.45;
+}
+.pass-gold .pass-inner::after {
+  --c: #f2e1b6;
+  content: "";
+  position: absolute;
+  inset: 10px;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--c), var(--c)) top left / 26px 2px no-repeat,
+    linear-gradient(var(--c), var(--c)) top left / 2px 26px no-repeat,
+    linear-gradient(var(--c), var(--c)) top right / 26px 2px no-repeat,
+    linear-gradient(var(--c), var(--c)) top right / 2px 26px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom left / 26px 2px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom left / 2px 26px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom right / 26px 2px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom right / 2px 26px no-repeat;
+  opacity: 0.8;
+}
+.pass-gold .pass-name {
+  background: linear-gradient(180deg, #fff1c9, #d5b67a 60%, #a8854a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.pass-gold .pass-record {
+  border-top-color: rgba(242, 225, 182, 0.3);
+}
+
+/* ── Red ink: brush border, ensō circle, red wash ── */
+.pass-ink {
+  padding: 6px;
+  background:
+    repeating-linear-gradient(115deg, rgba(0, 0, 0, 0.25) 0 3px, transparent 3px 9px),
+    conic-gradient(from 200deg, #6d0f12, #ff4a4f, #c3242a, #7d1216, #ff5a5f, #a71c21, #6d0f12);
+  box-shadow:
+    0 0 46px rgba(212, 42, 47, 0.45),
+    0 30px 70px rgba(0, 0, 0, 0.6);
+}
+.pass-ink .pass-inner {
+  border-radius: 16px;
+  background:
+    radial-gradient(70% 55% at 95% 30%, rgba(212, 42, 47, 0.35), transparent 70%),
+    radial-gradient(60% 50% at 0% 0%, rgba(212, 42, 47, 0.3), transparent 70%),
+    linear-gradient(170deg, #1a0b0b, #0d0909);
+  box-shadow: inset 0 0 0 1px rgba(255, 74, 79, 0.35);
+}
+.pass-ink .pass-inner::before {
+  top: 4%;
+  right: -16%;
+  width: 72%;
+  aspect-ratio: 360 / 336;
+  background-image: url("/ink/circle.webp");
+  opacity: 0.55;
+  transform: rotate(-12deg);
+}
+.pass-ink .pass-name {
+  color: #fff;
+  text-shadow: 3px 3px 0 rgba(212, 42, 47, 0.75);
+}
+.pass-ink .pass-record {
+  border-top-color: rgba(255, 74, 79, 0.35);
+}
+
+/* ── Holo: animated foil border and a sweeping sheen ── */
+.pass-holo {
+  padding: 5px;
+  background: linear-gradient(120deg, #ff4a4f, #f2e1b6, #00ffc8, #5078ff, #d06bff, #ff4a4f);
+  background-size: 300% 300%;
+  animation: holo 6s linear infinite;
+  box-shadow:
+    0 0 36px rgba(0, 255, 200, 0.25),
+    0 0 60px rgba(80, 120, 255, 0.2),
+    0 30px 70px rgba(0, 0, 0, 0.6);
+}
+.pass-holo .pass-inner {
+  border-radius: 17px;
+  background:
+    radial-gradient(80% 60% at 90% 15%, rgba(80, 120, 255, 0.22), transparent 70%),
+    radial-gradient(70% 60% at 5% 95%, rgba(0, 255, 200, 0.12), transparent 70%),
+    linear-gradient(160deg, #12131a, #0b0b10);
+}
+.pass-holo .pass-inner::before {
+  opacity: 0.4;
+  filter: hue-rotate(140deg) saturate(1.6);
+}
+.pass-holo .pass-inner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 74, 79, 0.18) 32%,
+    rgba(242, 225, 182, 0.22) 40%,
+    rgba(0, 255, 200, 0.2) 48%,
+    rgba(80, 120, 255, 0.18) 56%,
+    transparent 68%
+  );
+  background-size: 250% 100%;
+  mix-blend-mode: screen;
+  animation: holo-sheen 4.5s ease-in-out infinite;
+}
+@keyframes holo-sheen {
+  0% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -120% 0;
+  }
+}
+.pass-holo .pass-name {
+  background: linear-gradient(100deg, #fff 10%, #f2e1b6 35%, #9ffff0 55%, #b7c6ff 75%, #fff 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.pass-holo .pass-record {
+  border-top-color: rgba(159, 255, 240, 0.25);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pass-holo .pass-inner::after {
+    animation: none;
+  }
 }
 .pass-top {
   display: flex;
@@ -5609,7 +5760,10 @@ button.product-media:focus-visible .product-zoom {
 
 /* ─────────── Prediction record ─────────── */
 .pass-record {
-  margin: 10px 0 0;
+  margin: 18px -24px 0;
+  padding: 12px 24px 14px;
+  border-top: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.35);
   font: 600 11px/1.4 var(--f-tech);
   letter-spacing: 0.12em;
   text-transform: uppercase;
