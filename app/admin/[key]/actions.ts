@@ -8,13 +8,14 @@ import { getDb, type Db } from "@/lib/db";
 import { savePhoto, photoUrl } from "@/lib/photos";
 import { fromSydneyInput } from "@/lib/schedule";
 import { setGiveawayDrawAt } from "@/lib/giveaway";
+import { CHALK, awardChalk, currentSeason, meetLabel, newMeetCode, recordCheckin, saveChalkSettings, sydneyToday } from "@/lib/chalk";
 import { videoEmbed } from "@/lib/video";
 import { mailConfigured, mailStatus, sendClubMail } from "@/lib/mail";
 import { hashPassword } from "@/lib/auth";
 import { grant, itemById } from "@/lib/coins";
 import { fmtOdds, oddsOf, payoutAt } from "@/lib/odds";
 
-type Tab = "registrations" | "pullers" | "matches" | "events" | "tv" | "shop" | "coins";
+type Tab = "registrations" | "pullers" | "matches" | "events" | "tv" | "shop" | "coins" | "chalk";
 
 const str = (f: FormData, k: string) => {
   const v = f.get(k);
@@ -422,6 +423,23 @@ export async function settleSupermatch(form: FormData) {
       if (m.settled_at) return "Already settled.";
       if (winner !== m.a_id && winner !== m.b_id) return "Pick the winner.";
       await tx.query(`UPDATE supermatches SET winner_id = $2, settled_at = now() WHERE id = $1`, [id, winner]);
+      // Chalk for the two pullers (if their Riser is linked to a member account).
+      const pullers = await tx.query<{ id: number; account_id: number | null }>(
+        `SELECT id, account_id FROM pullers WHERE id IN ($1, $2)`,
+        [m.a_id, m.b_id],
+      );
+      for (const pl of pullers) {
+        if (!pl.account_id) continue;
+        const won = pl.id === winner;
+        await awardChalk(
+          tx,
+          pl.account_id,
+          currentSeason(),
+          CHALK.supermatch + (won ? CHALK.supermatchWin : 0),
+          won ? "Won a club supermatch" : "Pulled in a club supermatch",
+          `sm:${id}:puller`,
+        );
+      }
       const [pools] = await tx.query<{ a: number; b: number }>(
         `SELECT coalesce(sum(stake) FILTER (WHERE pick_id = $2), 0)::int AS a,
                 coalesce(sum(stake) FILTER (WHERE pick_id = $3), 0)::int AS b
@@ -520,4 +538,117 @@ export async function drawGiveaway(form: FormData) {
   // Close out this round: every entry for it is marked used.
   await db.query(`UPDATE redemptions SET fulfilled = true WHERE item = $1 AND NOT fulfilled`, [item.id]);
   done(key, "coins", `Winner: ${w.display_name} (@${w.handle}), ticket ${w.code}. All entries for this round are now closed.`);
+}
+
+/* ─────────── Chalk ─────────── */
+
+/** Opens check-in for today (creates today's meet with a fresh code), or reopens it. */
+export async function openCheckin(form: FormData) {
+  const key = guard(form);
+  const tournament = form.get("is_tournament") === "on";
+  const db = await getDb();
+  await db.query(
+    `INSERT INTO meets (day, code, is_tournament) VALUES ($1::date, $2, $3)
+     ON CONFLICT (day) DO UPDATE SET open = true, is_tournament = meets.is_tournament OR EXCLUDED.is_tournament`,
+    [sydneyToday(), newMeetCode(), tournament],
+  );
+  done(key, "chalk", "Check-in is open. Show members the code.");
+}
+
+export async function setCheckinOpen(form: FormData) {
+  const key = guard(form);
+  const id = int(form, "meet_id");
+  const open = form.get("open") === "1";
+  const db = await getDb();
+  await db.query(`UPDATE meets SET open = $2 WHERE id = $1`, [id, open]);
+  done(key, "chalk", open ? "Check-in reopened." : "Check-in closed.");
+}
+
+export async function setMeetTournament(form: FormData) {
+  const key = guard(form);
+  const id = int(form, "meet_id");
+  const db = await getDb();
+  await db.query(`UPDATE meets SET is_tournament = NOT is_tournament WHERE id = $1`, [id]);
+  done(key, "chalk", "Meet updated.");
+}
+
+/** For members who couldn't check in themselves (flat phone, no signal…). */
+export async function addAttendee(form: FormData) {
+  const key = guard(form);
+  const id = int(form, "meet_id");
+  const account = int(form, "account_id");
+  if (!id || !account) done(key, "chalk", "Pick a member.", true);
+  const db = await getDb();
+  let added = false;
+  await db.transaction(async (tx) => {
+    const [meet] = await tx.query<{ id: number; day: string }>(`SELECT id, day::text AS day FROM meets WHERE id = $1`, [id]);
+    if (meet) added = await recordCheckin(tx, meet, account);
+  });
+  done(key, "chalk", added ? `Checked in. +${CHALK.checkin} Chalk.` : "They were already checked in.");
+}
+
+/** Sets 1st/2nd/3rd for a tournament meet and re-awards podium Chalk to match. */
+export async function setPodium(form: FormData) {
+  const key = guard(form);
+  const id = int(form, "meet_id");
+  const places = [int(form, "first_id"), int(form, "second_id"), int(form, "third_id")];
+  const picked = places.filter(Boolean);
+  if (new Set(picked).size !== picked.length) done(key, "chalk", "Each place needs a different member.", true);
+  const db = await getDb();
+  await db.transaction(async (tx) => {
+    const [meet] = await tx.query<{ day: string }>(`SELECT day::text AS day FROM meets WHERE id = $1 FOR UPDATE`, [id]);
+    if (!meet) return;
+    const season = Number(meet.day.slice(0, 4));
+    await tx.query(`UPDATE meets SET first_id = $2, second_id = $3, third_id = $4, is_tournament = true WHERE id = $1`, [
+      id,
+      places[0] ?? null,
+      places[1] ?? null,
+      places[2] ?? null,
+    ]);
+    await tx.query(`DELETE FROM chalk_tx WHERE ref LIKE $1`, [`podium:${id}:%`]);
+    const label = ["1st", "2nd", "3rd"];
+    for (const [i, acct] of places.entries()) {
+      if (acct) await awardChalk(tx, acct, season, CHALK.podium[i], `${label[i]} at the ${meetLabel(meet.day)} tournament`, `podium:${id}:${i + 1}`);
+    }
+  });
+  done(key, "chalk", "Podium saved and Chalk awarded.");
+}
+
+/** Manual correction, e.g. a missed check-in from an earlier meet. */
+export async function adjustChalk(form: FormData) {
+  const key = guard(form);
+  const account = int(form, "account_id");
+  const raw = str(form, "amount") ?? "";
+  const amount = /^-?\d{1,4}$/.test(raw) ? Number(raw) : null;
+  const reason = str(form, "reason") ?? "Adjusted by the organisers";
+  if (!account || !amount) done(key, "chalk", "Pick a member and an amount.", true);
+  const db = await getDb();
+  await awardChalk(db, account, currentSeason(), amount, reason, null);
+  done(key, "chalk", `${amount > 0 ? "Added" : "Removed"} ${Math.abs(amount)} Chalk.`);
+}
+
+export async function saveChalkConfig(form: FormData) {
+  const key = guard(form);
+  const target = int(form, "target");
+  if (!target || target < 1 || target > 500) done(key, "chalk", "The Lift target should be between 1 and 500.", true);
+  await saveChalkSettings({
+    target,
+    liftPrize: str(form, "lift_prize") ?? "A season reward from the club",
+    topPrize: str(form, "top_prize") ?? "The Top Riser prize, revealed at the end of the year",
+  });
+  done(key, "chalk", "Chalk settings saved.");
+}
+
+/** Links a Riser to their member account (or unlinks with an empty choice). */
+export async function linkPullerAccount(form: FormData) {
+  const key = guard(form);
+  const puller = int(form, "puller_id");
+  const account = int(form, "account_id");
+  const db = await getDb();
+  try {
+    await db.query(`UPDATE pullers SET account_id = $2 WHERE id = $1`, [puller, account]);
+  } catch (err) {
+    done(key, "pullers", /unique|duplicate/i.test(String(err)) ? "That member is already linked to another Riser." : friendly(err), true);
+  }
+  done(key, "pullers", account ? "Member account linked." : "Member account unlinked.");
 }

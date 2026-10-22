@@ -50,6 +50,17 @@ export function AccountForms({ next, start = "signup" }: { next: string; start?:
             <input id="su-pass" name="password" type="password" autoComplete="new-password" minLength={8} required />
             {upErr?.field === "password" ? <p className="field-error">{upErr.message}</p> : <p className="field-hint">At least 8 characters.</p>}
           </div>
+          <div className="field" data-invalid={upErr?.field === "invited_by" ? "true" : undefined}>
+            <label htmlFor="su-invite">
+              Invited by <em>optional</em>
+            </label>
+            <input id="su-invite" name="invited_by" placeholder="@their_username" autoCapitalize="off" autoCorrect="off" maxLength={21} />
+            {upErr?.field === "invited_by" ? (
+              <p className="field-error">{upErr.message}</p>
+            ) : (
+              <p className="field-hint">They get bonus Chalk when you come to your first meet.</p>
+            )}
+          </div>
           <div className="hp" aria-hidden>
             <label>
               Company <input name="company" type="text" tabIndex={-1} autoComplete="off" />

@@ -1,40 +1,37 @@
 import Link from "next/link";
-import type { Puller } from "@/lib/data";
-import { formatId } from "@/lib/site";
-import { tierFor } from "@/lib/elo";
+import type { BoardRow } from "@/lib/chalk";
 import { Avatar } from "./Avatar";
 
-export function Leaderboard({ rows, emptyNote }: { rows: Puller[]; emptyNote?: React.ReactNode }) {
+/** The Chalkboard: members ranked by season Chalk. */
+export function Leaderboard({ rows, target, emptyNote }: { rows: BoardRow[]; target: number; emptyNote?: React.ReactNode }) {
   return (
     <div className="board">
       <div className="board-head">
         <span>#</span>
-        <span className="h-id">ID</span>
-        <span>Puller</span>
-        <span className="r">Elo</span>
-        <span className="r h-wl">W–L</span>
+        <span className="h-id">Lift</span>
+        <span>Member</span>
+        <span className="r">Chalk</span>
+        <span className="r h-wl">Meets</span>
       </div>
       {rows.length === 0 ? (
         <div className="empty">
           <b>The board is waiting</b>
-          {emptyNote ?? "Rankings go live after the first 88 Risers tournament. Every match counts from day one."}
+          {emptyNote ?? "Check in at the next meet to put the first Chalk on the board."}
         </div>
       ) : (
-        rows.map((p, i) => (
-          <Link key={p.id} href={`/pullers/${p.id}`} className="board-row">
-            <span className="rank">{i + 1}</span>
-            <span className="rid">{formatId(p.id)}</span>
+        rows.map((r, i) => (
+          <Link key={r.handle} href={`/members/${r.handle}`} className="board-row">
+            <span className="rank">{i === 0 ? "♛" : i + 1}</span>
+            <span className="rid">{r.chalk >= target ? "✓" : `${Math.round((r.chalk / target) * 100)}%`}</span>
             <span className="who">
-              <Avatar src={p.photo_url || p.card_url} name={p.name} />
+              <Avatar src={null} name={r.display_name} />
               <span style={{ minWidth: 0 }}>
-                <b>{p.name}</b>
-                <small>{tierFor(p.elo).name}</small>
+                <b>{r.display_name}</b>
+                <small>{i === 0 ? "Top Riser so far" : `@${r.handle}`}</small>
               </span>
             </span>
-            <span className="elo">{p.elo}</span>
-            <span className="wl">
-              {p.wins}–{p.losses}
-            </span>
+            <span className="elo">{r.chalk}</span>
+            <span className="wl">{r.meets}</span>
           </Link>
         ))
       )}

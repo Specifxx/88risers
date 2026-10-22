@@ -3,19 +3,19 @@ import Link from "next/link";
 import { Leaderboard } from "@/components/Leaderboard";
 import { PullerSearch } from "@/components/PullerSearch";
 import { PullerSlab } from "@/components/PullerSlab";
-import { getClubStats, getLeaderboard, listPullers } from "@/lib/data";
-import { TIERS } from "@/lib/elo";
+import { chalkboard, chalkSettings, currentSeason } from "@/lib/chalk";
+import { getClubStats, listPullers } from "@/lib/data";
 import { formatId } from "@/lib/site";
 
 export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Riser Database",
-  description: "Every 88 Risers puller, their permanent Riser ID, Elo rating, match record and match videos.",
+  description: "Every 88 Risers puller, their permanent Riser ID, match record and match videos, plus the season Chalkboard.",
 };
 
 export default async function PullersPage() {
-  const [pullers, leaders, stats] = await Promise.all([listPullers(), getLeaderboard(20), getClubStats()]);
+  const [pullers, leaders, stats, settings] = await Promise.all([listPullers(), chalkboard(currentSeason(), 10), getClubStats(), chalkSettings()]);
 
   return (
     <PullerSearch
@@ -37,25 +37,21 @@ export default async function PullersPage() {
         <section className="section" id="leaderboard" style={{ paddingBottom: 40 }}>
           <div className="wrap db-band">
             <div>
-              <p className="eyebrow">Leaderboard</p>
+              <p className="eyebrow">{currentSeason()} season</p>
               <h2 className="display" style={{ fontSize: "clamp(48px, 6vw, 84px)" }}>
-                Top of
+                The
                 <br />
-                <span className="gold-text">the table.</span>
+                <span className="gold-text">Chalkboard.</span>
               </h2>
               <p className="lede" style={{ marginTop: 18 }}>
-                Ratings use Elo: everyone starts at 1000 and moves after every recorded match — beat a higher-rated
-                puller and you climb faster. Ratings are provisional for the first five matches.
+                Members earn Chalk by checking in at meets, bringing friends, placing at tournaments and pulling in
+                supermatches. Hit {settings.target} to complete the Lift; top of the board on 31 December is crowned Top Riser.
               </p>
-              <div className="profile-tags" style={{ marginTop: 22 }}>
-                {[...TIERS].reverse().map((t) => (
-                  <span key={t.name} className="pill dim">
-                    {t.name} {Number.isFinite(t.min) ? `${t.min}+` : `<950`}
-                  </span>
-                ))}
-              </div>
+              <Link className="link-arrow" href="/chalk" style={{ marginTop: 18, display: "inline-flex" }}>
+                Full standings &amp; how it works <span>→</span>
+              </Link>
             </div>
-            <Leaderboard rows={leaders} />
+            <Leaderboard rows={leaders} target={settings.target} />
           </div>
         </section>
       }

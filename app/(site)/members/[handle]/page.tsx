@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AchievementWall } from "@/components/AchievementWall";
+import { ChalkLift } from "@/components/ChalkLift";
 import { RiserPass } from "@/components/RiserPass";
+import { chalkOf, chalkSettings, liftCompletedEver } from "@/lib/chalk";
 import { ACHIEVEMENTS, earnedAchievements } from "@/lib/achievements";
 import { RTP_LEVELS } from "@/lib/arcade";
 import { currentAccount } from "@/lib/auth";
@@ -24,7 +26,7 @@ export async function generateMetadata({ params }: PageProps<"/members/[handle]"
   };
 }
 
-const earnedFor = (m: MemberProfile, rec: PredictionRecord) =>
+const earnedFor = (m: MemberProfile, rec: PredictionRecord, liftDone: boolean) =>
   earnedAchievements({
     memberNo: m.member_no,
     coins: m.coins,
@@ -33,6 +35,7 @@ const earnedFor = (m: MemberProfile, rec: PredictionRecord) =>
     rtp: m.rtp,
     items: m.items,
     wonGiveaway: m.won_giveaway,
+    liftDone,
   });
 
 const n = (v: number | null | undefined) => (v ? v.toLocaleString("en-AU") : "–");
@@ -47,7 +50,14 @@ export default async function MemberPage({ params }: PageProps<"/members/[handle
     me && !isMe ? getMember(me.handle) : null,
     me && !isMe ? predictionRecord(me.id) : null,
   ]);
-  const earned = earnedFor(m, rec);
+  const settings = await chalkSettings();
+  const [chalk, liftDone, myChalk, myLift] = await Promise.all([
+    chalkOf(m.id),
+    liftCompletedEver(m.id, settings.target),
+    mine ? chalkOf(mine.id) : 0,
+    mine ? liftCompletedEver(mine.id, settings.target) : false,
+  ]);
+  const earned = earnedFor(m, rec, liftDone);
   const first = m.display_name.split(" ")[0];
 
   // Head-to-head rows: [label, mine, theirs, link to go beat it]
@@ -57,7 +67,8 @@ export default async function MemberPage({ params }: PageProps<"/members/[handle
           ["Supermatch calls", myRec.correct, rec.correct, "/supermatch"],
           ["Best streak", myRec.bestStreak, rec.bestStreak, "/supermatch"],
           ["Coins", mine.coins, m.coins, "/play"],
-          ["Achievements", earnedFor(mine, myRec).size, earned.size, null],
+          ["Chalk this season", myChalk, chalk, "/chalk"],
+          ["Achievements", earnedFor(mine, myRec, myLift).size, earned.size, null],
           ["Pin Run", mine.pinRun ?? 0, m.pinRun ?? 0, "/play"],
           ...RTP_LEVELS.map(
             (l) => [`Race to the Pin · ${l.name}`, mine.rtp[l.id] ?? 0, m.rtp[l.id] ?? 0, "/play#race-to-the-pin"] as [string, number, number, string],
@@ -95,13 +106,24 @@ export default async function MemberPage({ params }: PageProps<"/members/[handle
 
       <section className="section" style={{ paddingTop: 40 }}>
         <div className="wrap account-grid">
-          <RiserPass
-            name={m.display_name}
-            handle={m.handle}
-            coins={m.coins}
-            style={{ frame: m.frame, title: m.title, badge: m.badge }}
-            record={recordLabel(rec)}
-          />
+          <div>
+            <RiserPass
+              name={m.display_name}
+              handle={m.handle}
+              coins={m.coins}
+              style={{ frame: m.frame, title: m.title, badge: m.badge }}
+              record={recordLabel(rec)}
+            />
+            <div className="panel" style={{ marginTop: 20 }}>
+              <h2 className="panel-title">
+                {first}&apos;s Lift
+                <small>
+                  <Link href="/chalk">Chalkboard →</Link>
+                </small>
+              </h2>
+              <ChalkLift chalk={chalk} target={settings.target} compact />
+            </div>
+          </div>
           <div className="account-cols">
             <AchievementWall earned={earned} />
 

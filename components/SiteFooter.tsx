@@ -27,7 +27,7 @@ export function SiteFooter() {
             <h4>Database</h4>
             <ul>
               <li><Link href="/pullers">Riser Database</Link></li>
-              <li><Link href="/pullers#leaderboard">Leaderboard</Link></li>
+              <li><Link href="/chalk">The Chalkboard</Link></li>
               <li><Link href="/#founders">Founders</Link></li>
               <li><Link href="/tv">88RisersTV</Link></li>
               <li><Link href="/gallery">Gallery</Link></li>
@@ -45,6 +45,16 @@ export function SiteFooter() {
               <li><a href={`mailto:${SITE.email}`}>{SITE.email}</a></li>
               <li><a href={SITE.training.mapsUrl} target="_blank" rel="noreferrer">{SITE.training.venue}</a></li>
             </ul>
+          </div>
+        </div>
+        <div className="footer-sponsors">
+          <h4>Club sponsor</h4>
+          <div className="footer-sponsor">
+            <Image src="/sponsors/supp-station.webp" alt="Supp Station" width={393} height={156} />
+            <span>
+              <b>Supp Station</b>
+              <small>Supplements · Proud sponsor of 88 Risers</small>
+            </span>
           </div>
         </div>
         <div className="footer-wordmark" aria-hidden>

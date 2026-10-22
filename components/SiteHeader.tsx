@@ -10,6 +10,7 @@ import { Menu } from "./Icons";
 const NAV = [
   { href: "/events", label: "Events" },
   { href: "/pullers", label: "Database" },
+  { href: "/chalk", label: "Chalk" },
   { href: "/supermatch", label: "Supermatch" },
   { href: "/play", label: "Play" },
   { href: "/tv", label: "TV" },
@@ -19,9 +20,9 @@ const NAV = [
 /** Phone menu: everything. */
 const MENU = [
   { href: "/#club", label: "Club" },
-  ...NAV.slice(0, 2),
+  ...NAV.slice(0, 3),
   { href: "/#founders", label: "Founders" },
-  ...NAV.slice(2),
+  ...NAV.slice(3),
   { href: "/rewards", label: "Rewards" },
   { href: "/account", label: "Account" },
 ];

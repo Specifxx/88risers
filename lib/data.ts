@@ -21,6 +21,9 @@ export interface Puller {
   wins: number;
   losses: number;
   titles: number;
+  /** Linked member account (for Chalk), if an organiser has linked one. */
+  account_id: number | null;
+  account_handle: string | null;
 }
 
 export interface MatchView {
@@ -80,7 +83,8 @@ const PULLER_COLS = `
   p.dominant_arm, p.instagram, p.is_founder, p.hidden, p.elo, p.peak_elo, p.joined_on::text AS joined_on,
   (SELECT count(*)::int FROM matches m WHERE m.winner_id = p.id) AS wins,
   (SELECT count(*)::int FROM matches m WHERE m.loser_id = p.id) AS losses,
-  (SELECT count(*)::int FROM matches m WHERE m.winner_id = p.id AND m.is_title_match) AS titles`;
+  (SELECT count(*)::int FROM matches m WHERE m.winner_id = p.id AND m.is_title_match) AS titles,
+  p.account_id, (SELECT a.handle FROM accounts a WHERE a.id = p.account_id) AS account_handle`;
 
 const MATCH_COLS = `
   m.id, m.event_id, e.title AS event_title, e.slug AS event_slug, m.played_on::text AS played_on,

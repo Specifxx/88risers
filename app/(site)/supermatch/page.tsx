@@ -7,7 +7,6 @@ import { VotePanel } from "@/components/VotePanel";
 import { currentAccount } from "@/lib/auth";
 import { MAX_STAKE, coinLeaders } from "@/lib/coins";
 import { type Puller, getPuller } from "@/lib/data";
-import { tierFor } from "@/lib/elo";
 import { POOL_SEED, fmtOdds, oddsOf, payoutAt } from "@/lib/odds";
 import { fmtDay, fmtTime } from "@/lib/schedule";
 import { formatId } from "@/lib/site";
@@ -34,11 +33,10 @@ function Fighter({ p, side, winner, odds, live }: { p: Puller; side: "a" | "b"; 
         {live ? "Pays" : "Paid"} <b>{fmtOdds(odds)}</b>
       </p>
       <p className="sm-stats">
-        <span>{p.elo} Elo</span>
-        <span>{tierFor(p.elo).name}</span>
         <span>
-          {p.wins}–{p.losses}
+          {p.wins}–{p.losses} record
         </span>
+        {p.titles ? <span>{p.titles} titles</span> : null}
       </p>
     </div>
   );

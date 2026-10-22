@@ -10,7 +10,8 @@ import { PullerSlab } from "@/components/PullerSlab";
 import { GiveawayStrip } from "@/components/GiveawayCounter";
 import { Slab } from "@/components/Slab";
 import { KIND_LABEL, upcomingCalendar } from "@/lib/calendar";
-import { getClubStats, getLeaderboard, listPullers } from "@/lib/data";
+import { CHALK, chalkboard, chalkSettings, currentSeason, todaysMeet } from "@/lib/chalk";
+import { getClubStats, listPullers } from "@/lib/data";
 import { getGiveaway } from "@/lib/giveaway";
 import { fmtDay, fmtDayNum, fmtMonth, fmtTime, fmtWeekday } from "@/lib/schedule";
 import { SITE, formatId } from "@/lib/site";
@@ -43,7 +44,7 @@ const FAQ = [
   ],
   [
     "Do I have to compete?",
-    "No. Plenty of people come for the social side and to learn. Tournaments are there when you want them — and that's where Riser IDs, Elo ratings and champion cards come in.",
+    "No. Plenty of people come for the social side and to learn. Tournaments are there when you want them — and that's where Riser IDs, podiums and champion cards come in. Either way, every meet earns you Chalk.",
   ],
   [
     "How do I get a Riser ID?",
@@ -60,13 +61,16 @@ const FAQ = [
 ] as const;
 
 export default async function Home() {
-  const [stats, leaders, founders, calendar, giveaway] = await Promise.all([
+  const [stats, leaders, founders, calendar, giveaway, chalkCfg, meet] = await Promise.all([
     getClubStats(),
-    getLeaderboard(5),
+    chalkboard(currentSeason(), 5),
     listPullers().then((ps) => ps.filter((p) => p.is_founder)),
     upcomingCalendar(3),
     getGiveaway(),
+    chalkSettings(),
+    todaysMeet(),
   ]);
+  const chalkTarget = chalkCfg.target;
   const taken = new Set(stats.taken);
   const next = calendar.find((c) => !c.cancelled) ?? calendar[0];
   const nextTraining = calendar.find((c) => c.kind === "training" && !c.cancelled);
@@ -161,6 +165,14 @@ export default async function Home() {
         <span className="sm-strip-go">Vote →</span>
       </Link>
       <GiveawayStrip g={giveaway} />
+      {meet?.open ? (
+        <Link href="/chalk" className="sm-strip gw-strip">
+          <span className="sm-strip-tag">Meet today</span>
+          <b>Check in</b>
+          <span>Enter the code at the table for +{CHALK.checkin} Chalk</span>
+          <span className="sm-strip-go">Check in →</span>
+        </Link>
+      ) : null}
 
       {/* ───────── THE 88 ───────── */}
       <section className="section eighty-eight" id="the-88">
@@ -229,7 +241,7 @@ export default async function Home() {
             <div>
               <span className="k">03 · RISE</span>
               <b>Build your record</b>
-              <p>Every tournament match is logged to your ID: results, Elo, rating and match video.</p>
+              <p>Every tournament match is logged to your ID with video, and every meet earns you Chalk for the season.</p>
             </div>
           </div>
         </div>
@@ -285,12 +297,12 @@ export default async function Home() {
               <p>Never pulled before? Perfect. We&apos;ll teach you the setup before you lock up with anyone.</p>
             </div>
             <div className="tile wide" data-reveal>
-              <span className="tile-big">ELO</span>
+              <span className="tile-big">CHALK</span>
               <Calendar className="tile-icon" />
               <h3>Every match counts</h3>
               <p>
-                Tournament results feed a live Elo rating on your public Riser profile, with match video. Watch yourself
-                climb.
+                Check in at meets, place at tournaments and pull in supermatches to earn Chalk. Complete the Lift, chase Top
+                Riser.
               </p>
             </div>
           </div>
@@ -455,8 +467,8 @@ export default async function Home() {
               <span className="gold-text">lives here.</span>
             </h2>
             <p className="lede" style={{ marginTop: 22 }}>
-              Every 88 Risers tournament match is logged against a puller&apos;s permanent ID: wins, losses, Elo, rating
-              tier and the video of the pull. Look yourself up — or scout your next opponent.
+              Every 88 Risers tournament match is logged against a puller&apos;s permanent ID: wins, losses, titles
+              and the video of the pull. Look yourself up — or scout your next opponent.
             </p>
             <form className="search" action="/pullers" role="search">
               <input name="q" type="search" placeholder="Name or Riser ID, e.g. 008" aria-label="Search pullers" />
@@ -466,8 +478,11 @@ export default async function Home() {
             </form>
           </div>
           <div data-reveal>
-            <Leaderboard rows={leaders} />
-            <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
+            <Leaderboard rows={leaders} target={chalkTarget} />
+            <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end", gap: 24, flexWrap: "wrap" }}>
+              <Link href="/chalk" className="link-arrow">
+                The Chalkboard <span>→</span>
+              </Link>
               <Link href="/pullers" className="link-arrow">
                 Open the database <span>→</span>
               </Link>

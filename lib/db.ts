@@ -198,6 +198,39 @@ CREATE TABLE IF NOT EXISTS account_style (
   badge       boolean NOT NULL DEFAULT false
 );
 
+-- Chalk: season points from meets. A meet is a Sydney date an organiser opened check-in for.
+CREATE TABLE IF NOT EXISTS meets (
+  id             serial PRIMARY KEY,
+  day            date NOT NULL UNIQUE,
+  code           text NOT NULL,
+  is_tournament  boolean NOT NULL DEFAULT false,
+  open           boolean NOT NULL DEFAULT true,
+  first_id       integer REFERENCES accounts(id) ON DELETE SET NULL,
+  second_id      integer REFERENCES accounts(id) ON DELETE SET NULL,
+  third_id       integer REFERENCES accounts(id) ON DELETE SET NULL,
+  created_at     timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS checkins (
+  meet_id     integer NOT NULL REFERENCES meets(id) ON DELETE CASCADE,
+  account_id  integer NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  at          timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (meet_id, account_id)
+);
+-- Ledger like coin_tx: one row per award; ref makes each award happen once.
+CREATE TABLE IF NOT EXISTS chalk_tx (
+  id          serial PRIMARY KEY,
+  account_id  integer NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  season      integer NOT NULL,
+  amount      integer NOT NULL,
+  reason      text NOT NULL,
+  ref         text,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (account_id, ref)
+);
+CREATE INDEX IF NOT EXISTS chalk_tx_season ON chalk_tx (season, account_id);
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS invited_by integer REFERENCES accounts(id) ON DELETE SET NULL;
+-- A Riser's member account, so supermatches and podiums can award them Chalk.
+ALTER TABLE pullers ADD COLUMN IF NOT EXISTS account_id integer UNIQUE REFERENCES accounts(id) ON DELETE SET NULL;
 CREATE TABLE IF NOT EXISTS arcade_scores (
   account_id  integer NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
   game        text NOT NULL,
@@ -250,7 +283,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v14";
+const MIGRATION_MARKER = "founders_v15";
 
 async function migrate(db: Db) {
   // Fast path for every cold start after the first: one tiny query instead of the whole schema.

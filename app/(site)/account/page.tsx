@@ -5,6 +5,9 @@ import { AchievementWall } from "@/components/AchievementWall";
 import { RiserPass } from "@/components/RiserPass";
 import { earnedAchievements } from "@/lib/achievements";
 import { getMember } from "@/lib/members";
+import { ChalkLift } from "@/components/ChalkLift";
+import { CheckInBox } from "@/components/CheckInBox";
+import { CHALK, chalkHistory, chalkOf, chalkSettings, checkedInToday, liftCompletedEver, todaysMeet } from "@/lib/chalk";
 import { currentAccount } from "@/lib/auth";
 import { STORE, coinHistory, itemById, redemptionsOf, styleOf } from "@/lib/coins";
 import { fmtOdds } from "@/lib/odds";
@@ -56,6 +59,8 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
     predictionRecord(me.id),
     getMember(me.handle),
   ]);
+  const [settings, chalk, chalkLog, meet] = await Promise.all([chalkSettings(), chalkOf(me.id), chalkHistory(me.id), todaysMeet()]);
+  const [here, liftDone] = await Promise.all([meet ? checkedInToday(me.id) : false, liftCompletedEver(me.id, settings.target)]);
   const earned = profile
     ? earnedAchievements({
         memberNo: profile.member_no,
@@ -65,6 +70,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
         rtp: profile.rtp,
         items: profile.items,
         wonGiveaway: profile.won_giveaway,
+        liftDone,
       })
     : new Set<string>();
   const ownedFrames = STORE.filter((i) => i.kind === "frame" && items.some((r) => r.item === i.id));
@@ -120,6 +126,50 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
           </div>
 
           <div className="account-cols">
+            {meet?.open ? <CheckInBox loggedIn already={here} points={CHALK.checkin} /> : null}
+            <div className="panel">
+              <h2 className="panel-title">
+                Your Lift
+                <small>
+                  <Link href="/chalk">The Chalkboard →</Link>
+                </small>
+              </h2>
+              <div className="lift-panel">
+                <ChalkLift chalk={chalk} target={settings.target} />
+                <div>
+                  <p className="muted" style={{ marginTop: 0 }}>
+                    {chalk >= settings.target ? (
+                      <>
+                        Lift complete! You&apos;ve earned <b className="gold">{settings.liftPrize}</b>.
+                      </>
+                    ) : (
+                      <>
+                        {settings.target - chalk} Chalk to complete the Lift and earn <b className="gold">{settings.liftPrize}</b>.
+                      </>
+                    )}
+                  </p>
+                  {chalkLog.length ? (
+                    <ul className="ledger">
+                      {chalkLog.slice(0, 6).map((h, i) => (
+                        <li key={i}>
+                          <span>{h.reason}</span>
+                          <b className={h.amount < 0 ? "neg" : "pos"}>
+                            {h.amount > 0 ? "+" : ""}
+                            {h.amount}
+                          </b>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="muted">Check in at your next meet for your first Chalk.</p>
+                  )}
+                  <p className="fine">
+                    Invite friends: they enter <b>@{me.handle}</b> as &ldquo;Invited by&rdquo; when signing up, and you get +
+                    {CHALK.invite} when they come to their first meet.
+                  </p>
+                </div>
+              </div>
+            </div>
             <AchievementWall earned={earned} title="Your achievements" />
             <div className="panel picks-panel">
               <h2 className="panel-title">Supermatch picks</h2>

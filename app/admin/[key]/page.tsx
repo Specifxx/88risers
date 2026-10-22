@@ -10,6 +10,7 @@ import { fmtShortDate, toSydneyInput } from "@/lib/schedule";
 import { mailStatus } from "@/lib/mail";
 import { type AdminAccount, type AdminRedemption, STORE, adminAccounts, adminRedemptions, itemById } from "@/lib/coins";
 import { type Giveaway, getGiveaway } from "@/lib/giveaway";
+import { CHALK, chalkboard, chalkSettings, currentSeason, listMeets, meetAttendees, sydneyToday } from "@/lib/chalk";
 import { type Backer, type Supermatch, listBackers, listSupermatches } from "@/lib/supermatch";
 import { PRODUCTS } from "@/lib/shop";
 import { SITE, formatId } from "@/lib/site";
@@ -25,6 +26,14 @@ import {
   resetAccountPassword,
   saveSupermatch,
   setGiveawayDate,
+  openCheckin,
+  linkPullerAccount,
+  setCheckinOpen,
+  setMeetTournament,
+  addAttendee,
+  setPodium,
+  adjustChalk,
+  saveChalkConfig,
   setRedemptionUsed,
   settleSupermatch,
   deleteRegistration,
@@ -56,6 +65,7 @@ const TABS = [
   ["tv", "88RisersTV"],
   ["shop", "Shop"],
   ["coins", "Coins"],
+  ["chalk", "Chalk"],
 ] as const;
 type Tab = (typeof TABS)[number][0];
 
@@ -140,11 +150,12 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
         {err ? <div className="flash bad">{err}</div> : null}
 
         {tab === "registrations" ? <Registrations regs={regs} k={k} base={base} filter={filter} nextId={stats.next_id} /> : null}
-        {tab === "pullers" ? <Pullers pullers={pullers} k={k} nextId={stats.next_id} /> : null}
+        {tab === "pullers" ? <Pullers pullers={pullers} accts={accts} k={k} nextId={stats.next_id} /> : null}
         {tab === "matches" ? <Matches matches={matches} pullers={pullers} events={events} k={k} /> : null}
         {tab === "events" ? <Events events={events} k={k} /> : null}
         {tab === "tv" ? <Tv reels={reels} k={k} /> : null}
         {tab === "shop" ? <Shop interest={interest} k={k} /> : null}
+        {tab === "chalk" ? <ChalkTab accts={accts} k={k} /> : null}
         {tab === "coins" ? <Coins sms={sms} accts={accts} redeems={redeems} pullers={pullers} backers={backers} giveaway={giveaway} k={k} /> : null}
 
         <p className="fine" style={{ marginTop: 60 }}>
@@ -367,7 +378,7 @@ function PullerFields({ p, nextId }: { p?: Puller; nextId: number }) {
   );
 }
 
-function Pullers({ pullers, k, nextId }: { pullers: Puller[]; k: string; nextId: number }) {
+function Pullers({ pullers, accts, k, nextId }: { pullers: Puller[]; accts: AdminAccount[]; k: string; nextId: number }) {
   return (
     <>
       <div className="admin-head">
@@ -392,7 +403,8 @@ function Pullers({ pullers, k, nextId }: { pullers: Puller[]; k: string; nextId:
               <Avatar src={p.photo_url || p.card_url} name={p.name} size={34} />
               <b>{p.name}</b>
               <span className="muted tech">
-                ELO {p.elo} · {p.wins}–{p.losses}
+                {p.wins}–{p.losses}
+                {p.account_handle ? ` · @${p.account_handle}` : " · no member account linked"}
               </span>
               {p.is_founder ? <span className="pill">Founder</span> : null}
               {p.hidden ? <span className="pill dim">Hidden</span> : null}
@@ -407,6 +419,22 @@ function Pullers({ pullers, k, nextId }: { pullers: Puller[]; k: string; nextId:
                   View profile ↗
                 </Link>
               </div>
+            </form>
+            <form action={linkPullerAccount} className="btn-row" style={{ marginTop: 12 }}>
+              <input type="hidden" name="key" value={k} />
+              <input type="hidden" name="puller_id" value={p.id} />
+              <label className="muted" htmlFor={`acct-${p.id}`}>
+                Member account <em>(for Chalk from supermatches and podiums)</em>
+              </label>
+              <select id={`acct-${p.id}`} name="account_id" defaultValue={p.account_id ?? ""}>
+                <option value="">Not linked</option>
+                {accts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.display_name} (@{a.handle})
+                  </option>
+                ))}
+              </select>
+              <button className="btn btn-sm">Save link</button>
             </form>
             <form action={deletePuller} style={{ marginTop: 12 }}>
               <input type="hidden" name="key" value={k} />
@@ -509,7 +537,7 @@ function Matches({ matches, pullers, events, k }: { matches: MatchView[]; puller
       <div className="admin-head">
         <div>
           <h1>Matches</h1>
-          <p className="muted">Every match updates both pullers&apos; Elo. Edits and deletions replay all ratings automatically.</p>
+          <p className="muted">Matches build each Riser&apos;s win–loss record and title count on their profile.</p>
         </div>
       </div>
       <div className="panel">
@@ -1116,5 +1144,161 @@ function Backers({ m, rows, nameOf }: { m: Supermatch; rows: Backer[]; nameOf: (
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** Chalk: meet-day check-in, podiums, settings and the season table. */
+async function ChalkTab({ accts, k }: { accts: AdminAccount[]; k: string }) {
+  const season = currentSeason();
+  const [settings, meets, board] = await Promise.all([chalkSettings(), listMeets(12), chalkboard(season, 10)]);
+  const attendees = await Promise.all(meets.map((m) => meetAttendees(m.id)));
+  const today = sydneyToday();
+  const todayIdx = meets.findIndex((m) => m.day === today);
+  const todays = todayIdx >= 0 ? meets[todayIdx] : null;
+  const fmtDay = (d: string) =>
+    new Intl.DateTimeFormat("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${d}T00:00:00Z`));
+  const AccountSelect = ({ name, value, options, placeholder }: { name: string; value?: number | null; options: { id: number; display_name: string; handle: string }[]; placeholder: string }) => (
+    <select name={name} defaultValue={value ?? ""}>
+      <option value="">{placeholder}</option>
+      {options.map((a) => (
+        <option key={a.id} value={a.id}>
+          {a.display_name} (@{a.handle})
+        </option>
+      ))}
+    </select>
+  );
+
+  return (
+    <>
+      <div className="admin-head">
+        <div>
+          <h1>Chalk · {season} season</h1>
+          <p className="muted">
+            Members earn Chalk: +{CHALK.checkin} for checking in at a meet, +{CHALK.invite} when someone they invited comes to
+            their first meet, {CHALK.podium.join("/")} for a tournament podium, and +{CHALK.supermatch} for pulling in a supermatch (+
+            {CHALK.supermatch + CHALK.supermatchWin} for winning it; link the Riser to their account in Pullers). {settings.target} Chalk completes the Lift.
+            Public page: <Link href="/chalk" target="_blank">/chalk</Link>.
+          </p>
+        </div>
+      </div>
+
+      <div className="panel chalk-today">
+        <h2 className="panel-title">Today · {fmtDay(today)}</h2>
+        {todays ? (
+          <>
+            <div className="chalk-code">
+              <span>Check-in code</span>
+              <b>{todays.code}</b>
+              <small>{todays.open ? "Open: members enter this at 88risers.com/chalk" : "Closed"}</small>
+            </div>
+            <p className="muted">
+              {todays.attendees} checked in{todays.is_tournament ? " · Tournament" : ""}:{" "}
+              {attendees[todayIdx].map((a) => a.display_name).join(", ") || "nobody yet"}
+            </p>
+            <div className="btn-row">
+              <form action={setCheckinOpen}>
+                <input type="hidden" name="key" value={k} />
+                <input type="hidden" name="meet_id" value={todays.id} />
+                <input type="hidden" name="open" value={todays.open ? "0" : "1"} />
+                <button className="btn btn-sm">{todays.open ? "Close check-in" : "Reopen check-in"}</button>
+              </form>
+            </div>
+          </>
+        ) : (
+          <form action={openCheckin} className="btn-row">
+            <input type="hidden" name="key" value={k} />
+            <label className="check" style={{ margin: 0 }}>
+              <input type="checkbox" name="is_tournament" />
+              <span>Today is a tournament</span>
+            </label>
+            <button className="btn btn-primary">Open check-in for today</button>
+          </form>
+        )}
+      </div>
+
+      <div className="admin-rows">
+        {meets.map((m, i) => (
+          <details key={m.id} className="admin-row" open={m.day === today}>
+            <summary>
+              <span className="rid">{fmtDay(m.day)}</span>
+              <b>{m.is_tournament ? "Tournament" : "Meet"}</b>
+              <span className="muted tech">
+                {m.attendees} checked in · code {m.code}
+              </span>
+              {m.open ? <span className="pill">Open</span> : null}
+            </summary>
+            <p className="muted">{attendees[i].map((a) => a.display_name).join(", ") || "Nobody checked in."}</p>
+            <form action={addAttendee} className="btn-row" style={{ marginTop: 10 }}>
+              <input type="hidden" name="key" value={k} />
+              <input type="hidden" name="meet_id" value={m.id} />
+              <AccountSelect name="account_id" options={accts.filter((a) => !attendees[i].some((x) => x.id === a.id))} placeholder="Add a member who was there…" />
+              <button className="btn btn-sm">Check them in</button>
+            </form>
+            <form action={setPodium} className="btn-row" style={{ marginTop: 10 }}>
+              <input type="hidden" name="key" value={k} />
+              <input type="hidden" name="meet_id" value={m.id} />
+              <AccountSelect name="first_id" value={m.first_id} options={attendees[i]} placeholder={`1st (+${CHALK.podium[0]})`} />
+              <AccountSelect name="second_id" value={m.second_id} options={attendees[i]} placeholder={`2nd (+${CHALK.podium[1]})`} />
+              <AccountSelect name="third_id" value={m.third_id} options={attendees[i]} placeholder={`3rd (+${CHALK.podium[2]})`} />
+              <button className="btn btn-sm btn-primary">Save podium</button>
+            </form>
+            <form action={setMeetTournament} style={{ marginTop: 10 }}>
+              <input type="hidden" name="key" value={k} />
+              <input type="hidden" name="meet_id" value={m.id} />
+              <button className="btn btn-sm btn-ghost">{m.is_tournament ? "Mark as a regular meet" : "Mark as a tournament"}</button>
+            </form>
+          </details>
+        ))}
+        {meets.length === 0 ? <div className="panel empty">No meets yet. Open check-in on meet day.</div> : null}
+      </div>
+
+      <div className="panel">
+        <h2 className="panel-title">The Chalkboard · top 10</h2>
+        <ol className="coin-leaders">
+          {board.map((r, i) => (
+            <li key={r.handle}>
+              <span className="cl-rank">{i + 1}</span>
+              <span className="cl-name">
+                {r.display_name} <span className="muted">@{r.handle}</span>
+              </span>
+              <b>
+                {r.chalk}
+                {r.chalk >= settings.target ? " ✓" : ""}
+              </b>
+            </li>
+          ))}
+          {board.length === 0 ? <li className="muted">No Chalk yet this season.</li> : null}
+        </ol>
+        <form action={adjustChalk} className="btn-row" style={{ marginTop: 14 }}>
+          <input type="hidden" name="key" value={k} />
+          <AccountSelect name="account_id" options={accts} placeholder="Adjust a member's Chalk…" />
+          <input name="amount" type="number" placeholder="+/- amount" style={{ width: 120 }} />
+          <input name="reason" type="text" placeholder="Reason (shown to them)" />
+          <button className="btn btn-sm">Apply</button>
+        </form>
+      </div>
+
+      <div className="panel">
+        <h2 className="panel-title">Settings</h2>
+        <form action={saveChalkConfig}>
+          <input type="hidden" name="key" value={k} />
+          <div className="form-grid">
+            <div className="field">
+              <label>Lift target <em>Chalk to complete it</em></label>
+              <input name="target" type="number" min={1} max={500} defaultValue={settings.target} required />
+            </div>
+            <div className="field span2">
+              <label>Lift prize <em>everyone who completes the Lift</em></label>
+              <input name="lift_prize" type="text" defaultValue={settings.liftPrize} />
+            </div>
+            <div className="field span4">
+              <label>Top Riser prize <em>top of the Chalkboard on 31 December</em></label>
+              <input name="top_prize" type="text" defaultValue={settings.topPrize} />
+            </div>
+          </div>
+          <button className="btn btn-sm btn-primary">Save settings</button>
+        </form>
+      </div>
+    </>
   );
 }

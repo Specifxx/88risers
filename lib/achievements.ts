@@ -22,6 +22,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "longhaul", name: "Long Haul", how: "Score 5,000+ in Pin Run", icon: "🏃" },
   { id: "collector", name: "Collector", how: "Own all three card frames", icon: "🖼️" },
   { id: "lucky", name: "Lucky Ticket", how: "Win a giveaway draw", icon: "🎟️" },
+  { id: "lift", name: "Lift Complete", how: "Hit the Chalk target in a season", icon: "🏋️" },
 ];
 
 export interface AchievementInput {
@@ -33,6 +34,7 @@ export interface AchievementInput {
   /** Reward-store items owned (ids), and whether any giveaway entry won. */
   items: string[];
   wonGiveaway: boolean;
+  liftDone: boolean;
 }
 
 export function earnedAchievements(x: AchievementInput): Set<string> {
@@ -52,5 +54,6 @@ export function earnedAchievements(x: AchievementInput): Set<string> {
     ...has("longhaul", (x.pinRun ?? 0) >= 5000),
     ...has("collector", ["frame-gold", "frame-ink", "frame-holo"].every((f) => x.items.includes(f))),
     ...has("lucky", x.wonGiveaway),
+    ...has("lift", x.liftDone),
   ]);
 }

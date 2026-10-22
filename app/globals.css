@@ -2183,7 +2183,8 @@ a.event-row:hover {
   grid-template-columns: 1.4fr repeat(3, 1fr);
   gap: 40px;
 }
-.footer-grid h4 {
+.footer-grid h4,
+.footer-sponsors h4 {
   font: 600 11px/1 var(--f-tech);
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -6001,4 +6002,500 @@ a.cl-name:hover {
 }
 .member-results {
   scroll-margin-top: 90px;
+}
+
+/* ─────────── Chalk (admin) ─────────── */
+.chalk-code {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin: 6px 0 16px;
+  padding: 22px;
+  border-radius: 16px;
+  border: 2px dashed var(--gold);
+  text-align: center;
+}
+.chalk-code span,
+.chalk-code small {
+  font: 600 11px/1.3 var(--f-tech);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.chalk-code b {
+  font: 900 clamp(64px, 12vw, 120px)/1 var(--f-display);
+  letter-spacing: 0.12em;
+  color: var(--gold-hi);
+}
+
+/* ─────────── The Lift ─────────── */
+.lift {
+  margin: 0;
+}
+.lift svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.lift-floor {
+  stroke: rgba(213, 182, 122, 0.35);
+  stroke-width: 2;
+  stroke-dasharray: 4 6;
+}
+.lift-leg {
+  fill: #1b1611;
+  stroke: rgba(213, 182, 122, 0.35);
+  stroke-width: 1.5;
+}
+.lift-pad {
+  fill: #2c2219;
+  stroke: var(--gold);
+  stroke-width: 2;
+}
+.lift-ink {
+  stroke: #0b0a09;
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+.lift-ink.thin {
+  stroke-width: 2;
+}
+.lift-veins path {
+  fill: none;
+  stroke: #b8323a;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  opacity: 0.75;
+}
+.lift-dust circle {
+  fill: #f6f1e6;
+  opacity: 0.7;
+}
+.lift-strap {
+  fill: none;
+  stroke: #d5b67a;
+  stroke-width: 3;
+}
+.lift-strap.slack {
+  stroke-dasharray: 5 3;
+}
+.lift-pin {
+  stroke: #9aa0aa;
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.lift-plate {
+  fill: #d5b67a;
+  stroke: #0b0a09;
+  stroke-width: 2;
+}
+.lift-plate.red {
+  fill: #d42a2f;
+}
+.lift-ring {
+  fill: none;
+  stroke: #e7e9ee;
+  stroke-width: 2.5;
+}
+.lift-knuckles {
+  fill: none;
+  stroke: #0b0a09;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.lift-wrap {
+  fill: #d42a2f;
+  stroke: #0b0a09;
+  stroke-width: 2;
+}
+.lift-stars path {
+  fill: #f2e1b6;
+  animation: lift-twinkle 1.6s ease-in-out infinite alternate;
+}
+.lift-stars path:nth-child(2) {
+  animation-delay: 0.4s;
+}
+.lift-stars path:nth-child(3) {
+  animation-delay: 0.8s;
+}
+@keyframes lift-twinkle {
+  from {
+    opacity: 0.35;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+  }
+}
+.lift figcaption {
+  margin-top: 8px;
+}
+.lift-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.lift-meta b {
+  font: 900 40px/1 var(--f-display);
+  color: var(--gold-hi);
+}
+.lift-meta b small {
+  font: 700 13px/1 var(--f-tech);
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin-left: 4px;
+}
+.lift-meta span {
+  font: 700 12px/1 var(--f-tech);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bone);
+}
+.lift-bar {
+  position: relative;
+  height: 10px;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.lift-bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, #a8854a, #f2e1b6);
+  border-radius: 999px;
+}
+.lift-bar i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(10, 9, 8, 0.8);
+}
+.lift-done .lift-meta span {
+  color: var(--gold-hi);
+}
+.lift-done .lift-bar > span {
+  background: linear-gradient(90deg, #f2e1b6, #fff4d6, #f2e1b6);
+  box-shadow: 0 0 14px rgba(242, 225, 182, 0.6);
+}
+.lift-compact .lift-meta b {
+  font-size: 30px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lift-stars path {
+    animation: none;
+  }
+}
+.lift-muscle {
+  fill: none;
+  stroke: rgba(11, 10, 9, 0.35);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.lift-meta b,
+.lift-meta span {
+  white-space: nowrap;
+}
+.checkin {
+  display: grid;
+  gap: 6px;
+  padding: 18px 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(213, 182, 122, 0.5);
+  background: linear-gradient(120deg, rgba(212, 42, 47, 0.16), rgba(213, 182, 122, 0.1));
+}
+.checkin b {
+  font: 900 22px/1.1 var(--f-display);
+  text-transform: uppercase;
+  color: var(--bone);
+}
+.checkin > span {
+  font-size: 14px;
+  color: var(--muted);
+}
+.checkin.done {
+  border-color: var(--gold);
+}
+.checkin.done b {
+  color: var(--gold-hi);
+}
+.checkin-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+.checkin-row input {
+  width: 130px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--ink-2);
+  color: var(--bone);
+  font: 900 26px/1 var(--f-display);
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+
+/* ─────────── Chalkboard page ─────────── */
+.chalk-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.chalk-grid .panel {
+  margin: 0;
+}
+b.gold {
+  color: var(--gold-hi);
+}
+.chalk-rules b {
+  color: var(--gold-hi);
+  white-space: nowrap;
+}
+.chalk-prizes {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+.chalk-prizes > div {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line-strong);
+  background: rgba(213, 182, 122, 0.06);
+}
+.chalk-prizes > div.top {
+  border-color: rgba(212, 42, 47, 0.6);
+  background: linear-gradient(120deg, rgba(212, 42, 47, 0.16), rgba(213, 182, 122, 0.08));
+}
+.chalk-prizes span {
+  font: 600 11px/1.3 var(--f-tech);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.chalk-prizes b {
+  font: 900 22px/1.1 var(--f-display);
+  text-transform: uppercase;
+  color: var(--bone);
+}
+.chalk-prizes small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.chalk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+.chalk-table th,
+.chalk-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.chalk-table th {
+  font: 600 11px/1 var(--f-tech);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.chalk-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.chalk-table td.rank {
+  width: 36px;
+  color: var(--gold);
+  font-weight: 700;
+}
+.chalk-table a {
+  color: var(--bone);
+  text-decoration: none;
+  font-weight: 600;
+}
+.chalk-table a:hover {
+  color: var(--gold-hi);
+}
+.chalk-table .pill {
+  margin-left: 8px;
+}
+.chalk-table tr.me td {
+  background: rgba(213, 182, 122, 0.07);
+}
+.chalk-table td b {
+  color: var(--gold-hi);
+}
+@media (max-width: 860px) {
+  .chalk-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* cartoon lifter */
+.lift-shadow {
+  fill: rgba(0, 0, 0, 0.45);
+}
+.lift-tee-88 {
+  font: 900 30px/1 var(--f-display);
+  fill: #d5b67a;
+}
+.lift-tee-word {
+  font: 700 8px/1 var(--f-tech);
+  letter-spacing: 2px;
+  fill: #d5b67a;
+}
+.lift-hair {
+  fill: #6f6458;
+  stroke: #16110d;
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+.lift-brow,
+.lift-eye {
+  fill: none;
+  stroke: #16110d;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.lift-teeth {
+  fill: #fff;
+  stroke: #16110d;
+  stroke-width: 2;
+}
+.lift-stubble {
+  fill: none;
+  stroke: rgba(80, 60, 45, 0.45);
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+.lift-sweat path {
+  fill: #9fd8ff;
+  stroke: #16110d;
+  stroke-width: 1.5;
+}
+.lift-plate {
+  fill: #34343a;
+  stroke: #16110d;
+  stroke-width: 2.5;
+}
+.lift-plate.alt {
+  fill: #44444b;
+}
+.lift-plate-hi {
+  stroke: rgba(255, 255, 255, 0.14);
+  stroke-width: 1.5;
+}
+.lift-pin {
+  fill: #9aa0aa;
+  stroke: #16110d;
+  stroke-width: 2;
+}
+.lift-strap {
+  stroke: #e3cf9f;
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+.lift-handle {
+  fill: #e3cf9f;
+  stroke: #16110d;
+  stroke-width: 2;
+}
+.lift-tape {
+  stroke: #f4f1ea;
+  stroke-width: 38;
+  stroke-linecap: butt;
+  opacity: 0.95;
+}
+.lift-motion path {
+  fill: none;
+  stroke: rgba(213, 182, 122, 0.6);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+.lift-up path {
+  fill: #d42a2f;
+  stroke: #16110d;
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+.lift-up text {
+  font: 900 24px/1 var(--f-display);
+  fill: #f2e1b6;
+  stroke: #16110d;
+  stroke-width: 1;
+}
+.lift-print circle {
+  fill: rgba(255, 255, 255, 0.85);
+  stroke: #16110d;
+  stroke-width: 1.5;
+}
+.lift-hair circle {
+  fill: #8a7c6c;
+  stroke: #16110d;
+  stroke-width: 2.5;
+}
+.lift-beard {
+  fill: #8a7c6c;
+  stroke: #16110d;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+.lift-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 560px) {
+  .lift-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─────────── Footer sponsors ─────────── */
+.footer-sponsors {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 28px;
+  margin-top: 40px;
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.footer-sponsors h4 {
+  margin: 0;
+}
+.footer-sponsor {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.footer-sponsor img {
+  width: 150px;
+  height: auto;
+}
+.footer-sponsor b {
+  display: block;
+  font: 900 18px/1 var(--f-display);
+  text-transform: uppercase;
+  color: var(--bone);
+}
+.footer-sponsor small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.lift svg {
+  max-height: 340px;
+  margin: 0 auto;
+}
+.lift-compact svg {
+  max-height: 260px;
 }

@@ -2,12 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
-import { EloChart, type EloPoint } from "@/components/EloChart";
 import { Instagram } from "@/components/Icons";
 import { PullerSlab } from "@/components/PullerSlab";
 import { VideoToggle } from "@/components/VideoToggle";
 import { getPuller, getPullerMatches, type MatchView } from "@/lib/data";
-import { PROVISIONAL_MATCHES, START_ELO, tierFor } from "@/lib/elo";
+import { chalkOf, currentSeason } from "@/lib/chalk";
 import { fmtShortDate } from "@/lib/schedule";
 import { formatId } from "@/lib/site";
 
@@ -32,13 +31,12 @@ export async function generateMetadata({ params }: PageProps<"/pullers/[id]">): 
   if (!p) return { title: "Riser not found" };
   return {
     title: `${p.name} · ${formatId(p.id)}`,
-    description: `${p.name} — 88 Risers ${formatId(p.id)}. Elo ${p.elo}, record ${p.wins}–${p.losses}.`,
+    description: `${p.name} — 88 Risers ${formatId(p.id)}. Record ${p.wins}–${p.losses}.`,
     openGraph: p.card_url || p.photo_url ? { images: [p.card_url || p.photo_url!] } : undefined,
   };
 }
 
 function summary(id: number, matches: MatchView[]) {
-  const chrono = [...matches].reverse();
   let streak = 0;
   let streakType: "W" | "L" | null = null;
   for (const m of matches) {
@@ -51,20 +49,7 @@ function summary(id: number, matches: MatchView[]) {
     const ms = matches.filter((m) => m.arm === a);
     return { w: ms.filter((m) => m.winner_id === id).length, l: ms.filter((m) => m.loser_id === id).length };
   };
-  const points: EloPoint[] = chrono.length
-    ? [
-        { elo: START_ELO, label: "Starting rating", date: day(chrono[0].played_on) },
-        ...chrono.map((m) => {
-          const won = m.winner_id === id;
-          return {
-            elo: (won ? m.winner_elo_after : m.loser_elo_after) ?? START_ELO,
-            label: `${won ? "Beat" : "Lost to"} ${won ? m.loser_name : m.winner_name}`,
-            date: day(m.played_on),
-          };
-        }),
-      ]
-    : [];
-  return { streak, streakType, right: arm("right"), left: arm("left"), points };
+  return { streak, streakType, right: arm("right"), left: arm("left") };
 }
 
 export default async function PullerPage({ params }: PageProps<"/pullers/[id]">) {
@@ -77,8 +62,8 @@ export default async function PullerPage({ params }: PageProps<"/pullers/[id]">)
   const matches = await getPullerMatches(id);
   const s = summary(id, matches);
   const total = p.wins + p.losses;
-  const tier = tierFor(p.elo);
-  const provisional = total < PROVISIONAL_MATCHES;
+  const season = currentSeason();
+  const chalk = p.account_id ? await chalkOf(p.account_id, season) : null;
 
   return (
     <section className="page-hero" style={{ paddingBottom: 100 }}>
@@ -99,7 +84,6 @@ export default async function PullerPage({ params }: PageProps<"/pullers/[id]">)
             {p.nickname ? <p className="lede" style={{ marginTop: 8 }}>“{p.nickname}”</p> : null}
             <div className="profile-tags">
               {p.is_founder ? <span className="pill red">Founding member</span> : null}
-              <span className="pill">{tier.name}</span>
               {p.title ? <span className="pill">{p.title}</span> : null}
               {p.weight_class ? <span className="pill dim">{p.weight_class}</span> : null}
               {p.dominant_arm ? <span className="pill dim">{p.dominant_arm} arm</span> : null}
@@ -117,9 +101,15 @@ export default async function PullerPage({ params }: PageProps<"/pullers/[id]">)
 
             <div className="stat-grid">
               <div className="stat hl">
-                <span>Elo</span>
-                <b>{p.elo}</b>
-                <small>{provisional ? "Provisional" : `Peak ${p.peak_elo}`}</small>
+                <span>Chalk · {season}</span>
+                <b>{chalk ?? "—"}</b>
+                <small>
+                  {p.account_handle ? (
+                    <Link href={`/members/${p.account_handle}`}>@{p.account_handle} →</Link>
+                  ) : (
+                    "Season points"
+                  )}
+                </small>
               </div>
               <div className="stat">
                 <span>Record</span>
@@ -146,15 +136,6 @@ export default async function PullerPage({ params }: PageProps<"/pullers/[id]">)
               </div>
             </div>
 
-            {s.points.length > 1 ? (
-              <div className="panel">
-                <h2 className="panel-title">
-                  Rating history <small>ELO</small>
-                </h2>
-                <EloChart points={s.points} />
-              </div>
-            ) : null}
-
             <div className="panel">
               <h2 className="panel-title">
                 Match record <small>{total} MATCHES</small>
@@ -169,9 +150,6 @@ export default async function PullerPage({ params }: PageProps<"/pullers/[id]">)
                   const oppId = won ? m.loser_id : m.winner_id;
                   const oppName = won ? m.loser_name : m.winner_name;
                   const oppPhoto = won ? m.loser_photo : m.winner_photo;
-                  const before = won ? m.winner_elo_before : m.loser_elo_before;
-                  const after = won ? m.winner_elo_after : m.loser_elo_after;
-                  const delta = before != null && after != null ? after - before : null;
                   return (
                     <div className="match" key={m.id}>
                       <div className={`result ${won ? "w" : "l"}`}>{won ? "W" : "L"}</div>
@@ -199,15 +177,6 @@ export default async function PullerPage({ params }: PageProps<"/pullers/[id]">)
                           ) : null}
                         </div>
                         {m.video_url ? <VideoToggle url={m.video_url} /> : null}
-                      </div>
-                      <div className="match-elo">
-                        {delta !== null ? (
-                          <span className={delta >= 0 ? "up" : "down"}>
-                            {delta >= 0 ? "+" : ""}
-                            {delta}
-                          </span>
-                        ) : null}
-                        <small>{after ?? ""} ELO</small>
                       </div>
                     </div>
                   );

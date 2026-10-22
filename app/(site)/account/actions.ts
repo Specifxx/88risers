@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { cleanHandle, currentAccount, endSession, hashPassword, startSession, verifyPassword } from "@/lib/auth";
 import { DAILY_GAME_COINS, MAX_STAKE, WELCOME_COINS, balanceOf, grant, itemById, lockAccount, newCode } from "@/lib/coins";
 import { RTP_GAME, RTP_LEVELS, RTP_MAX_SCORE, isRtpLevel } from "@/lib/arcade";
+import { CHALK, recordCheckin, sydneyToday } from "@/lib/chalk";
 import { getDb } from "@/lib/db";
 import { fmtOdds, payoutAt, quoteOdds } from "@/lib/odds";
 import { SITE } from "@/lib/site";
@@ -26,14 +27,23 @@ export async function signUp(_prev: FormState, form: FormData): Promise<FormStat
   if (!handle) return { status: "error", field: "handle", message: "Usernames are 3–20 letters, numbers or underscores." };
   if (password.length < 8) return { status: "error", field: "password", message: "Use at least 8 characters." };
   if (password.length > 200) return { status: "error", field: "password", message: "That password is too long." };
+  const invitedRaw = s(form, "invited_by").replace(/^@/, "");
+  const invitedHandle = invitedRaw ? cleanHandle(invitedRaw) : null;
+  if (invitedRaw && !invitedHandle) return { status: "error", field: "invited_by", message: "That doesn't look like a username." };
 
   const db = await getDb();
+  let invitedBy: number | null = null;
+  if (invitedHandle) {
+    const [inv] = await db.query<{ id: number }>(`SELECT id FROM accounts WHERE handle = $1`, [invitedHandle]);
+    if (!inv) return { status: "error", field: "invited_by", message: "We couldn't find that member. Check the username, or leave it blank." };
+    invitedBy = inv.id;
+  }
   let id: number;
   try {
     const hash = await hashPassword(password);
     const rows = await db.query<{ id: number }>(
-      `INSERT INTO accounts (handle, display_name, pass_hash) VALUES ($1, $2, $3) ON CONFLICT (handle) DO NOTHING RETURNING id`,
-      [handle, name, hash],
+      `INSERT INTO accounts (handle, display_name, pass_hash, invited_by) VALUES ($1, $2, $3, $4) ON CONFLICT (handle) DO NOTHING RETURNING id`,
+      [handle, name, hash, invitedBy],
     );
     if (!rows.length) return { status: "error", field: "handle", message: "That username is taken. Try another." };
     id = rows[0].id;
@@ -245,4 +255,40 @@ export async function submitArcadeScore(level: string, score: number): Promise<{
     best: row.best,
     message: isBest ? `New ${name} best: ${n.toLocaleString("en-AU")}! Saved to the leaderboard.` : `Win saved. Your ${name} best is ${row.best.toLocaleString("en-AU")}.`,
   };
+}
+
+/* ─────────── Chalk check-in ─────────── */
+
+/** Meet-day check-in with the code the organisers show at the table. */
+export async function checkIn(_prev: FormState, form: FormData): Promise<FormState> {
+  const me = await currentAccount();
+  if (!me) return { status: "error", message: "Log in to check in." };
+  const code = s(form, "code").replace(/\D/g, "");
+  const db = await getDb();
+  // Wrong codes are limited so nobody can guess their way in.
+  const guessKey = `checkin:${me.handle}`;
+  const [{ n }] = await db.query<{ n: number }>(
+    `SELECT count(*)::int AS n FROM login_attempts WHERE handle = $1 AND at > now() - interval '1 day'`,
+    [guessKey],
+  );
+  if (n >= 8) return { status: "error", message: "Too many wrong codes today. Ask an organiser to check you in." };
+  try {
+    const res = await db.transaction(async (tx) => {
+      const [meet] = await tx.query<{ id: number; day: string; code: string; open: boolean }>(
+        `SELECT id, day::text AS day, code, open FROM meets WHERE day = $1::date`,
+        [sydneyToday()],
+      );
+      if (!meet || !meet.open) return "Check-in isn't open right now. It opens at the meet.";
+      if (code !== meet.code) {
+        await tx.query(`INSERT INTO login_attempts (handle) VALUES ($1)`, [guessKey]);
+        return "That code isn't right. Check the code at the table.";
+      }
+      return (await recordCheckin(tx, meet, me.id)) ? null : "You're already checked in. See you at the table!";
+    });
+    if (res) return { status: "error", message: res };
+  } catch (err) {
+    console.error("checkIn failed", err);
+    return { status: "error", message: "Something went wrong on our side. Try again." };
+  }
+  return { status: "ok", message: `Checked in! +${CHALK.checkin} Chalk.` };
 }

@@ -40,7 +40,7 @@ export default async function JoinPage() {
             </li>
             <li>
               <strong>Pull & get your ID</strong>
-              Your record, Elo and match videos live on your Riser profile.
+              Your record and match videos live on your Riser profile, and every meet earns you Chalk.
             </li>
           </ol>
         </div>
