@@ -150,7 +150,7 @@ export default async function Home() {
       </div>
 
       <Link href="/supermatch" className="sm-strip">
-        <span className="sm-strip-tag">November Supermatch</span>
+        <span className="sm-strip-tag">November Supermatch · Left arm</span>
         <b>
           Bhavya <i>vs</i> Harry
         </b>

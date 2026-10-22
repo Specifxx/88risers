@@ -22,6 +22,7 @@ export function VotePanel({
   maxStake,
   reward,
   pools,
+  arm,
 }: {
   matchId: number;
   a: Side;
@@ -31,6 +32,7 @@ export function VotePanel({
   maxStake: number;
   reward: number;
   pools: Pools;
+  arm: string;
 }) {
   const [pick, setPick] = useState<number | null>(null);
   const [stake, setStake] = useState(0);
@@ -81,7 +83,7 @@ export function VotePanel({
       <input type="hidden" name="match_id" value={matchId} />
       <input type="hidden" name="pick_id" value={pick ?? ""} />
       <p className="vote-lede">
-        Who takes it? A correct pick earns <b>{reward} coins</b>. Your pick is final once locked.
+        Who takes it on the {arm.toLowerCase()}? A correct pick earns <b>{reward} coins</b>. Your pick is final once locked.
       </p>
       <div className="vote-picks">
         {[a, b].map((s) => (

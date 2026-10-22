@@ -11,7 +11,7 @@ import { tierFor } from "@/lib/elo";
 import { POOL_SEED, fmtOdds, oddsOf, payoutFor } from "@/lib/odds";
 import { fmtDay, fmtTime } from "@/lib/schedule";
 import { formatId } from "@/lib/site";
-import { featuredSupermatch, isOpen, myPick } from "@/lib/supermatch";
+import { armLabel, featuredSupermatch, isOpen, myPick } from "@/lib/supermatch";
 
 export const dynamic = "force-dynamic";
 
@@ -76,7 +76,9 @@ export default async function SupermatchPage() {
           <p className="crumbs">
             <Link href="/">Home</Link> / Supermatch
           </p>
-          <p className="eyebrow">{m.title}</p>
+          <p className="eyebrow">
+            {m.title} · {armLabel(m)}
+          </p>
           <h1 className="display">
             {a.name.split(" ")[0]} <span className="gold-text">vs</span> {b.name.split(" ")[0]}.
           </h1>
@@ -88,8 +90,11 @@ export default async function SupermatchPage() {
         <div className="wrap">
           <div className="sm-arena">
             <Fighter p={a} side="a" winner={m.winner_id} odds={odds.a} live={!m.winner_id} />
-            <div className="sm-vs" aria-hidden>
-              VS
+            <div className="sm-vs-wrap">
+              <div className="sm-vs" aria-hidden>
+                VS
+              </div>
+              <span className={`sm-arm sm-arm-${m.arm}`}>{armLabel(m)}</span>
             </div>
             <Fighter p={b} side="b" winner={m.winner_id} odds={odds.b} live={!m.winner_id} />
           </div>
@@ -144,6 +149,7 @@ export default async function SupermatchPage() {
                 maxStake={MAX_STAKE}
                 reward={m.reward}
                 pools={pools}
+                arm={armLabel(m)}
               />
             ) : (
               <div className="vote-box">

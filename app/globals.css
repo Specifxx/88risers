@@ -5438,3 +5438,27 @@ button.product-media:focus-visible .product-zoom {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+.sm-vs-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.sm-arm {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(213, 182, 122, 0.45);
+  background: rgba(10, 9, 8, 0.85);
+  color: var(--gold);
+  font: 600 11px/1 var(--f-tech);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+@media (max-width: 520px) {
+  .sm-arm {
+    font-size: 9px;
+    padding: 5px 7px;
+    letter-spacing: 0.08em;
+  }
+}

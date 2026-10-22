@@ -172,6 +172,8 @@ CREATE TABLE IF NOT EXISTS predictions (
 );
 -- Databases that got an early version of this table (from a preview build) lack the stake column.
 ALTER TABLE predictions ADD COLUMN IF NOT EXISTS stake integer NOT NULL DEFAULT 0;
+-- Which arm the supermatch is pulled with ('left' or 'right').
+ALTER TABLE supermatches ADD COLUMN IF NOT EXISTS arm text NOT NULL DEFAULT 'right';
 
 -- Coin store purchases: cosmetics (equipped on the account card), perks (a code the club honours)
 -- and giveaway entries. code is shown to the member and checked by organisers.
@@ -237,7 +239,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v10";
+const MIGRATION_MARKER = "founders_v11";
 
 async function migrate(db: Db) {
   // Fast path for every cold start after the first: one tiny query instead of the whole schema.
@@ -297,8 +299,8 @@ async function migrate(db: Db) {
     }
     // November Supermatch: Bhavya (#004) vs Harry (#001). Voting closes at the match; editable in admin.
     await tx.query(
-      `INSERT INTO supermatches (slug, title, blurb, a_id, b_id, closes_at, reward)
-       SELECT $1, $2, $3, 4, 1, $4, 88
+      `INSERT INTO supermatches (slug, title, blurb, a_id, b_id, closes_at, reward, arm)
+       SELECT $1, $2, $3, 4, 1, $4, 88, 'left'
        WHERE EXISTS (SELECT 1 FROM pullers WHERE id = 4) AND EXISTS (SELECT 1 FROM pullers WHERE id = 1)
        ON CONFLICT (slug) DO NOTHING`,
       [
@@ -308,6 +310,12 @@ async function migrate(db: Db) {
         "2026-11-29T18:00:00+11:00",
       ],
     );
+    // The November supermatch is left arm. Once only, so a later admin edit isn't overwritten.
+    const [armDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'sm_arm_v1'`);
+    if (!armDone) {
+      await tx.query(`UPDATE supermatches SET arm = 'left' WHERE slug = 'november-2026'`);
+      await tx.query(`INSERT INTO meta (key, value) VALUES ('sm_arm_v1', now()::text)`);
+    }
   });
 }
 

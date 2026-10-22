@@ -383,18 +383,19 @@ export async function saveSupermatch(form: FormData) {
   const b = int(form, "b_id");
   const closes = fromSydneyInput(str(form, "closes_at") ?? "");
   const reward = int(form, "reward") ?? 88;
+  const arm = str(form, "arm") === "left" ? "left" : "right";
   if (!title || !a || !b || a === b) done(key, "coins", "Give it a title and two different pullers.", true);
   if (!closes) done(key, "coins", "Set when voting closes.", true);
   try {
     const db = await getDb();
     if (id) {
-      await db.query(`UPDATE supermatches SET title=$1, blurb=$2, a_id=$3, b_id=$4, closes_at=$5, reward=$6 WHERE id=$7 AND settled_at IS NULL`, [
-        title, str(form, "blurb"), a, b, closes, reward, id,
+      await db.query(`UPDATE supermatches SET title=$1, blurb=$2, a_id=$3, b_id=$4, closes_at=$5, reward=$6, arm=$8 WHERE id=$7 AND settled_at IS NULL`, [
+        title, str(form, "blurb"), a, b, closes, reward, id, arm,
       ]);
     } else {
       const slug = `${slugify(title)}-${closes.toISOString().slice(0, 10)}`;
-      await db.query(`INSERT INTO supermatches (slug, title, blurb, a_id, b_id, closes_at, reward) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [
-        slug, title, str(form, "blurb"), a, b, closes, reward,
+      await db.query(`INSERT INTO supermatches (slug, title, blurb, a_id, b_id, closes_at, reward, arm) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, [
+        slug, title, str(form, "blurb"), a, b, closes, reward, arm,
       ]);
     }
   } catch (err) {

@@ -891,6 +891,13 @@ function Coins({
         <input name="closes_at" type="datetime-local" defaultValue={m ? toSydneyInput(new Date(m.closes_at)) : ""} required />
       </div>
       <div className="field">
+        <label>Arm</label>
+        <select name="arm" defaultValue={m?.arm ?? "right"}>
+          <option value="right">Right arm</option>
+          <option value="left">Left arm</option>
+        </select>
+      </div>
+      <div className="field">
         <label>Coins for a correct pick</label>
         <input name="reward" type="number" min={0} defaultValue={m?.reward ?? 88} />
       </div>
@@ -926,7 +933,9 @@ function Coins({
         {sms.map((m) => (
           <details key={m.id} className="admin-row" open={!m.settled_at}>
             <summary>
-              <b>{m.title}</b>
+              <b>
+                {m.title} · {m.arm === "left" ? "Left arm" : "Right arm"}
+              </b>
               <span className="muted tech">
                 {nameOf(m.a_id)} {m.a_votes} · {m.b_votes} {nameOf(m.b_id)} · {m.pot} staked · odds{" "}
                 {fmtOdds(oddsOf({ a: m.a_pot, b: m.b_pot }).a)} / {fmtOdds(oddsOf({ a: m.a_pot, b: m.b_pot }).b)}

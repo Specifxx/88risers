@@ -6,6 +6,7 @@ export interface Supermatch {
   slug: string;
   title: string;
   blurb: string | null;
+  arm: "left" | "right";
   a_id: number;
   b_id: number;
   closes_at: string;
@@ -20,7 +21,7 @@ export interface Supermatch {
   b_pot: number;
 }
 
-const COLS = `m.id, m.slug, m.title, m.blurb, m.a_id, m.b_id, m.closes_at, m.reward, m.winner_id, m.settled_at,
+const COLS = `m.id, m.slug, m.title, m.blurb, m.arm, m.a_id, m.b_id, m.closes_at, m.reward, m.winner_id, m.settled_at,
   (SELECT count(*)::int FROM predictions p WHERE p.match_id = m.id AND p.pick_id = m.a_id) AS a_votes,
   (SELECT count(*)::int FROM predictions p WHERE p.match_id = m.id AND p.pick_id = m.b_id) AS b_votes,
   (SELECT coalesce(sum(stake), 0)::int FROM predictions p WHERE p.match_id = m.id) AS pot,
@@ -72,3 +73,5 @@ export async function listBackers() {
      ORDER BY p.match_id, p.stake DESC, p.created_at ASC`,
   );
 }
+
+export const armLabel = (m: Pick<Supermatch, "arm">) => (m.arm === "left" ? "Left arm" : "Right arm");
