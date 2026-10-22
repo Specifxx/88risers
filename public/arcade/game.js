@@ -184,6 +184,8 @@ function render() {
     showBanner(draw ? 'Draw' : won ? (kelvinator ? 'Unstoppable' : 'You win') : (kelvinator ? 'Kelvinated' : 'Pinned'), { hold:true, kind:match.outcome });
     if (won) confetti();
     else if (!draw) impact('miss');
+    // 88risers.com: report wins to the page so logged-in Risers get the score on the leaderboard.
+    if (won && embedded) window.parent.postMessage({ type:'88-arcade-score', level:match.level, score:match.score }, location.origin);
     if (won && match.score > readBest()) {
       try { localStorage.setItem(bestKey(), match.score); } catch { /* Play remains available when storage is blocked. */ }
       $('feedback').textContent = match.bonus ? `New best · +${match.bonus} bonus` : 'New best!';

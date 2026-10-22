@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cleanHandle, currentAccount, endSession, hashPassword, startSession, verifyPassword } from "@/lib/auth";
 import { DAILY_GAME_COINS, MAX_STAKE, WELCOME_COINS, balanceOf, grant, itemById, lockAccount, newCode } from "@/lib/coins";
+import { RTP_GAME, RTP_LEVELS, RTP_MAX_SCORE, isRtpLevel } from "@/lib/arcade";
 import { getDb } from "@/lib/db";
 import { fmtOdds, payoutAt, quoteOdds } from "@/lib/odds";
 import { SITE } from "@/lib/site";
@@ -216,5 +217,32 @@ export async function submitScore(score: number): Promise<{ best: number | null;
     best: row.best,
     coins: got ? DAILY_GAME_COINS : 0,
     message: got ? `+${DAILY_GAME_COINS} coins for today's run!` : n > 0 && row.best === n ? "New personal best!" : "Score saved.",
+  };
+}
+
+/** Race to the Pin: keep each Riser's best winning score per difficulty. */
+export async function submitArcadeScore(level: string, score: number): Promise<{ saved: boolean; best: number | null; message: string }> {
+  const me = await currentAccount();
+  if (!me) return { saved: false, best: null, message: "Log in to put your wins on the leaderboard." };
+  const n = Math.floor(Number(score));
+  if (!isRtpLevel(level) || !Number.isFinite(n) || n <= 0 || n > RTP_MAX_SCORE) return { saved: false, best: null, message: "Score not saved." };
+  const db = await getDb();
+  const [prev] = await db.query<{ best: number }>(
+    `SELECT best FROM arcade_scores WHERE account_id = $1 AND game = $2 AND level = $3`,
+    [me.id, RTP_GAME, level],
+  );
+  const [row] = await db.query<{ best: number }>(
+    `INSERT INTO arcade_scores (account_id, game, level, best) VALUES ($1, $2, $3, $4)
+     ON CONFLICT (account_id, game, level) DO UPDATE SET best = GREATEST(arcade_scores.best, EXCLUDED.best),
+       updated_at = CASE WHEN EXCLUDED.best > arcade_scores.best THEN now() ELSE arcade_scores.updated_at END
+     RETURNING best`,
+    [me.id, RTP_GAME, level, n],
+  );
+  const name = RTP_LEVELS.find((l) => l.id === level)!.name;
+  const isBest = !prev || n > prev.best;
+  return {
+    saved: true,
+    best: row.best,
+    message: isBest ? `New ${name} best: ${n.toLocaleString("en-AU")}! Saved to the leaderboard.` : `Win saved. Your ${name} best is ${row.best.toLocaleString("en-AU")}.`,
   };
 }

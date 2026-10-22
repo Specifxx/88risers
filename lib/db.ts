@@ -198,6 +198,14 @@ CREATE TABLE IF NOT EXISTS account_style (
   badge       boolean NOT NULL DEFAULT false
 );
 
+CREATE TABLE IF NOT EXISTS arcade_scores (
+  account_id  integer NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  game        text NOT NULL,
+  level       text NOT NULL,
+  best        integer NOT NULL,
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (account_id, game, level)
+);
 CREATE TABLE IF NOT EXISTS game_scores (
   account_id  integer PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
   best        integer NOT NULL,
@@ -242,7 +250,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v13";
+const MIGRATION_MARKER = "founders_v14";
 
 async function migrate(db: Db) {
   // Fast path for every cold start after the first: one tiny query instead of the whole schema.

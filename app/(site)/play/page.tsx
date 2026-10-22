@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArcadeFrame } from "@/components/ArcadeFrame";
+import { RTP_LEVELS, rtpLeaders, rtpMine } from "@/lib/arcade";
 import { PinRun } from "@/components/PinRun";
 import { currentAccount } from "@/lib/auth";
 import { DAILY_GAME_COINS } from "@/lib/coins";
@@ -16,11 +17,13 @@ export const metadata: Metadata = {
 export default async function PlayPage() {
   const me = await currentAccount();
   const db = await getDb();
-  const [top, mine] = await Promise.all([
+  const [top, mine, rtpTop, rtpBest] = await Promise.all([
     db.query<{ display_name: string; best: number }>(
       `SELECT a.display_name, g.best FROM game_scores g JOIN accounts a ON a.id = g.account_id ORDER BY g.best DESC, g.updated_at ASC LIMIT 10`,
     ),
     me ? db.query<{ best: number }>(`SELECT best FROM game_scores WHERE account_id = $1`, [me.id]) : Promise.resolve([]),
+    rtpLeaders(5),
+    me ? rtpMine(me.id) : Promise.resolve({} as Awaited<ReturnType<typeof rtpMine>>),
   ]);
 
   return (
@@ -79,7 +82,29 @@ export default async function PlayPage() {
             </p>
           </div>
           <div className="arcade-wrap">
-            <ArcadeFrame />
+            <ArcadeFrame loggedIn={!!me} />
+          </div>
+          <div className="rtp-boards">
+            {RTP_LEVELS.map((l) => (
+              <div key={l.id} className={`panel rtp-board rtp-${l.id}`}>
+                <h3 className="panel-title">{l.name}</h3>
+                <ol className="coin-leaders">
+                  {rtpTop[l.id].map((t, i) => (
+                    <li key={i}>
+                      <span className="cl-rank">{i === 0 ? "♛" : i + 1}</span>
+                      <span className="cl-name">{t.display_name}</span>
+                      <b>{t.best.toLocaleString("en-AU")}</b>
+                    </li>
+                  ))}
+                  {rtpTop[l.id].length === 0 ? <li className="muted">No wins yet.</li> : null}
+                </ol>
+                {me ? (
+                  <p className="rtp-mine">
+                    Your best: <b>{rtpBest[l.id] ? rtpBest[l.id]!.toLocaleString("en-AU") : "–"}</b>
+                  </p>
+                ) : null}
+              </div>
+            ))}
           </div>
         </div>
       </section>

@@ -5564,3 +5564,45 @@ button.product-media:focus-visible .product-zoom {
     margin-bottom: 0;
   }
 }
+.arcade-note {
+  margin: 12px 2px 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+.arcade-note.ok {
+  color: var(--gold);
+}
+.rtp-boards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+.rtp-board {
+  padding: 18px;
+  margin: 0;
+}
+.rtp-board .panel-title {
+  font-size: 18px;
+}
+.rtp-kelvinator {
+  border-color: rgba(212, 42, 47, 0.55);
+}
+.rtp-mine {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.rtp-mine b {
+  color: var(--gold);
+}
+@media (max-width: 960px) {
+  .rtp-boards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 480px) {
+  .rtp-boards {
+    grid-template-columns: 1fr;
+  }
+}
