@@ -74,6 +74,14 @@ export function JoinForm({ nextId, unavailable = [] }: { nextId: number; unavail
               yours.
             </p>
           ) : null}
+          <a className="ig-card account-card" href="/account?next=/chalk">
+            <span className="coin" aria-hidden />
+            <div>
+              <b>Make a free member account too</b>
+              <span>Earn Chalk at meets, back supermatch picks with coins and save your game scores.</span>
+            </div>
+            <i>JOIN</i>
+          </a>
           <a className="ig-card" href={SITE.instagramUrl} target="_blank" rel="noreferrer">
             <Instagram />
             <div>

@@ -10,6 +10,24 @@ const LINES = ["Fresh gear from the den.", "Rep the table. See the merch.", "The
 
 type Mood = LionMood | "idle" | "sleepy";
 
+/** What the lion says to visitors without an account, per page. */
+function signupLine(path: string): [string, string] {
+  if (path.startsWith("/pullers")) return ["Looking for yourself?", "Riser cards are for tournament pullers. Make a free account and you're searchable as a member."];
+  if (path.startsWith("/supermatch")) return ["Want in on the action?", "Make a free account to back your pick with coins. 25 free to start."];
+  if (path.startsWith("/chalk")) return ["Your Lift starts at zero.", "Make a free account to earn Chalk at meets and chase Top Riser."];
+  if (path.startsWith("/rewards")) return ["Those prizes won't buy themselves.", "Make a free account and get 25 coins to start."];
+  if (path.startsWith("/join")) return ["Registered for a meet?", "Make a free account too: earn Chalk, bet coins on supermatches, save your scores."];
+  return ["No account yet?", "Make one free: earn Chalk, back supermatch picks with coins and save your game scores."];
+}
+
+/** Asked once per visit: is this visitor logged in? */
+let loginCheck: Promise<boolean> | null = null;
+const isLoggedIn = () =>
+  (loginCheck ??= fetch("/api/me", { cache: "no-store" })
+    .then((r) => r.json())
+    .then((d) => !!d.loggedIn)
+    .catch(() => true));
+
 /** Sydney hour, so the lion keeps club time wherever the visitor is. */
 const sydneyHour = () => Number(new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", hourCycle: "h23" }).format(new Date()));
 
@@ -26,12 +44,14 @@ export function MerchLion() {
   const [mood, setMood] = useState<Mood>("idle");
   const [line, setLine] = useState(LINES[0]);
   const [sub, setSub] = useState("Club tees, comp jerseys & grip gear");
+  const [cta, setCta] = useState<{ href: string; label: string } | null>(null);
   const hideTalk = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const off = path.startsWith("/shop") || path.startsWith("/admin") || path.startsWith("/play");
   const board = path.startsWith("/pullers") || path.startsWith("/supermatch");
 
-  const say = (m: Mood, text: string, subtext: string, ms = 7000) => {
+  const say = (m: Mood, text: string, subtext: string, ms = 7000, link: { href: string; label: string } | null = null) => {
+    setCta(link);
     setMood(m);
     setLine(text);
     setSub(subtext);
@@ -55,12 +75,23 @@ export function MerchLion() {
     const h = sydneyHour();
     const night = h >= 22 || h < 6;
     const wait = path === "/" ? 7000 : 2500;
-    const t = setTimeout(() => {
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      // Visitors without an account get nudged to make one (not on the account page itself).
+      if (!path.startsWith("/account") && !(await isLoggedIn())) {
+        if (cancelled) return;
+        const [line, subline] = signupLine(path);
+        return say("roar", line, subline, 12000, { href: `/account?next=${encodeURIComponent(path)}`, label: "Make a free account" });
+      }
+      if (cancelled) return;
       if (night) say("sleepy", "Yawn… the table's closed.", "Come pull on the first Sunday. Merch is in the shop.");
       else if (board) say("flex", "Strong table up top.", "Climb the ranks, then rep it in club gear.");
       else say("idle", LINES[Math.floor(Math.random() * LINES.length)], "Club tees, comp jerseys & grip gear");
     }, wait);
-    return () => clearTimeout(t);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, off]);
 
@@ -89,9 +120,15 @@ export function MerchLion() {
       <div className={`merch-bubble${talk ? " on" : ""}`} role="status">
         <b>{line}</b>
         <span>{sub}</span>
-        <Link href={mood === "cheer" ? "/rewards" : "/shop"} className="merch-go">
-          {mood === "cheer" ? "Reward store →" : "Visit the shop →"}
-        </Link>
+        {cta ? (
+          <Link href={cta.href} className="merch-go merch-cta">
+            {cta.label}
+          </Link>
+        ) : (
+          <Link href={mood === "cheer" ? "/rewards" : "/shop"} className="merch-go">
+            {mood === "cheer" ? "Reward store →" : "Visit the shop →"}
+          </Link>
+        )}
       </div>
       <Link href="/shop" className="merch-badge" aria-label="Check out 88 Risers club merch in the shop">
         <span className="merch-face" aria-hidden />

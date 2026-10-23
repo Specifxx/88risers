@@ -6502,3 +6502,27 @@ b.gold {
     grid-template-columns: 1fr;
   }
 }
+/* lion sign-up nudge */
+.merch-go.merch-cta {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--red);
+  color: #fff;
+}
+.merch-go.merch-cta:hover {
+  color: #fff;
+  background: var(--red-hi);
+}
+.account-card {
+  margin-bottom: 10px;
+}
+.account-card .coin {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+}
+.merch-go.merch-cta {
+  white-space: nowrap;
+}
