@@ -612,7 +612,7 @@ function Matches({ matches, pullers, events, k }: { matches: MatchView[]; puller
             <form action={deleteMatch} style={{ marginTop: 12 }}>
               <input type="hidden" name="key" value={k} />
               <input type="hidden" name="match_id" value={m.id} />
-              <ConfirmButton message="Delete this match and recalculate ratings?" className="btn btn-sm btn-ghost danger">
+              <ConfirmButton message="Delete this match? It comes off both pullers&apos; records." className="btn btn-sm btn-ghost danger">
                 Delete match
               </ConfirmButton>
             </form>

@@ -243,7 +243,7 @@ export async function saveMatch(form: FormData) {
   } catch (err) {
     done(key, "matches", friendly(err), true);
   }
-  done(key, "matches", id ? "Match updated — ratings recalculated." : "Match recorded — ratings updated.");
+  done(key, "matches", id ? "Match updated." : "Match recorded.");
 }
 
 export async function deleteMatch(form: FormData) {
@@ -253,7 +253,7 @@ export async function deleteMatch(form: FormData) {
     await tx.query(`DELETE FROM matches WHERE id = $1`, [int(form, "match_id")]);
     await recomputeElo(tx);
   });
-  done(key, "matches", "Match deleted — ratings recalculated.");
+  done(key, "matches", "Match deleted.");
 }
 
 /* ─────────── Events ─────────── */
