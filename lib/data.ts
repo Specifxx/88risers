@@ -75,8 +75,21 @@ export interface Registration {
   status: string;
   notes: string | null;
   puller_id: number | null;
+  requested_id: number | null;
   created_at: Date;
 }
+
+/** Riser numbers people can pick when registering ($2 gold coin donation). 1–8 are the founders; 88 is reserved. */
+export const PICK_MIN = 9;
+export const PICK_MAX = 87;
+export const RESERVED_ID = 88;
+
+/** Numbers held for open registrations that asked for them. */
+const HELD_IDS = `SELECT requested_id FROM registrations
+  WHERE requested_id IS NOT NULL AND puller_id IS NULL AND status <> 'archived'`;
+/** The lowest free Riser number: not used, not held for someone, and not #088. */
+export const NEXT_ID_SQL = `(SELECT min(n)::int FROM generate_series(1, (SELECT coalesce(max(id), 0) + 200 FROM pullers)) n
+  WHERE n <> ${RESERVED_ID} AND n NOT IN (SELECT id FROM pullers) AND n NOT IN (${HELD_IDS}))`;
 
 const PULLER_COLS = `
   p.id, p.name, p.nickname, p.title, p.bio, p.photo_url, p.card_url, p.weight_class,
@@ -153,12 +166,13 @@ export async function getLeaderboard(limit = 10) {
 
 export async function getClubStats() {
   const d = await db();
-  const [s] = await d.query<{ members: number; matches: number; next_id: number; taken: number[] }>(
+  const [s] = await d.query<{ members: number; matches: number; next_id: number; taken: number[]; unavailable: number[] }>(
     `SELECT
        (SELECT count(*)::int FROM pullers WHERE NOT hidden) AS members,
        (SELECT count(*)::int FROM matches) AS matches,
-       (SELECT coalesce(max(id), 0)::int + 1 FROM pullers) AS next_id,
-       (SELECT coalesce(array_agg(id ORDER BY id), '{}') FROM pullers WHERE NOT hidden) AS taken`,
+       ${NEXT_ID_SQL} AS next_id,
+       (SELECT coalesce(array_agg(id ORDER BY id), '{}') FROM pullers WHERE NOT hidden) AS taken,
+       (SELECT coalesce(array_agg(DISTINCT x ORDER BY x), '{}') FROM (SELECT id AS x FROM pullers UNION ${HELD_IDS}) u) AS unavailable`,
   );
   return s;
 }
@@ -274,7 +288,7 @@ export async function listShopInterest() {
 export async function listRegistrations() {
   const d = await db();
   return d.query<Registration>(
-    `SELECT id, name, phone, instagram, photo_id::text AS photo_id, sms_consent, status, notes, puller_id, created_at
+    `SELECT id, name, phone, instagram, photo_id::text AS photo_id, sms_consent, status, notes, puller_id, requested_id, created_at
      FROM registrations ORDER BY created_at DESC`,
   );
 }

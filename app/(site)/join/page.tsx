@@ -44,7 +44,7 @@ export default async function JoinPage() {
             </li>
           </ol>
         </div>
-        <JoinForm nextId={stats.next_id} />
+        <JoinForm nextId={stats.next_id} unavailable={stats.unavailable} />
       </div>
     </section>
   );

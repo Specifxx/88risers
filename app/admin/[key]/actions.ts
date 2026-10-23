@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertAdmin } from "@/lib/admin";
-import { recomputeElo } from "@/lib/data";
+import { NEXT_ID_SQL, recomputeElo } from "@/lib/data";
 import { getDb, type Db } from "@/lib/db";
 import { savePhoto, photoUrl } from "@/lib/photos";
 import { fromSydneyInput } from "@/lib/schedule";
@@ -50,7 +50,7 @@ function friendly(err: unknown) {
 }
 
 async function nextRiserId(db: Db) {
-  const [r] = await db.query<{ n: number }>(`SELECT coalesce(max(id), 0)::int + 1 AS n FROM pullers`);
+  const [r] = await db.query<{ n: number }>(`SELECT ${NEXT_ID_SQL} AS n`);
   return r.n;
 }
 

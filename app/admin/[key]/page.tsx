@@ -244,6 +244,9 @@ function Registrations({
                   <span className={`pill ${r.status === "new" ? "red" : r.status === "puller" ? "" : "dim"}`}>
                     {r.status === "puller" ? `Riser ${formatId(r.puller_id!)}` : r.status}
                   </span>
+                  {r.requested_id && r.status !== "puller" ? (
+                    <span className="pill gold-pill">Wants {formatId(r.requested_id)} · $2 gold coin</span>
+                  ) : null}
                 </div>
                 <div className="reg-meta">
                   <a href={`tel:${r.phone}`}>{prettyPhone(r.phone)}</a>
@@ -273,7 +276,7 @@ function Registrations({
                     <input type="hidden" name="registration_id" value={r.id} />
                     <label>
                       <span>ID #</span>
-                      <input name="riser_id" type="number" min={1} defaultValue={nextId} className="input" />
+                      <input name="riser_id" type="number" min={1} defaultValue={r.requested_id ?? nextId} className="input" />
                     </label>
                     <button className="btn btn-sm btn-primary">Add to database</button>
                   </form>

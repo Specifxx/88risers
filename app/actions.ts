@@ -1,5 +1,6 @@
 "use server";
 
+import { PICK_MAX, PICK_MIN } from "@/lib/data";
 import { getDb } from "@/lib/db";
 import { sendClubMail } from "@/lib/mail";
 import { normalisePhone, prettyPhone } from "@/lib/phone";
@@ -8,17 +9,21 @@ import { savePhoto } from "@/lib/photos";
 
 export type JoinState =
   | { status: "idle" }
-  | { status: "error"; message: string; field?: "name" | "phone" | "photo" | "consent" }
-  | { status: "ok"; name: string; updated: boolean };
+  | { status: "error"; message: string; field?: "name" | "phone" | "photo" | "consent" | "requested_id" }
+  | { status: "ok"; name: string; updated: boolean; requested: number | null };
 
 export async function register(_prev: JoinState, form: FormData): Promise<JoinState> {
   // Honeypot: real people never see or fill this field.
-  if (String(form.get("company") ?? "").trim()) return { status: "ok", name: "", updated: false };
+  if (String(form.get("company") ?? "").trim()) return { status: "ok", name: "", updated: false, requested: null };
 
   const name = String(form.get("name") ?? "").trim().replace(/\s+/g, " ");
   const phone = normalisePhone(String(form.get("phone") ?? ""));
   const instagram = String(form.get("instagram") ?? "").trim().replace(/^@/, "").slice(0, 60) || null;
   const consent = form.get("consent") === "on";
+  const reqRaw = String(form.get("requested_id") ?? "").replace(/^#/, "").trim();
+  const requested = reqRaw ? Number(reqRaw) : null;
+  if (requested !== null && (!Number.isInteger(requested) || requested < PICK_MIN || requested > PICK_MAX))
+    return { status: "error", field: "requested_id", message: `Pick a number from ${PICK_MIN} to ${PICK_MAX}, or leave it blank.` };
 
   if (name.length < 2 || name.length > 80) return { status: "error", field: "name", message: "Tell us your full name." };
   if (!phone)
@@ -32,20 +37,36 @@ export async function register(_prev: JoinState, form: FormData): Promise<JoinSt
       const photo = await savePhoto(tx, form.get("photo"), false);
       if (photo && "error" in photo) return { status: "error", field: "photo", message: photo.error } as const;
       if (!photo) return { status: "error", field: "photo", message: "Add a photo so we can recognise you at the table." } as const;
+      if (requested !== null) {
+        // Taken by a Riser, or held for someone else who registered first?
+        const [clash] = await tx.query(
+          `SELECT 1 FROM pullers WHERE id = $1
+           UNION ALL
+           SELECT 1 FROM registrations WHERE requested_id = $1 AND puller_id IS NULL AND status <> 'archived' AND phone <> $2`,
+          [requested, phone],
+        );
+        if (clash)
+          return {
+            status: "error",
+            field: "requested_id",
+            message: `#${String(requested).padStart(3, "0")} is already taken. Try another number.`,
+          } as const;
+      }
 
       const [row] = await tx.query<{ inserted: boolean }>(
-        `INSERT INTO registrations (name, phone, instagram, photo_id, sms_consent)
-         VALUES ($1, $2, $3, $4, true)
+        `INSERT INTO registrations (name, phone, instagram, photo_id, sms_consent, requested_id)
+         VALUES ($1, $2, $3, $4, true, $5)
          ON CONFLICT (phone) DO UPDATE SET
            name = EXCLUDED.name,
            instagram = coalesce(EXCLUDED.instagram, registrations.instagram),
+           requested_id = coalesce(EXCLUDED.requested_id, registrations.requested_id),
            photo_id = EXCLUDED.photo_id,
            sms_consent = true,
            updated_at = now()
          RETURNING (xmax = 0) AS inserted`,
-        [name, phone, instagram, photo.id],
+        [name, phone, instagram, photo.id, requested],
       );
-      return { status: "ok", name: name.split(" ")[0], updated: !row.inserted } as const;
+      return { status: "ok", name: name.split(" ")[0], updated: !row.inserted, requested } as const;
     });
   } catch (err) {
     console.error("register failed", err);

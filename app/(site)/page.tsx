@@ -552,7 +552,7 @@ export default async function Home() {
             </ol>
           </div>
           <div data-reveal>
-            <JoinForm nextId={stats.next_id} />
+            <JoinForm nextId={stats.next_id} unavailable={stats.unavailable} />
           </div>
         </div>
       </section>

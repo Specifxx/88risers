@@ -6376,3 +6376,57 @@ b.gold {
   color: var(--gold);
   white-space: nowrap;
 }
+
+/* ─────────── Pick your Riser number ─────────── */
+.pick-field .check em {
+  margin-left: 6px;
+  font-style: normal;
+  color: var(--gold);
+}
+.pick-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.pick-hash {
+  font: 900 30px/1 var(--f-display);
+  color: var(--gold);
+}
+.pick-row input {
+  width: 96px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--ink-2);
+  color: var(--bone);
+  font: 900 26px/1 var(--f-display);
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+.pick-status {
+  font: 600 12px/1.3 var(--f-tech);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.pick-status.ok {
+  color: var(--gold-hi);
+}
+.pick-status.bad {
+  color: var(--red-hi);
+}
+.pick-confirm {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(213, 182, 122, 0.5);
+  background: rgba(213, 182, 122, 0.08);
+}
+.pick-confirm b {
+  color: var(--gold-hi);
+}
+.field.pick-field .pick-row input {
+  width: 96px;
+  flex: 0 0 96px;
+}
