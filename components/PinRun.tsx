@@ -700,15 +700,16 @@ export function PinRun({ loggedIn, best: initialBest }: { loggedIn: boolean; bes
             {final.pins} pins · {final.coins} coins grabbed
             {best ? ` · best ${best.toLocaleString("en-AU")}` : ""}
           </p>
+          <button type="button" className="btn btn-primary pinrun-again" onClick={start}>
+            ↻ Run it back
+          </button>
+          <p className="pinrun-hint">or tap / press Space</p>
           {saveMsg ? <p className="pinrun-save">{saveMsg}</p> : null}
           {!loggedIn ? (
             <p className="pinrun-save">
               <a href="/account?next=/play">Create a free account</a> to save scores and earn coins.
             </p>
           ) : null}
-          <button type="button" className="btn btn-primary" onClick={start}>
-            Run it back
-          </button>
         </div>
       ) : null}
       <button type="button" className="pinrun-mute" onClick={() => setMuted((m) => !m)} aria-label={muted ? "Sound on" : "Sound off"}>

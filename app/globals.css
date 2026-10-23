@@ -6430,3 +6430,34 @@ b.gold {
   width: 96px;
   flex: 0 0 96px;
 }
+.pinrun-hint {
+  margin: -4px 0 0;
+  font: 600 10px/1 var(--f-tech);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+@media (max-width: 560px) {
+  .pinrun-overlay {
+    gap: 6px;
+    padding: 10px 12px;
+    overflow-y: auto;
+    place-content: safe center;
+  }
+  .pinrun-overlay .eyebrow {
+    display: none;
+  }
+  .pinrun-overlay h2 {
+    font-size: 44px;
+  }
+  .pinrun-best,
+  .pinrun-stats,
+  .pinrun-save {
+    font-size: 10px;
+    line-height: 1.3;
+  }
+  .pinrun-overlay .btn {
+    min-height: 40px;
+    padding: 0 18px;
+  }
+}
