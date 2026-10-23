@@ -17,6 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE.url}/supermatch`, changeFrequency: "daily", priority: 0.7 },
     { url: `${SITE.url}/play`, priority: 0.5 },
     { url: `${SITE.url}/rewards`, priority: 0.4 },
+    { url: `${SITE.url}/chalk`, priority: 0.6 },
     ...pullers.map((p) => ({ url: `${SITE.url}/pullers/${p.id}`, priority: 0.5 })),
     ...events.map((e) => ({ url: `${SITE.url}/events/${e.slug}`, priority: 0.6 })),
   ];
