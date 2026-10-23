@@ -6448,7 +6448,11 @@ b.gold {
     display: none;
   }
   .pinrun-overlay h2 {
-    font-size: 44px;
+    font-size: 38px;
+  }
+  .pinrun-hint,
+  .pinrun-overlay .pinrun-save:has(a) {
+    display: none;
   }
   .pinrun-best,
   .pinrun-stats,
