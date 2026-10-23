@@ -10,11 +10,14 @@ export interface MemberCard {
   frame: string | null;
   title: string | null;
   badge: boolean;
+  /** Linked Riser ID, if an organiser has linked this member to their Riser profile. */
+  riser_id: number | null;
 }
 
 const CARD_COLS = `a.handle, a.display_name,
   coalesce((SELECT sum(amount) FROM coin_tx t WHERE t.account_id = a.id), 0)::int AS coins,
-  s.frame, s.title, coalesce(s.badge, false) AS badge`;
+  s.frame, s.title, coalesce(s.badge, false) AS badge,
+  (SELECT p.id FROM pullers p WHERE p.account_id = a.id AND NOT p.hidden) AS riser_id`;
 
 /** Name or @username search. */
 export async function searchMembers(q: string, limit = 12) {

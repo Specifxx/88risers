@@ -31,6 +31,7 @@ interface Member {
   frame: string | null;
   title: string | null;
   badge: boolean;
+  riser_id: number | null;
 }
 
 export function PullerSearch({ hero, board, entries }: { hero: ReactNode; board: ReactNode; entries: SearchEntry[] }) {
@@ -157,7 +158,10 @@ export function PullerSearch({ hero, board, entries }: { hero: ReactNode; board:
                       {m.display_name}
                       {m.badge ? <i className="cl-lion" aria-label="Lion badge" /> : null}
                     </b>
-                    <span>@{m.handle}</span>
+                    <span>
+                      @{m.handle}
+                      {m.riser_id ? ` · Riser #${String(m.riser_id).padStart(3, "0")}` : ""}
+                    </span>
                     {m.title ? <em>{m.title}</em> : null}
                     <small>
                       <span className="coin" aria-hidden /> {m.coins.toLocaleString("en-AU")}

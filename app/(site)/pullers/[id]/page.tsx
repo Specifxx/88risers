@@ -86,6 +86,11 @@ export default async function PullerPage({ params }: PageProps<"/pullers/[id]">)
             {p.nickname ? <p className="lede" style={{ marginTop: 8 }}>“{p.nickname}”</p> : null}
             <div className="profile-tags">
               {p.is_founder ? <span className="pill red">Founding member</span> : null}
+              {p.account_handle ? (
+                <Link className="pill gold-pill" href={`/members/${p.account_handle}`} style={{ textDecoration: "none" }}>
+                  @{p.account_handle} · member profile →
+                </Link>
+              ) : null}
               {p.title ? <span className="pill">{p.title}</span> : null}
               {podiums.slice(0, 3).map((r) => (
                 <span key={r.id} className="pill gold-pill">

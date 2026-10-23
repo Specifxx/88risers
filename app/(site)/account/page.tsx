@@ -98,6 +98,11 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
             <Link className="btn btn-ghost" href={`/members/${me.handle}`}>
               Your public profile
             </Link>
+            {profile?.riser_id ? (
+              <Link className="btn btn-ghost" href={`/pullers/${profile.riser_id}`}>
+                Your Riser profile
+              </Link>
+            ) : null}
             <form action={logOut}>
               <button className="btn btn-ghost">Log out</button>
             </form>

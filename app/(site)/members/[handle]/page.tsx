@@ -10,6 +10,7 @@ import { RTP_LEVELS } from "@/lib/arcade";
 import { currentAccount } from "@/lib/auth";
 import { type MemberProfile, getMember } from "@/lib/members";
 import { fmtShortDate } from "@/lib/schedule";
+import { formatId } from "@/lib/site";
 import { type PredictionRecord, predictionRecord, recordLabel } from "@/lib/supermatch";
 
 export const dynamic = "force-dynamic";
@@ -85,7 +86,17 @@ export default async function MemberPage({ params }: PageProps<"/members/[handle
           <p className="crumbs">
             <Link href="/">Home</Link> / <Link href="/pullers">Riser Database</Link> / @{m.handle}
           </p>
-          <p className="eyebrow">Member #{m.member_no}</p>
+          <p className="eyebrow">
+            Member #{m.member_no}
+            {m.riser_id ? (
+              <>
+                {" · "}
+                <Link href={`/pullers/${m.riser_id}`} className="gold">
+                  Riser {formatId(m.riser_id)}
+                </Link>
+              </>
+            ) : null}
+          </p>
           <h1 className="display">
             {first}
             <span className="gold-text">.</span>
@@ -94,11 +105,18 @@ export default async function MemberPage({ params }: PageProps<"/members/[handle
             @{m.handle} · member since {fmtShortDate(new Date(m.created_at))} · {earned.size} of {ACHIEVEMENTS.length}{" "}
             achievements
           </p>
-          {isMe ? (
+          {isMe || m.riser_id ? (
             <div className="btn-row" style={{ marginTop: 20 }}>
-              <Link className="btn btn-sm" href="/account">
-                Back to your account
-              </Link>
+              {m.riser_id ? (
+                <Link className="btn btn-sm btn-primary" href={`/pullers/${m.riser_id}`}>
+                  Riser profile {formatId(m.riser_id)} · record &amp; matches →
+                </Link>
+              ) : null}
+              {isMe ? (
+                <Link className="btn btn-sm" href="/account">
+                  Back to your account
+                </Link>
+              ) : null}
             </div>
           ) : null}
         </div>
