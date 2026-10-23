@@ -47,7 +47,7 @@ export async function signUp(_prev: FormState, form: FormData): Promise<FormStat
     );
     if (!rows.length) return { status: "error", field: "handle", message: "That username is taken. Try another." };
     id = rows[0].id;
-    await grant(db, id, WELCOME_COINS, "Welcome to the pride", "welcome");
+    await grant(db, id, WELCOME_COINS, "Welcome bonus", "welcome");
     await startSession(id);
   } catch (err) {
     console.error("signUp failed", err);

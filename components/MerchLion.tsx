@@ -100,7 +100,7 @@ export function MerchLion() {
     const on = (e: Event) => {
       const d = (e as CustomEvent<{ mood: LionMood; text: string }>).detail;
       if (!d) return;
-      say(d.mood, d.text, d.mood === "roar" ? "Welcome to the pride." : "Spend your coins in the reward store.", 6000);
+      say(d.mood, d.text, d.mood === "roar" ? "Welcome to 88 Risers." : "Spend your coins in the reward store.", 6000);
     };
     window.addEventListener("88r:lion", on);
     return () => window.removeEventListener("88r:lion", on);

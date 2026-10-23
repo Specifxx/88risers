@@ -30,7 +30,7 @@ export function AccountForms({ next, start = "signup" }: { next: string; start?:
       <div className="auth-grid">
         <form className={`form-card${tab === "signup" ? " on" : ""}`} onSubmit={submit(upAction)} noValidate>
           <div className="form-title">
-            <h3>Join the pride</h3>
+            <h3>Create your account</h3>
             <span>+25 coins to start</span>
           </div>
           {upErr && !upErr.field ? <div className="form-error">{upErr.message}</div> : null}
