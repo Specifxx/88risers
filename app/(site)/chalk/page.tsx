@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { ChalkLift } from "@/components/ChalkLift";
 import { CheckInBox } from "@/components/CheckInBox";
@@ -100,7 +101,9 @@ export default async function ChalkPage() {
                 <div className="top">
                   <span>Top Riser · #1 on 31 December</span>
                   <b>{settings.topPrize}</b>
-                  <small>Ties go to whoever got there first.</small>
+                  <small>
+                    <a href="#top-prize-title">See the blade ↓</a> · 18+ · ties go to whoever got there first.
+                  </small>
                 </div>
               </div>
               {me ? (
@@ -110,6 +113,29 @@ export default async function ChalkPage() {
               ) : null}
             </div>
           </div>
+
+          <section className="top-prize" aria-labelledby="top-prize-title">
+            <div className="top-prize-art">
+              <Image
+                src="/chalk/katana.webp"
+                alt="The custom 88 Risers katana: etched 'RISERS' blade, gold lion tsuba, black and red wrapped handle, lacquered scabbard with gold lion art"
+                fill
+                sizes="(max-width: 860px) 100vw, 760px"
+              />
+            </div>
+            <div className="top-prize-copy">
+              <p className="eyebrow">Top Riser · {season}</p>
+              <h2 id="top-prize-title" className="display">
+                Win the <span className="gold-text">blade.</span>
+              </h2>
+              <p className="lede">
+                Finish the season #1 on the Chalkboard and take home a custom 88 Risers katana: a real, sharp blade etched with
+                RISERS, a gold lion hand guard, a black-and-red wrapped handle and a lacquered scabbard with gold lion art. One
+                of one.
+              </p>
+              <p className="fine">Winner must be 18 or over. Crowned on 31 December; ties go to whoever got there first.</p>
+            </div>
+          </section>
 
           <div className="panel" style={{ marginTop: 24 }}>
             <h2 className="panel-title">

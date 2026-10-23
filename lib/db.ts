@@ -298,7 +298,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v17";
+const MIGRATION_MARKER = "founders_v18";
 
 async function migrate(db: Db) {
   // Fast path for every cold start after the first: one tiny query instead of the whole schema.
@@ -404,6 +404,15 @@ async function migrate(db: Db) {
       `SELECT DISTINCT p.id FROM pullers p JOIN comp_results r ON r.puller_id = p.id WHERE p.account_id IS NOT NULL`,
     );
     for (const { id } of linked) await awardResultsChalk(tx, id);
+    // Top Riser prize announced: the custom katana. Once only, so later admin edits stick.
+    const [katanaDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'top_prize_katana_v1'`);
+    if (!katanaDone) {
+      await tx.query(
+        `INSERT INTO meta (key, value) VALUES ('chalk_top_prize', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+        ["A custom 88 Risers katana: real, sharp, one of one"],
+      );
+      await tx.query(`INSERT INTO meta (key, value) VALUES ('top_prize_katana_v1', now()::text)`);
+    }
     // The November supermatch is left arm. Once only, so a later admin edit isn't overwritten.
     const [armDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'sm_arm_v1'`);
     if (!armDone) {

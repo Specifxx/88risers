@@ -635,7 +635,7 @@ export async function saveChalkConfig(form: FormData) {
   await saveChalkSettings({
     target,
     liftPrize: str(form, "lift_prize") ?? "A season reward from the club",
-    topPrize: str(form, "top_prize") ?? "The Top Riser prize, revealed at the end of the year",
+    topPrize: str(form, "top_prize") ?? "A custom 88 Risers katana: real, sharp, one of one",
   });
   done(key, "chalk", "Chalk settings saved.");
 }

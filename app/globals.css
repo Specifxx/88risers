@@ -6465,3 +6465,40 @@ b.gold {
     padding: 0 18px;
   }
 }
+
+/* ─────────── Top Riser prize ─────────── */
+.top-prize {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 0;
+  margin-top: 24px;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(212, 42, 47, 0.55);
+  background: linear-gradient(120deg, rgba(212, 42, 47, 0.14), rgba(10, 9, 8, 0.9) 60%);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+.top-prize-art {
+  position: relative;
+  aspect-ratio: 1536 / 1024;
+  background: #0a0807;
+}
+.top-prize-art img {
+  object-fit: cover;
+}
+.top-prize-copy {
+  padding: clamp(20px, 3vw, 36px);
+  align-self: center;
+}
+.top-prize-copy h2 {
+  font-size: clamp(40px, 5vw, 64px);
+  margin: 8px 0 12px;
+}
+.top-prize-copy .lede {
+  font-size: 15px;
+}
+@media (max-width: 860px) {
+  .top-prize {
+    grid-template-columns: 1fr;
+  }
+}

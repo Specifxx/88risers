@@ -47,7 +47,7 @@ export async function chalkSettings(): Promise<ChalkSettings> {
   return {
     target: Number.isFinite(target) && target > 0 ? target : DEFAULT_TARGET,
     liftPrize: get("chalk_lift_prize") || "A season reward from the club",
-    topPrize: get("chalk_top_prize") || "The Top Riser prize, revealed at the end of the year",
+    topPrize: get("chalk_top_prize") || "A custom 88 Risers katana: real, sharp, one of one",
   };
 }
 
