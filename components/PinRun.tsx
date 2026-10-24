@@ -864,8 +864,19 @@ function LionTemple({
             return (
               <article key={k.id} className={`temple-card${on ? " on" : ""}${has ? " owned" : ""}`}>
                 <div className="temple-art">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/pinrun/thumb/${k.id}.webp`} alt="" loading="lazy" />
+                  {/* the lion's run cycle: a frame strip stepped through with CSS */}
+                  <div
+                    className="temple-run"
+                    role="img"
+                    aria-label={`${k.name} lion running`}
+                    style={
+                      {
+                        backgroundImage: `url(/pinrun/anim/${k.id}.webp)`,
+                        aspectRatio: `${k.anim.w} / ${ANIM.h}`,
+                        "--n": k.anim.frames,
+                      } as React.CSSProperties
+                    }
+                  />
                 </div>
                 <h3>{k.name}</h3>
                 <p>{k.blurb}</p>

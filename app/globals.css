@@ -7660,3 +7660,28 @@ b.gold {
     padding-right: 46px;
   }
 }
+
+/* Temple: each lion runs its in-game cycle (a horizontal frame strip, ~24fps) */
+.temple-run {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  margin-bottom: 4px;
+  background-repeat: no-repeat;
+  background-size: calc(var(--n) * 100%) 100%;
+  background-position: 0 0;
+  animation: temple-run calc(var(--n) * 42ms) steps(var(--n), jump-none) infinite;
+}
+@keyframes temple-run {
+  to {
+    background-position: 100% 0;
+  }
+}
+.temple-card:not(.owned) .temple-run {
+  filter: saturate(0.55) brightness(0.7);
+}
+@media (prefers-reduced-motion: reduce) {
+  .temple-run {
+    animation: none;
+  }
+}
