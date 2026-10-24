@@ -6,6 +6,7 @@ import { RiserPass } from "@/components/RiserPass";
 import { earnedAchievements } from "@/lib/achievements";
 import { getMember } from "@/lib/members";
 import { ChalkLift } from "@/components/ChalkLift";
+import { LionShowcase } from "@/components/LionShowcase";
 import { CheckInBox } from "@/components/CheckInBox";
 import { CHALK, chalkHistory, chalkOf, chalkSettings, checkedInToday, liftCompletedEver, todaysMeet } from "@/lib/chalk";
 import { currentAccount } from "@/lib/auth";
@@ -128,6 +129,9 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
                 <button className="btn btn-sm">Equip</button>
               </form>
             ) : null}
+            <div style={{ marginTop: 20 }}>
+              <LionShowcase skin={profile?.lion ?? "stone"} title="Your lion" mine />
+            </div>
           </div>
 
           <div className="account-cols">

@@ -44,18 +44,21 @@ export interface MemberProfile extends MemberCard {
   won_giveaway: boolean;
   pinRun: number | null;
   rtp: Partial<Record<RtpLevel, number>>;
+  /** The Pin Run lion skin they have equipped. */
+  lion: string;
 }
 
 export async function getMember(handle: string): Promise<MemberProfile | null> {
   const db = await getDb();
   const [m] = await db.query<
-    MemberCard & { id: number; created_at: string; member_no: number; items: string[] | null; won_giveaway: boolean; pin_run: number | null }
+    MemberCard & { id: number; created_at: string; member_no: number; items: string[] | null; won_giveaway: boolean; pin_run: number | null; lion: string }
   >(
     `SELECT a.id, a.created_at, ${CARD_COLS},
             (SELECT count(*)::int FROM accounts b WHERE b.id <= a.id) AS member_no,
             (SELECT array_agg(DISTINCT r.item) FROM redemptions r WHERE r.account_id = a.id) AS items,
             EXISTS (SELECT 1 FROM redemptions r WHERE r.account_id = a.id AND r.won) AS won_giveaway,
-            (SELECT best FROM game_scores g WHERE g.account_id = a.id) AS pin_run
+            (SELECT best FROM game_scores g WHERE g.account_id = a.id) AS pin_run,
+            coalesce((SELECT w.skin FROM pinrun_wallet w WHERE w.account_id = a.id), 'stone') AS lion
      FROM accounts a LEFT JOIN account_style s ON s.account_id = a.id
      WHERE a.handle = $1`,
     [handle.toLowerCase()],

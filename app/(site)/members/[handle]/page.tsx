@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { AchievementWall } from "@/components/AchievementWall";
 import { ChalkLift } from "@/components/ChalkLift";
+import { LionShowcase } from "@/components/LionShowcase";
 import { RiserPass } from "@/components/RiserPass";
 import { chalkOf, chalkSettings, liftCompletedEver } from "@/lib/chalk";
 import { ACHIEVEMENTS, earnedAchievements } from "@/lib/achievements";
@@ -146,6 +147,9 @@ export default async function MemberPage({ params }: PageProps<"/members/[handle
                 </small>
               </h2>
               <ChalkLift chalk={chalk} target={settings.target} compact />
+            </div>
+            <div style={{ marginTop: 20 }}>
+              <LionShowcase skin={m.lion} title={`${first}'s lion`} mine={isMe} />
             </div>
           </div>
           <div className="account-cols">

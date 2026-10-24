@@ -7743,3 +7743,40 @@ b.gold {
 .pt-lion {
   margin-right: 0.35em;
 }
+
+/* A member's Pin Run lion on their profile */
+.lion-show-stage {
+  position: relative;
+  display: grid;
+  place-items: end center;
+  padding: 18px 14px 10px;
+  border-radius: 14px;
+  background: radial-gradient(80% 70% at 50% 92%, rgba(213, 182, 122, 0.16), transparent 70%), #0a0807;
+  overflow: hidden;
+}
+.lion-show-stage::after {
+  content: "";
+  position: absolute;
+  inset: auto 6% 10px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  box-shadow: 0 0 12px rgba(213, 182, 122, 0.6);
+}
+.lion-show-stage .temple-run {
+  max-width: 420px;
+}
+.lion-show-name {
+  display: grid;
+  gap: 2px;
+  margin: 12px 0 0;
+}
+.lion-show-name b {
+  font: 900 24px/1 var(--f-display);
+  text-transform: uppercase;
+  color: var(--bone);
+}
+.lion-show-name span {
+  font-size: 13px;
+  color: var(--muted);
+}
