@@ -7269,3 +7269,56 @@ b.gold {
     grid-template-columns: 1fr;
   }
 }
+
+/* ─────────── Small-phone fixes (iPhone SE etc.) ─────────── */
+@media (max-width: 380px) {
+  .site-header .wrap {
+    gap: 10px;
+  }
+  .brand > span {
+    display: none;
+  }
+  .header-cta {
+    padding: 0 12px;
+  }
+}
+.support {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.support-card > .btn {
+  white-space: normal;
+  text-align: center;
+  line-height: 1.3;
+}
+@media (max-width: 860px) {
+  .support {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .chalk-table th:nth-child(3),
+  .chalk-table td:nth-child(3) {
+    display: none;
+  }
+  .chalk-table th,
+  .chalk-table td {
+    padding: 10px 6px;
+  }
+  .chalk-table .pill {
+    display: table;
+    margin: 6px 0 0;
+  }
+}
+@media (max-width: 760px) {
+  .shop-sponsor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .shop-sponsor-cta .btn {
+    white-space: normal;
+    text-align: center;
+  }
+}
+/* The lion sits under the header so it never covers the open menu. */
+.merch-lion {
+  z-index: 45;
+}
