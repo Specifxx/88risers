@@ -13,13 +13,24 @@ const TUNE_TIMEOUT = 12_000;
  * 88Risers FM: what 88RisersTV plays between live broadcasts. Three channels of licensed
  * internet radio; if a station is down it quietly tunes to the next one on that channel.
  */
-export function TvRadio({ event }: { event: { kind: string; title: string; detail: string; href: string } | null }) {
+export function TvRadio({
+  event,
+}: {
+  event: { kind: string; title: string; detail: string; href: string } | null;
+}) {
   const audio = useRef<HTMLAudioElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [ch, setCh] = useState(0);
   const [st, setSt] = useState(0);
   const [status, setStatus] = useState<Status>("idle");
   const [vol, setVol] = useState(0.8);
+  /** iPhones ignore page volume (hardware buttons only), so the slider is hidden there. */
+  const [canVol, setCanVol] = useState(true);
+  useEffect(() => {
+    const t = new Audio();
+    t.volume = 0.5;
+    if (t.volume !== 0.5) setCanVol(false);
+  }, []);
   const channel = RADIO[ch];
   const station = channel.stations[st];
 
@@ -29,7 +40,8 @@ export function TvRadio({ event }: { event: { kind: string; title: string; detai
       const saved = JSON.parse(localStorage.getItem(STORE) ?? "{}");
       const i = RADIO.findIndex((c) => c.id === saved.ch);
       if (i >= 0) setCh(i);
-      if (typeof saved.vol === "number") setVol(Math.min(1, Math.max(0, saved.vol)));
+      if (typeof saved.vol === "number")
+        setVol(Math.min(1, Math.max(0, saved.vol)));
     } catch {}
   }, []);
   useEffect(() => {
@@ -123,11 +135,20 @@ export function TvRadio({ event }: { event: { kind: string; title: string; detai
       {event ? (
         <Link href={event.href} className="fm-event">
           <span className="fm-event-dot" aria-hidden />
-          <b>{event.kind === "supermatch" ? "Supermatch on now" : "Tournament day"}</b>
+          <b>
+            {event.kind === "supermatch"
+              ? "Supermatch on now"
+              : "Tournament day"}
+          </b>
           <span>
-            {event.kind === "supermatch" ? `${event.title}: ${event.detail}` : event.detail}. Live feed coming soon.
+            {event.kind === "supermatch"
+              ? `${event.title}: ${event.detail}`
+              : event.detail}
+            . Live feed coming soon.
           </span>
-          <em>{event.kind === "supermatch" ? "Back your pick ›" : "Details ›"}</em>
+          <em>
+            {event.kind === "supermatch" ? "Back your pick ›" : "Details ›"}
+          </em>
         </Link>
       ) : null}
 
@@ -140,7 +161,8 @@ export function TvRadio({ event }: { event: { kind: string; title: string; detai
             <p className="fm-sponsor">Presented by Supp Station</p>
           </div>
           <p className={`fm-onair${on ? " lit" : ""}`}>
-            <i aria-hidden /> {on ? "On air" : status === "tuning" ? "Tuning…" : "Radio"}
+            <i aria-hidden />{" "}
+            {on ? "On air" : status === "tuning" ? "Tuning…" : "Radio"}
           </p>
         </div>
 
@@ -161,7 +183,13 @@ export function TvRadio({ event }: { event: { kind: string; title: string; detai
           </div>
           <div className="fm-eq" aria-hidden>
             {Array.from({ length: 14 }, (_, i) => (
-              <i key={i} style={{ animationDelay: `${(i * 137) % 900}ms`, animationDuration: `${620 + ((i * 89) % 420)}ms` }} />
+              <i
+                key={i}
+                style={{
+                  animationDelay: `${(i * 137) % 900}ms`,
+                  animationDuration: `${620 + ((i * 89) % 420)}ms`,
+                }}
+              />
             ))}
           </div>
         </div>
@@ -193,7 +221,12 @@ export function TvRadio({ event }: { event: { kind: string; title: string; detai
         </div>
 
         <div className="fm-controls">
-          <button type="button" className="fm-play" onClick={toggle} aria-label={live ? "Pause the radio" : "Play the radio"}>
+          <button
+            type="button"
+            className="fm-play"
+            onClick={toggle}
+            aria-label={live ? "Pause the radio" : "Play the radio"}
+          >
             {live ? (
               <svg viewBox="0 0 24 24" aria-hidden>
                 <rect x="6" y="5" width="4" height="14" rx="1" />
@@ -205,15 +238,27 @@ export function TvRadio({ event }: { event: { kind: string; title: string; detai
               </svg>
             )}
           </button>
-          <label className="fm-vol">
-            <span>Vol</span>
-            <input type="range" min={0} max={1} step={0.01} value={vol} onChange={(e) => setVol(Number(e.target.value))} aria-label="Volume" />
-          </label>
+          {canVol ? (
+            <label className="fm-vol">
+              <span>Vol</span>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={vol}
+                onChange={(e) => setVol(Number(e.target.value))}
+                aria-label="Volume"
+              />
+            </label>
+          ) : null}
         </div>
         <audio ref={audio} preload="none" onError={onError} />
       </div>
       <p className="fm-credit">
-        Live internet radio from independent stations, found via radio-browser.info. When a supermatch is on, this screen switches to the live feed.
+        Live internet radio from independent stations, found via
+        radio-browser.info. When a supermatch is on, this screen switches to the
+        live feed.
       </p>
     </div>
   );

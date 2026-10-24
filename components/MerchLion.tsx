@@ -47,7 +47,7 @@ export function MerchLion() {
   const [cta, setCta] = useState<{ href: string; label: string } | null>(null);
   const hideTalk = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const off = path.startsWith("/shop") || path.startsWith("/admin") || path.startsWith("/play");
+  const off = path.startsWith("/shop") || path.startsWith("/admin") || path.startsWith("/play") || path.startsWith("/tv");
   const board = path.startsWith("/pullers") || path.startsWith("/supermatch");
 
   const say = (m: Mood, text: string, subtext: string, ms = 7000, link: { href: string; label: string } | null = null) => {
