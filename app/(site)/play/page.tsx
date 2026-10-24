@@ -37,8 +37,8 @@ export default async function PlayPage() {
             Pin <span className="gold-text">Run.</span>
           </h1>
           <p className="lede">
-            One button. Jump the tables, win the grip fights, don&apos;t fall in the chalk pit. Logged-in Risers earn{" "}
-            {DAILY_GAME_COINS} coins for their first run each day. Prefer a straight-up arm wrestle?{" "}
+            One button. Jump the tables, win the grip fights, don&apos;t fall in the chalk pit. Play any minigame here once a day and logged-in
+            Risers earn +{DAILY_GAME_COINS} coins. Prefer a straight-up arm wrestle?{" "}
             <a href="#race-to-the-pin">Play Race to the Pin</a>.
           </p>
         </div>

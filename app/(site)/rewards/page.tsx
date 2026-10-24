@@ -35,7 +35,7 @@ export default async function RewardsPage() {
             Coin <span className="gold-text">store.</span>
           </h1>
           <p className="lede">
-            Earn 88Risers coins by calling supermatches ({WELCOME_COINS} free to start, +{DAILY_GAME_COINS} for your first Pin Run
+            Earn 88Risers coins by calling supermatches ({WELCOME_COINS} free to start, +{DAILY_GAME_COINS} for playing any minigame
             each day) and spend them here.
           </p>
           <div className="coin-bar">

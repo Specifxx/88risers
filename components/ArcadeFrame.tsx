@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { submitArcadeScore } from "@/app/(site)/account/actions";
+import { claimDailyGameCoins, submitArcadeScore } from "@/app/(site)/account/actions";
 import { lionSays } from "@/lib/lion";
 
 /**
@@ -17,6 +17,8 @@ export function ArcadeFrame({ loggedIn }: { loggedIn: boolean }) {
   const visible = useRef(false);
   const router = useRouter();
   const [note, setNote] = useState<{ text: string; ok: boolean } | null>(null);
+  const [bonus, setBonus] = useState(0);
+  const claimed = useRef(false);
 
   useEffect(() => {
     const el = frame.current;
@@ -34,6 +36,19 @@ export function ArcadeFrame({ loggedIn }: { loggedIn: boolean }) {
       if (e.origin !== window.location.origin || e.source !== el.contentWindow) return;
       if (e.data?.type === "88-arcade-ready") tell();
       if (e.data?.type === "88-arcade-close") el.blur();
+      if (e.data?.type === "88-arcade-played" && loggedIn && !claimed.current) {
+        claimed.current = true; // once per page visit is plenty; the server allows once a day
+        claimDailyGameCoins()
+          .then((r) => {
+            if (!r.coins) return;
+            setBonus(r.coins);
+            lionSays("cheer", `+${r.coins} coins for today's game!`);
+            setTimeout(() => router.refresh(), 1500);
+          })
+          .catch(() => {
+            claimed.current = false;
+          });
+      }
       if (e.data?.type === "88-arcade-score" && typeof e.data.score === "number" && typeof e.data.level === "string") {
         submitArcadeScore(e.data.level, e.data.score)
           .then((r) => {
@@ -51,7 +66,7 @@ export function ArcadeFrame({ loggedIn }: { loggedIn: boolean }) {
       io.disconnect();
       window.removeEventListener("message", onMsg);
     };
-  }, [router]);
+  }, [router, loggedIn]);
 
   return (
     <>
@@ -62,7 +77,8 @@ export function ArcadeFrame({ loggedIn }: { loggedIn: boolean }) {
       title="Race to the Pin arm wrestling game"
       loading="lazy"
     />
-    <p className={`arcade-note${note?.ok ? " ok" : ""}`} role="status" aria-live="polite">
+    <p className={`arcade-note${note?.ok || bonus ? " ok" : ""}`} role="status" aria-live="polite">
+      {bonus ? <b>+{bonus} coins for today&apos;s game! </b> : null}
       {note ? (
         note.ok ? (
           note.text
@@ -78,11 +94,11 @@ export function ArcadeFrame({ loggedIn }: { loggedIn: boolean }) {
           </>
         )
       ) : loggedIn ? (
-        "Your wins are saved to the leaderboard automatically."
+        bonus ? null : "Your wins are saved to the leaderboard automatically. Your first game each day earns coins."
       ) : (
         <>
           Playing as a guest. <Link href="/account?next=/play%23race-to-the-pin">Log in</Link> to put your wins on the
-          leaderboard.
+          leaderboard and earn coins for your first game each day.
         </>
       )}
     </p>

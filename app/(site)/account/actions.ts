@@ -6,7 +6,7 @@ import { cleanHandle, currentAccount, endSession, hashPassword, startSession, ve
 import { DAILY_GAME_COINS, MAX_STAKE, WELCOME_COINS, balanceOf, grant, isRepeatable, itemById, lockAccount, newCode } from "@/lib/coins";
 import { RTP_GAME, RTP_LEVELS, RTP_MAX_SCORE, isRtpLevel } from "@/lib/arcade";
 import { CHALK, recordCheckin, sydneyToday } from "@/lib/chalk";
-import { getDb } from "@/lib/db";
+import { type Db, getDb } from "@/lib/db";
 import { fmtOdds, payoutAt, quoteOdds } from "@/lib/odds";
 import { SITE } from "@/lib/site";
 
@@ -237,6 +237,22 @@ const STORE_FRAME_BY_STYLE: Record<string, string> = { gold: "frame-gold", ink: 
 
 /* ─────────── Game ─────────── */
 
+/** +5 coins for the first minigame played each day (Sydney time), whichever game it is. */
+async function dailyGameBonus(db: Db, accountId: number, game: string) {
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: SITE.timeZone }).format(new Date());
+  return grant(db, accountId, DAILY_GAME_COINS, `Daily game bonus (${game})`, `game:${day}`);
+}
+
+/** Race to the Pin calls this when any match finishes, win or lose. */
+export async function claimDailyGameCoins(): Promise<{ coins: number }> {
+  const me = await currentAccount();
+  if (!me) return { coins: 0 };
+  const db = await getDb();
+  const got = await dailyGameBonus(db, me.id, "Race to the Pin");
+  if (got) revalidatePath("/account");
+  return { coins: got ? DAILY_GAME_COINS : 0 };
+}
+
 export async function submitScore(score: number): Promise<{ best: number | null; coins: number; message: string }> {
   const me = await currentAccount();
   if (!me) return { best: null, coins: 0, message: "Log in to save your score and earn coins." };
@@ -250,13 +266,12 @@ export async function submitScore(score: number): Promise<{ best: number | null;
      RETURNING best`,
     [me.id, n],
   );
-  const day = new Intl.DateTimeFormat("en-CA", { timeZone: SITE.timeZone }).format(new Date());
-  const got = n >= 100 && (await grant(db, me.id, DAILY_GAME_COINS, "Pin Run: daily run", `game:${day}`));
+  const got = await dailyGameBonus(db, me.id, "Pin Run");
   revalidatePath("/play");
   return {
     best: row.best,
     coins: got ? DAILY_GAME_COINS : 0,
-    message: got ? `+${DAILY_GAME_COINS} coins for today's run!` : n > 0 && row.best === n ? "New personal best!" : "Score saved.",
+    message: got ? `+${DAILY_GAME_COINS} coins for today's game!` : n > 0 && row.best === n ? "New personal best!" : "Score saved.",
   };
 }
 
