@@ -28,7 +28,6 @@ const RULES: { title: string; points: string[] }[] = [
     title: "Safety first",
     points: [
       "Newcomers learn safe technique before their first pull.",
-      "We match people by size and experience. No pulling someone much bigger or more experienced unless you both want to and an organiser is happy with it.",
       "Anyone can stop a pull at any time. If something hurts, stop straight away and tell an organiser.",
       "No pulling if you've been drinking, or while you're carrying an injury.",
     ],
