@@ -301,7 +301,13 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v21";
+const MIGRATION_MARKER = "founders_v22";
+
+/** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
+const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [
+  ["link_harry_001", "savethepenguin9", "harry lu", 1, "harry lu"],
+  ["link_erick_008", "daddy", "erick", 8, "erick%"],
+];
 
 async function migrate(db: Db) {
   // Fast path for every cold start after the first: one tiny query instead of the whole schema.
@@ -432,21 +438,23 @@ async function migrate(db: Db) {
         await tx.query(`INSERT INTO meta (key, value) VALUES ('reserve_felix_17', now()::text)`);
       }
     }
-    // Link Harry Lu's member account (@savethepenguin9) to Riser #001. Once only, and only if
-    // both sides match by name and neither is linked yet.
-    const [harryDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'link_harry_001'`);
-    if (!harryDone) {
+    // One-off links of member accounts to their Riser numbers. Each runs once, and only if both
+    // sides match by name and neither is linked yet.
+    for (const [key, handle, displayName, riserId, riserName] of ACCOUNT_LINKS) {
+      const [linkDone] = await tx.query(`SELECT 1 FROM meta WHERE key = $1`, [key]);
+      if (linkDone) continue;
       const [acct] = await tx.query<{ id: number }>(
         `SELECT a.id FROM accounts a
-         WHERE a.handle = 'savethepenguin9' AND a.display_name ILIKE 'harry lu'
+         WHERE a.handle = $1 AND a.display_name ILIKE $2
            AND NOT EXISTS (SELECT 1 FROM pullers p WHERE p.account_id = a.id)`,
+        [handle, displayName],
       );
-      const [riser] = await tx.query(`SELECT 1 FROM pullers WHERE id = 1 AND name ILIKE 'harry lu' AND account_id IS NULL`);
+      const [riser] = await tx.query(`SELECT 1 FROM pullers WHERE id = $1 AND name ILIKE $2 AND account_id IS NULL`, [riserId, riserName]);
       if (acct && riser) {
-        await tx.query(`UPDATE pullers SET account_id = $1 WHERE id = 1`, [acct.id]);
+        await tx.query(`UPDATE pullers SET account_id = $1 WHERE id = $2`, [acct.id, riserId]);
         const { awardResultsChalk } = await import("./results");
-        await awardResultsChalk(tx, 1);
-        await tx.query(`INSERT INTO meta (key, value) VALUES ('link_harry_001', now()::text)`);
+        await awardResultsChalk(tx, riserId);
+        await tx.query(`INSERT INTO meta (key, value) VALUES ($1, now()::text)`, [key]);
       }
     }
     // The November supermatch is left arm. Once only, so a later admin edit isn't overwritten.
