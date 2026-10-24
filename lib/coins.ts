@@ -146,6 +146,8 @@ export interface AdminAccount {
   coins: number;
   picks: number;
   best: number | null;
+  /** Previous handles, e.g. "@daddy". */
+  former: string | null;
 }
 
 export async function adminAccounts() {
@@ -154,7 +156,8 @@ export async function adminAccounts() {
     `SELECT a.id, a.handle, a.display_name, a.created_at,
             coalesce((SELECT sum(amount) FROM coin_tx t WHERE t.account_id = a.id), 0)::int AS coins,
             (SELECT count(*)::int FROM predictions p WHERE p.account_id = a.id) AS picks,
-            (SELECT best FROM game_scores g WHERE g.account_id = a.id) AS best
+            (SELECT best FROM game_scores g WHERE g.account_id = a.id) AS best,
+            (SELECT string_agg('@' || h.old_handle, ', ' ORDER BY h.changed_at) FROM handle_history h WHERE h.account_id = a.id) AS former
      FROM accounts a ORDER BY a.created_at DESC`,
   );
 }

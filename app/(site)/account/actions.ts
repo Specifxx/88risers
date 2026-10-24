@@ -34,7 +34,10 @@ export async function signUp(_prev: FormState, form: FormData): Promise<FormStat
   const db = await getDb();
   let invitedBy: number | null = null;
   if (invitedHandle) {
-    const [inv] = await db.query<{ id: number }>(`SELECT id FROM accounts WHERE handle = $1`, [invitedHandle]);
+    const [inv] = await db.query<{ id: number }>(
+      `SELECT id FROM accounts WHERE handle = $1 UNION ALL SELECT account_id FROM handle_history WHERE old_handle = $1 LIMIT 1`,
+      [invitedHandle],
+    );
     if (!inv) return { status: "error", field: "invited_by", message: "We couldn't find that member. Check the username, or leave it blank." };
     invitedBy = inv.id;
   }
@@ -47,6 +50,7 @@ export async function signUp(_prev: FormState, form: FormData): Promise<FormStat
     );
     if (!rows.length) return { status: "error", field: "handle", message: "That username is taken. Try another." };
     id = rows[0].id;
+    await db.query(`DELETE FROM handle_history WHERE old_handle = $1`, [handle]);
     await grant(db, id, WELCOME_COINS, "Welcome bonus", "welcome");
     await startSession(id);
   } catch (err) {
@@ -174,10 +178,21 @@ export async function buyItem(_prev: FormState, form: FormData): Promise<FormSta
         const [taken] = await tx.query(`SELECT 1 FROM accounts WHERE handle = $1`, [newHandle]);
         if (taken) return `@${newHandle} is taken. Try another.`;
         await tx.query(`UPDATE accounts SET handle = $2 WHERE id = $1`, [me.id, newHandle]);
+        // Old profile links redirect to the new handle; a handle that's in use again stops redirecting.
+        await tx.query(`DELETE FROM handle_history WHERE old_handle = $1`, [newHandle]);
+        await tx.query(
+          `INSERT INTO handle_history (old_handle, account_id) VALUES ($1, $2)
+           ON CONFLICT (old_handle) DO UPDATE SET account_id = EXCLUDED.account_id, changed_at = now()`,
+          [me.handle, me.id],
+        );
       }
       code = newCode();
       await tx.query(`INSERT INTO redemptions (account_id, item, cost, code) VALUES ($1, $2, $3, $4)`, [me.id, item.id, item.cost, code]);
-      await tx.query(`INSERT INTO coin_tx (account_id, amount, reason) VALUES ($1, $2, $3)`, [me.id, -item.cost, item.name]);
+      await tx.query(`INSERT INTO coin_tx (account_id, amount, reason) VALUES ($1, $2, $3)`, [
+        me.id,
+        -item.cost,
+        newHandle ? `Changed handle @${me.handle} → @${newHandle}` : item.name,
+      ]);
       await tx.query(`INSERT INTO account_style (account_id) VALUES ($1) ON CONFLICT DO NOTHING`, [me.id]);
       if (item.kind === "frame") await tx.query(`UPDATE account_style SET frame = $2 WHERE account_id = $1`, [me.id, item.style]);
       if (item.kind === "title") await tx.query(`UPDATE account_style SET title = $2 WHERE account_id = $1`, [me.id, title]);
@@ -190,6 +205,8 @@ export async function buyItem(_prev: FormState, form: FormData): Promise<FormSta
     console.error("buyItem failed", err);
     return { status: "error", message: "Something went wrong on our side. Try again." };
   }
+  // Handles appear on cached public pages (leaderboards, Riser profiles): refresh them now.
+  if (newHandle) revalidatePath("/", "layout");
   const msg =
     item.kind === "perk"
       ? `Done! Your code is ${code}. Show it to an organiser.`

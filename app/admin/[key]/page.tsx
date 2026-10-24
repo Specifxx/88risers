@@ -1170,7 +1170,9 @@ function Coins({
               <summary>
                 <b>{a.display_name}</b>
                 <span className="muted tech">
-                  @{a.handle} · {a.coins} coins · {a.picks} {a.picks === 1 ? "pick" : "picks"}{a.best ? ` · best ${a.best}` : ""}
+                  @{a.handle}
+                  {a.former ? ` (formerly ${a.former})` : ""} · {a.coins} coins · {a.picks} {a.picks === 1 ? "pick" : "picks"}
+                  {a.best ? ` · best ${a.best}` : ""}
                 </span>
               </summary>
               <form action={grantCoins} className="btn-row">

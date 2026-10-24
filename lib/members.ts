@@ -70,3 +70,13 @@ export async function getMember(handle: string): Promise<MemberProfile | null> {
   const { pin_run, items, ...rest } = m;
   return { ...rest, items: items ?? [], pinRun: pin_run, rtp };
 }
+
+/** The current handle for a member who has since changed it, or null. */
+export async function currentHandleFor(oldHandle: string) {
+  const db = await getDb();
+  const [r] = await db.query<{ handle: string }>(
+    `SELECT a.handle FROM handle_history h JOIN accounts a ON a.id = h.account_id WHERE h.old_handle = $1`,
+    [oldHandle],
+  );
+  return r?.handle ?? null;
+}

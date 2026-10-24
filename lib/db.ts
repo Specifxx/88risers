@@ -133,6 +133,13 @@ CREATE TABLE IF NOT EXISTS sessions (
   expires_at  timestamptz NOT NULL
 );
 
+-- Old handles, so profile links keep working after a member changes their @handle.
+CREATE TABLE IF NOT EXISTS handle_history (
+  old_handle  text PRIMARY KEY,
+  account_id  integer NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  changed_at  timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS login_attempts (
   handle  text NOT NULL,
   at      timestamptz NOT NULL DEFAULT now()
@@ -301,7 +308,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v22";
+const MIGRATION_MARKER = "founders_v23";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [

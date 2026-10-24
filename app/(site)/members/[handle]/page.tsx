@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { AchievementWall } from "@/components/AchievementWall";
 import { ChalkLift } from "@/components/ChalkLift";
 import { RiserPass } from "@/components/RiserPass";
@@ -8,7 +8,7 @@ import { chalkOf, chalkSettings, liftCompletedEver } from "@/lib/chalk";
 import { ACHIEVEMENTS, earnedAchievements } from "@/lib/achievements";
 import { RTP_LEVELS } from "@/lib/arcade";
 import { currentAccount } from "@/lib/auth";
-import { type MemberProfile, getMember } from "@/lib/members";
+import { type MemberProfile, currentHandleFor, getMember } from "@/lib/members";
 import { fmtShortDate } from "@/lib/schedule";
 import { formatId } from "@/lib/site";
 import { type PredictionRecord, predictionRecord, recordLabel } from "@/lib/supermatch";
@@ -42,8 +42,14 @@ const earnedFor = (m: MemberProfile, rec: PredictionRecord, liftDone: boolean) =
 const n = (v: number | null | undefined) => (v ? v.toLocaleString("en-AU") : "–");
 
 export default async function MemberPage({ params }: PageProps<"/members/[handle]">) {
-  const m = await getMember(cleanHandle((await params).handle));
-  if (!m) notFound();
+  const handle = cleanHandle((await params).handle);
+  const m = await getMember(handle);
+  if (!m) {
+    // An old handle: send them to the member's current profile.
+    const now = await currentHandleFor(handle);
+    if (now) permanentRedirect(`/members/${now}`);
+    notFound();
+  }
   const me = await currentAccount();
   const isMe = me?.handle === m.handle;
   const [rec, mine, myRec] = await Promise.all([
