@@ -7024,3 +7024,205 @@ b.gold {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
   }
 }
+
+/* ─────────── Sponsor credit on 88RisersTV ─────────── */
+.tv-presented {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0 18px;
+  font: 600 11px/1 var(--f-tech);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tv-presented img {
+  width: clamp(110px, 14vw, 150px);
+  height: auto;
+}
+.tv-presented-sm {
+  margin: 16px 0;
+}
+.tv-presented-sm img {
+  width: 110px;
+}
+.fm-sponsor {
+  margin: 6px 0 0;
+  font: 600 10px/1 var(--f-tech);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold-lo);
+}
+
+/* ─────────── Support the club ─────────── */
+.support {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(18px, 3vw, 32px);
+  align-items: start;
+}
+.support-card {
+  padding: clamp(22px, 3.5vw, 36px);
+  border-radius: 22px;
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(160deg, var(--ink-3), var(--ink-1) 70%);
+}
+.support-card h2 {
+  margin: 6px 0 10px;
+  font-size: clamp(34px, 4.4vw, 52px);
+}
+.support-card > .muted {
+  margin: 0 0 20px;
+}
+.support-amounts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.support-amt {
+  display: grid;
+  place-items: center;
+  padding: 14px 0;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: rgba(0, 0, 0, 0.25);
+  font: 900 26px/1 var(--f-display);
+  color: var(--gold-hi);
+  text-decoration: none;
+  transition:
+    border-color 0.2s,
+    transform 0.2s var(--ease),
+    background 0.2s;
+}
+.support-amt:hover {
+  border-color: var(--gold);
+  background: rgba(213, 182, 122, 0.12);
+  transform: translateY(-2px);
+}
+.support-card > .btn {
+  width: 100%;
+  justify-content: center;
+}
+.support-alt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 14px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+.support-alt b {
+  color: var(--bone);
+  word-break: break-all;
+}
+.support-alt a {
+  color: var(--gold-hi);
+}
+.copy-btn {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--gold);
+  font: 600 12px/1.4 var(--f-tech);
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.copy-btn:hover {
+  border-color: var(--gold);
+}
+.support-funds {
+  list-style: none;
+  margin: 26px 0 0;
+  padding: 20px 0 0;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.support-funds b {
+  display: block;
+  font: 900 18px/1.1 var(--f-display);
+  text-transform: uppercase;
+  color: var(--bone);
+}
+.support-funds span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.support-perks {
+  margin: 0 0 22px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+.support-perks li {
+  position: relative;
+  padding-left: 22px;
+  color: var(--text);
+}
+.support-perks li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.55em;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--red);
+  transform: rotate(45deg);
+}
+.support-current {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.support-current small {
+  font: 600 11px/1 var(--f-tech);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.support-current img {
+  width: 160px;
+  height: auto;
+}
+.support-current span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.footer-support {
+  margin-left: auto;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  color: var(--gold-hi);
+  text-decoration: none;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+.footer-support:hover {
+  border-color: var(--gold);
+}
+.footer-support span {
+  color: var(--red-hi);
+}
+@media (max-width: 860px) {
+  .support {
+    grid-template-columns: 1fr;
+  }
+  .footer-support {
+    margin-left: 0;
+  }
+}
+@media (max-width: 420px) {
+  .support-funds {
+    grid-template-columns: 1fr;
+  }
+}

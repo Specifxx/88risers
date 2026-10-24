@@ -133,9 +133,12 @@ export function TvRadio({ event }: { event: { kind: string; title: string; detai
 
       <div className="fm-deck">
         <div className="fm-top">
-          <p className="fm-brand">
-            88<span>Risers</span> FM
-          </p>
+          <div>
+            <p className="fm-brand">
+              88<span>Risers</span> FM
+            </p>
+            <p className="fm-sponsor">Presented by Supp Station</p>
+          </div>
           <p className={`fm-onair${on ? " lit" : ""}`}>
             <i aria-hidden /> {on ? "On air" : status === "tuning" ? "Tuning…" : "Radio"}
           </p>

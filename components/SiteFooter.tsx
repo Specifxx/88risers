@@ -22,6 +22,8 @@ export function SiteFooter() {
               <li><Link href="/#table-time">Table time</Link></li>
               <li><Link href="/#faq">FAQ</Link></li>
               <li><Link href="/conduct">Code of Conduct</Link></li>
+              <li><Link href="/support">Donate</Link></li>
+              <li><Link href="/support#sponsor">Become a sponsor</Link></li>
             </ul>
           </div>
           <div>
@@ -57,6 +59,9 @@ export function SiteFooter() {
               <small>Supplements · Proud sponsor of 88 Risers</small>
             </span>
           </div>
+          <Link href="/support" className="footer-support">
+            Back the club: donate or become a sponsor <span>→</span>
+          </Link>
         </div>
         <div className="footer-wordmark" aria-hidden>
           88 Risers

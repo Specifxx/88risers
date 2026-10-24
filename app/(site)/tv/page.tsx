@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { Instagram } from "@/components/Icons";
 import { LiveRefresh } from "@/components/LiveRefresh";
@@ -33,6 +34,10 @@ export default async function TvPage() {
             88<span className="gold-text">Risers</span>
             <span className="tv-badge">TV</span>
           </h1>
+          <p className="tv-presented">
+            <span>Presented by</span>
+            <Image src="/sponsors/supp-station.webp" alt="Supp Station" width={393} height={156} priority />
+          </p>
           <p className="lede">
             Supermatches live when they&apos;re on. 88Risers FM in between: pull-day bangers, summer Afro house and phonk.
             Plus every reel from{" "}
@@ -73,6 +78,10 @@ export default async function TvPage() {
                 </p>
                 <h2 className="tv-title">{live.title || live.event?.title || "88RisersTV live"}</h2>
                 {live.event ? <p className="tv-caption">{live.event.detail}</p> : null}
+                <p className="tv-presented tv-presented-sm">
+                  <span>Presented by</span>
+                  <Image src="/sponsors/supp-station.webp" alt="Supp Station" width={393} height={156} />
+                </p>
                 {live.event?.kind === "supermatch" ? (
                   <Link className="btn btn-primary btn-sm" href={live.event.href}>
                     Back your pick
