@@ -108,14 +108,15 @@ function extend(w: World) {
   let last = w.plats[w.plats.length - 1];
   while (last.x + last.w < w.dist + W * 2) {
     const level = Math.min(1, w.dist / 30000);
-    const gap = rand(90, 150 + level * 120) * (w.speed / 330);
-    const width = rand(220, 420) - level * 80;
-    const y = Math.max(250, Math.min(450, last.y + rand(-120, 110)));
+    // Tuned for the lion's size: shorter tables, bigger steps and gaps than the original circle needed.
+    const gap = rand(100, 165 + level * 130) * (w.speed / 330);
+    const width = rand(175, 340) - level * 70;
+    const y = Math.max(235, Math.min(460, last.y + rand(-140, 125)));
     const x = last.x + last.w + gap;
     const n = w.plats.length;
     const rivalChance = n < 4 ? 0 : 0.32 + level * 0.25;
     const p: Plat = { x, w: width, y, rival: null };
-    if (Math.random() < rivalChance && width > 240) p.rival = { x: x + width * rand(0.45, 0.7), state: "idle", vy: 0, y: 0, vx: 0, spin: 0 };
+    if (Math.random() < rivalChance && width > 200) p.rival = { x: x + width * rand(0.45, 0.7), state: "idle", vy: 0, y: 0, vx: 0, spin: 0 };
     w.plats.push(p);
     // a little arc of coins over the gap or the table
     if (Math.random() < 0.7) {
@@ -378,8 +379,8 @@ export function PinRun({ loggedIn, best: initialBest, wallet: initialWallet }: {
 
       // coins
       for (const c of w.coinsList) {
-        // the lion is taller than its hit circle, so coins are grabbed anywhere from paws to mane
-        if (!c.got && Math.abs(c.x - px) < 42 && c.y > w.y + R - 105 && c.y < w.y + R + 10) {
+        // close to the original hit circle: paws to chest, not the whole mane
+        if (!c.got && Math.abs(c.x - px) < 32 && c.y > w.y + R - 78 && c.y < w.y + R + 8) {
           c.got = true;
           w.coins++;
           w.score += 10 * w.combo;
