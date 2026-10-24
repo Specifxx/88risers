@@ -13,7 +13,6 @@ const RULES: { title: string; points: string[] }[] = [
     points: [
       "Everyone is welcome at the table, whatever their gender, size, age, background or experience.",
       "No sexist, racist or homophobic comments, no put-downs, and no unwanted touching or attention.",
-      "Win well, lose well. Shake hands before and after every pull.",
     ],
   },
   {
