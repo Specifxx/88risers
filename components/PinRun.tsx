@@ -782,7 +782,7 @@ function TempleButton({ onOpen, coins, loggedIn }: { onOpen: () => void; coins: 
         onOpen();
       }}
     >
-      ⛩ <span className="pt-lion">Lion&nbsp;</span>Temple{loggedIn ? <span className="pinrun-temple-bal"> · {coins}</span> : null}
+      ⛩ <span className="pt-lion">Lion</span>Temple{loggedIn ? <span className="pinrun-temple-bal"> · {coins}</span> : null}
     </button>
   );
 }
