@@ -236,7 +236,11 @@ export default async function Home() {
                   );
                 if (held.has(n))
                   return (
-                    <Link key={n} href="#join" className="cell reserved" title={`Riser ${formatId(n)} is reserved ($2 gold coin donation)`}>
+                    <Link key={n} href="#join" className="cell reserved" title={`Riser ${formatId(n)} is reserved for a $2 donation`}>
+                      <span className="cell-coin" aria-hidden>
+                        $2
+                      </span>
+                      <em className="cell-tag">$2 donation</em>
                       {String(n).padStart(2, "0")}
                       <small>RESERVED</small>
                     </Link>
@@ -260,7 +264,7 @@ export default async function Home() {
                 <i className="lg taken" /> Riser
               </span>
               <span>
-                <i className="lg reserved" /> Reserved for a $2 gold coin donation
+                <i className="lg reserved" /> Reserved
               </span>
               <span>
                 <i className="lg next" /> Next up
