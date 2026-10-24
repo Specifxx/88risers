@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { buySkin, equipSkin, submitScore } from "@/app/(site)/account/actions";
 import { lionSays } from "@/lib/lion";
-import { DEFAULT_SKIN, SKINS, type Wallet, skinById } from "@/lib/pinrun";
+import { ANIM, DEFAULT_SKIN, SKINS, type Wallet, skinById } from "@/lib/pinrun";
 import { drawAura, drawFx, newFx, stepFx } from "@/lib/pinrun-fx";
 
 /**
@@ -22,19 +22,8 @@ const JUMP = 820;
 const JUMP2 = 720;
 const PX = 230; // player screen x
 const R = 26; // player hit radius
-/**
- * Lion sprites in /pinrun/run are 320×168, feet centred at x=173 on the bottom edge, with the
- * resting paws faded out below the belly so we can draw running legs in their place.
- */
-const SPRITE = { w: 320, h: 168, ax: 173, scale: 0.6 };
-/** Body raised off the table to make room for the legs; hips sit just inside the belly. */
-const LIFT = 7;
-const HIP_Y = -LIFT - 17;
-const LEG = 24;
-/** Hip x positions (relative to the feet anchor): hind near/far, front near/far. */
-const HIPS = { hind: [-31, -18], front: [5, 19] };
-/** Where the head joins the body (feet-relative, before LIFT): the head layer pivots here. */
-const HEAD = { x: -8, y: -44 };
+/** Run-cycle frames per second at the base speed (the video was 24fps); scales with run speed. */
+const ANIM_FPS = 24;
 
 type Plat = { x: number; w: number; y: number; rival: Rival | null };
 type Rival = { x: number; state: "idle" | "pinned" | "gone"; vy: number; y: number; vx: number; spin: number };
@@ -148,7 +137,7 @@ export function PinRun({ loggedIn, best: initialBest, wallet: initialWallet }: {
   const templeRef = useRef(false);
   templeRef.current = temple;
   const skin = wallet?.skin ?? DEFAULT_SKIN;
-  const legs = useRef(skinById(DEFAULT_SKIN)!.legs);
+  const anim = useRef(skinById(DEFAULT_SKIN)!.anim);
   const skinRef = useRef(skin);
   skinRef.current = skin;
   const fx = useRef(newFx());
@@ -245,9 +234,9 @@ export function PinRun({ loggedIn, best: initialBest, wallet: initialWallet }: {
   // The equipped lion.
   useEffect(() => {
     const img = new Image();
-    img.src = `/pinrun/run/${skin}.webp`;
+    img.src = `/pinrun/anim/${skin}.webp`;
     imgs.current = { ...imgs.current, skin: img };
-    legs.current = (skinById(skin) ?? skinById(DEFAULT_SKIN)!).legs;
+    anim.current = (skinById(skin) ?? skinById(DEFAULT_SKIN)!).anim;
   }, [skin]);
 
   useEffect(() => {
@@ -483,71 +472,20 @@ export function PinRun({ loggedIn, best: initialBest, wallet: initialWallet }: {
       ctx.restore();
     };
 
-    /**
-     * One jointed leg from hip to paw, in the lion's local frame (y=0 is the table). Two bones
-     * solved with simple IK; front legs bend at the wrist (forward), hind legs at the hock (back).
-     */
-    const L1 = 15;
-    const L2 = 15;
-    const drawLeg = (hx: number, hy: number, px: number, py: number, fill: string, rim: string, front: boolean) => {
-      const dx = px - hx;
-      const dy = py - hy;
-      const d = Math.min(Math.hypot(dx, dy), L1 + L2 - 0.5);
-      const a = Math.atan2(dy, dx);
-      const bend = Math.acos(Math.max(-1, Math.min(1, (L1 * L1 + d * d - L2 * L2) / (2 * L1 * d))));
-      const ka = a + (front ? -bend : bend);
-      const kx = hx + Math.cos(ka) * L1;
-      const ky = hy + Math.sin(ka) * L1;
-      const fx = hx + Math.cos(a) * d;
-      const fy = hy + Math.sin(a) * d;
-      const seg = (x1: number, y1: number, x2: number, y2: number, wdt: number, col: string) => {
-        ctx.strokeStyle = col;
-        ctx.lineWidth = wdt;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      };
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      // dark outline, then the stone, then a carved highlight down the leading edge
-      seg(hx, hy, kx, ky, 13, "rgba(0,0,0,.55)");
-      seg(kx, ky, fx, fy, 10, "rgba(0,0,0,.55)");
-      seg(hx, hy, kx, ky, 10, fill);
-      seg(kx, ky, fx, fy, 7, fill);
-      ctx.globalAlpha = 0.6;
-      seg(hx + 3, hy + 1, kx + 2.5, ky, 2, rim);
-      seg(kx + 2, ky, fx + 2, fy - 1, 1.6, rim);
-      ctx.globalAlpha = 1;
-      // a rounded paw with three toes
-      ctx.fillStyle = fill;
-      ctx.strokeStyle = "rgba(0,0,0,.6)";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.ellipse(fx + 3, fy - 1, 7, 4.2, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.strokeStyle = rim;
-      ctx.globalAlpha = 0.7;
-      ctx.lineWidth = 1;
-      for (let i = 0; i < 3; i++) {
-        ctx.beginPath();
-        ctx.arc(fx + 5 + i * 2.4, fy - 1, 1.6, Math.PI * 1.1, Math.PI * 1.9);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-    };
-
+    /** The lion: its AI-animated run cycle, played at a rate that follows the run speed. */
+    let frameAt = 0;
     const drawPlayer = (w: World) => {
       if (w.invuln > 0 && Math.floor(w.t * 14) % 2 === 0) return;
       const x = PX;
       const feet = w.y + R;
-      const [fill, far, rim] = legs.current;
       const onGround = !!w.ground;
-      const ph = w.runFrame * 1.15;
-      // the body bounces twice a stride; in the air it tilts nose-up rising, nose-down falling
-      const bob = onGround ? Math.abs(Math.sin(ph)) * 4 : 0;
-      const tilt = onGround ? Math.sin(ph * 2) * 0.025 : Math.max(-0.26, Math.min(0.2, w.vy / 2600));
+      const { frames, w: fw } = anim.current;
+      // on the table the stride runs with the speed; in the air it holds the leap
+      if (onGround || frameAt === 0) frameAt = Math.floor(w.runFrame * (ANIM_FPS / 9.9)) % frames;
+      const tilt = onGround ? 0 : Math.max(-0.2, Math.min(0.16, w.vy / 3200));
+      const squash = w.land / 0.16;
+      const sy = onGround ? 1 - squash * 0.08 : w.vy < 0 ? 1.04 : 1;
+      const sx = onGround ? 1 + squash * 0.05 : w.vy < 0 ? 0.97 : 1;
 
       if (w.boost > 0) {
         ctx.strokeStyle = "rgba(255,74,79,.55)";
@@ -555,92 +493,31 @@ export function PinRun({ loggedIn, best: initialBest, wallet: initialWallet }: {
         ctx.lineCap = "round";
         for (let i = 1; i < 4; i++) {
           ctx.beginPath();
-          ctx.moveTo(x - 50 - i * 12, feet - 30 - i * 12);
-          ctx.lineTo(x - 50 - i * 12 - 34, feet - 30 - i * 12);
+          ctx.moveTo(x - 60 - i * 12, feet - 30 - i * 12);
+          ctx.lineTo(x - 60 - i * 12 - 34, feet - 30 - i * 12);
           ctx.stroke();
         }
       }
       if (onGround) {
         ctx.fillStyle = "rgba(0,0,0,.35)";
         ctx.beginPath();
-        ctx.ellipse(x, feet + 1, 42, 5, 0, 0, Math.PI * 2);
+        ctx.ellipse(x, feet + 1, 52, 5, 0, 0, Math.PI * 2);
         ctx.fill();
       }
-
-      // where each paw goes: a bound on the table (front pair together, back pair together, out of phase with each other;
-      // each foot lifting as it swings forward), tucked and stretched in the air
-      const hipY = HIP_Y - bob;
-      const paw = (hx: number, phase: number, front: boolean): [number, number] => {
-        if (onGround) {
-          const swing = Math.sin(phase);
-          const up = Math.max(0, Math.cos(phase)) * 8;
-          return [hx + swing * 11, -up];
-        }
-        if (w.vy < 0) return front ? [hx + 15, hipY + LEG - 6] : [hx - 15, hipY + LEG - 8];
-        return front ? [hx + 8, hipY + LEG] : [hx - 6, hipY + LEG];
-      };
-      const legsOf = (near: boolean) => {
-        const i = near ? 0 : 1;
-        const off = 0; // a bound: the front pair moves together, the back pair together
-        return [
-          [HIPS.hind[i], paw(HIPS.hind[i], ph + off, false), false],
-          [HIPS.front[i], paw(HIPS.front[i], ph + Math.PI + off, true), true],
-        ] as const;
-      };
-
-      // squash and stretch: a little squash each stride, a big one on landing, stretch on take-off
-      const squash = w.land / 0.16;
-      let sy = 1 + Math.sin(ph * 2) * 0.03 - squash * 0.12;
-      let sx = 1 - Math.sin(ph * 2) * 0.02 + squash * 0.08;
-      if (!onGround) {
-        sy = w.vy < 0 ? 1.06 : 1.02;
-        sx = w.vy < 0 ? 0.95 : 0.99;
-      }
+      const img = imgs.current.skin;
       ctx.save();
       ctx.translate(x, feet);
       ctx.rotate(tilt);
       ctx.scale(sx, sy);
-      // far legs behind the body, in shadow
-      for (const [hx, [px, py], fr] of legsOf(false)) drawLeg(hx, hipY, px, py, far, far, fr);
-      const img = imgs.current.skin;
       if (img?.complete && img.naturalWidth) {
-        const k = SPRITE.scale;
-        const dx = -SPRITE.ax * k;
-        const dy = -SPRITE.h * k - LIFT - bob;
-        const dw = SPRITE.w * k;
-        const dh = SPRITE.h * k;
-        // the head nods with the stride: draw the body, then the head pivoting at the neck
-        const nod = onGround ? Math.sin(ph * 2 + 0.6) * 0.06 : w.vy < 0 ? -0.08 : 0.05;
-        const neckX = HEAD.x;
-        const neckY = HEAD.y - LIFT - bob;
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(dx, dy, dw, dh);
-        ctx.moveTo(neckX - 2, neckY);
-        ctx.lineTo(dx + dw, neckY);
-        ctx.lineTo(dx + dw, dy);
-        ctx.lineTo(neckX - 2, dy);
-        ctx.closePath();
-        ctx.clip("evenodd");
-        ctx.drawImage(img, dx, dy, dw, dh);
-        ctx.restore();
-        ctx.save();
-        ctx.translate(neckX, neckY);
-        ctx.rotate(nod);
-        ctx.translate(-neckX, -neckY);
-        ctx.beginPath();
-        ctx.rect(neckX - 4, dy, dx + dw - neckX + 4, neckY - dy + 3);
-        ctx.clip();
-        ctx.drawImage(img, dx, dy, dw, dh);
-        ctx.restore();
+        const k = ANIM.scale;
+        ctx.drawImage(img, frameAt * fw, 0, fw, ANIM.h, -ANIM.ax * k, -ANIM.h * k, fw * k, ANIM.h * k);
       } else {
-        ctx.fillStyle = fill;
+        ctx.fillStyle = "#d5b67a";
         ctx.beginPath();
-        ctx.arc(0, -R - LIFT, R, 0, Math.PI * 2);
+        ctx.arc(0, -R, R, 0, Math.PI * 2);
         ctx.fill();
       }
-      // near legs in front
-      for (const [hx, [px, py], fr] of legsOf(true)) drawLeg(hx, hipY, px, py, fill, rim, fr);
       ctx.restore();
     };
 
@@ -802,7 +679,8 @@ export function PinRun({ loggedIn, best: initialBest, wallet: initialWallet }: {
       {
         const w = world.current;
         const moving = phaseRef.current === "play" && !w.over && !w.duel;
-        stepFx(fx.current, skinRef.current, w.dist + PX, w.y + R, dt, moving);
+        // the run-cycle video already carries each lion's effects; the live particles trail behind it
+        stepFx(fx.current, skinRef.current, w.dist + PX, w.y + R, dt, moving, 0.6);
       }
       draw();
       raf = requestAnimationFrame(loop);

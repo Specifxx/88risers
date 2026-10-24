@@ -42,7 +42,7 @@ const r = (a: number, b: number) => a + Math.random() * (b - a);
 const pick = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 
 /** Where the lion's body is, relative to its feet (x right, y up is negative). */
-export const BODY = { x0: -48, x1: 52, y0: -92, y1: -18 };
+export const BODY = { x0: -62, x1: 64, y0: -92, y1: -16 };
 
 interface Style {
   aura: [string, number]; // colour, strength 0-1
@@ -167,9 +167,9 @@ export const STYLES: Record<string, Style> = {
 };
 
 /** Spawns and moves particles. (x, y) is the lion's feet in world space. */
-export function stepFx(s: FxState, skin: string, x: number, y: number, dt: number, moving: boolean) {
+export function stepFx(s: FxState, skin: string, x: number, y: number, dt: number, moving: boolean, rate = 1) {
   const st = STYLES[skin] ?? STYLES.stone;
-  s.acc += st.rate * dt;
+  s.acc += st.rate * rate * dt;
   while (s.acc >= 1) {
     s.acc -= 1;
     st.spawn(x, y, s, moving);
