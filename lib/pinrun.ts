@@ -7,18 +7,74 @@ export interface Skin {
   name: string;
   price: number;
   blurb: string;
+  /** Running legs: [fill, far-side fill, rim highlight], matched to the lion's own front leg. */
+  legs: [string, string, string];
 }
 
 export const SKINS: Skin[] = [
-  { id: "stone", name: "Stone Guardian", price: 0, blurb: "The original. Carved gold stone, never blinks." },
-  { id: "sakura", name: "Sakura", price: 60, blurb: "Cherry blossom season at the table." },
-  { id: "jade", name: "Jade", price: 90, blurb: "Polished jade with golden clouds." },
-  { id: "wave", name: "Great Wave", price: 120, blurb: "Rides in on the tide." },
-  { id: "crystal", name: "Ice Crystal", price: 150, blurb: "Cold blooded. Shatters grips." },
-  { id: "flame", name: "Inferno", price: 200, blurb: "Wreathed in fire. Hot hand, hotter hook." },
-  { id: "thunder", name: "Thunder", price: 250, blurb: "Storm clouds and lightning off every pin." },
-  { id: "moon", name: "Moonlight", price: 300, blurb: "A violet spirit under the full moon." },
-  { id: "eclipse", name: "Eclipse", price: 400, blurb: "Blood moon, falling maple. The rarest lion." },
+  {
+    id: "stone",
+    name: "Stone Guardian",
+    price: 0,
+    blurb: "The original. Carved gold stone, never blinks.",
+    legs: ["#8a6c4c", "#4a3a29", "#d5b67a"],
+  },
+  {
+    id: "sakura",
+    name: "Sakura",
+    price: 60,
+    blurb: "Cherry blossom season at the table.",
+    legs: ["#c9b2a4", "#6e5f57", "#f3c4d2"],
+  },
+  {
+    id: "jade",
+    name: "Jade",
+    price: 90,
+    blurb: "Polished jade with golden clouds.",
+    legs: ["#5f7a3c", "#2f3d1d", "#d1b25a"],
+  },
+  {
+    id: "wave",
+    name: "Great Wave",
+    price: 120,
+    blurb: "Rides in on the tide.",
+    legs: ["#5c5c5a", "#2c2c2b", "#9ec4e8"],
+  },
+  {
+    id: "crystal",
+    name: "Ice Crystal",
+    price: 150,
+    blurb: "Cold blooded. Shatters grips.",
+    legs: ["#5f92b4", "#2c4a5e", "#9fe0ff"],
+  },
+  {
+    id: "flame",
+    name: "Inferno",
+    price: 200,
+    blurb: "Wreathed in fire. Hot hand, hotter hook.",
+    legs: ["#995f47", "#4d2f22", "#ff7a45"],
+  },
+  {
+    id: "thunder",
+    name: "Thunder",
+    price: 250,
+    blurb: "Storm clouds and lightning off every pin.",
+    legs: ["#7d5d3f", "#3f2f20", "#f2c14e"],
+  },
+  {
+    id: "moon",
+    name: "Moonlight",
+    price: 300,
+    blurb: "A violet spirit under the full moon.",
+    legs: ["#5c3e78", "#2e1f3c", "#b994ff"],
+  },
+  {
+    id: "eclipse",
+    name: "Eclipse",
+    price: 400,
+    blurb: "Blood moon, falling maple. The rarest lion.",
+    legs: ["#6c4231", "#372118", "#ff8a4a"],
+  },
 ];
 
 export const DEFAULT_SKIN = "stone";

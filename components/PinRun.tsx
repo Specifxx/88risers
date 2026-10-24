@@ -21,8 +21,17 @@ const JUMP = 820;
 const JUMP2 = 720;
 const PX = 230; // player screen x
 const R = 26; // player hit radius
-/** Lion sprites in /pinrun are 320×168 with the lion's feet centred at x=173 on the bottom edge. */
+/**
+ * Lion sprites in /pinrun/run are 320×168, feet centred at x=173 on the bottom edge, with the
+ * resting paws faded out below the belly so we can draw running legs in their place.
+ */
 const SPRITE = { w: 320, h: 168, ax: 173, scale: 0.6 };
+/** Body raised off the table to make room for the legs; hips sit just inside the belly. */
+const LIFT = 7;
+const HIP_Y = -LIFT - 17;
+const LEG = 24;
+/** Hip x positions (relative to the feet anchor): hind near/far, front near/far. */
+const HIPS = { hind: [-31, -18], front: [5, 19] };
 
 type Plat = { x: number; w: number; y: number; rival: Rival | null };
 type Rival = { x: number; state: "idle" | "pinned" | "gone"; vy: number; y: number; vx: number; spin: number };
@@ -132,6 +141,7 @@ export function PinRun({ loggedIn, best: initialBest, wallet: initialWallet }: {
   const templeRef = useRef(false);
   templeRef.current = temple;
   const skin = wallet?.skin ?? DEFAULT_SKIN;
+  const legs = useRef(skinById(DEFAULT_SKIN)!.legs);
 
   phaseRef.current = phase;
   mutedRef.current = muted;
@@ -225,8 +235,9 @@ export function PinRun({ loggedIn, best: initialBest, wallet: initialWallet }: {
   // The equipped lion.
   useEffect(() => {
     const img = new Image();
-    img.src = `/pinrun/${skin}.webp`;
+    img.src = `/pinrun/run/${skin}.webp`;
     imgs.current = { ...imgs.current, skin: img };
+    legs.current = (skinById(skin) ?? skinById(DEFAULT_SKIN)!).legs;
   }, [skin]);
 
   useEffect(() => {
@@ -460,44 +471,107 @@ export function PinRun({ loggedIn, best: initialBest, wallet: initialWallet }: {
       ctx.restore();
     };
 
+    /** One leg from hip to paw, in the lion's local frame (y=0 is the table). */
+    const drawLeg = (hx: number, hy: number, px: number, py: number, fill: string, rim: string) => {
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "rgba(0,0,0,.55)";
+      ctx.lineWidth = 11;
+      ctx.beginPath();
+      ctx.moveTo(hx, hy);
+      ctx.lineTo(px, py - 3);
+      ctx.stroke();
+      ctx.strokeStyle = fill;
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(hx, hy);
+      ctx.lineTo(px, py - 3);
+      ctx.stroke();
+      // a carved-stone highlight down the front of the leg
+      ctx.strokeStyle = rim;
+      ctx.globalAlpha = 0.55;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(hx + 3, hy + 2);
+      ctx.lineTo(px + 3, py - 4);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      // paw
+      ctx.fillStyle = fill;
+      ctx.strokeStyle = rim;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(px + 2, py - 3, 6.5, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    };
+
     const drawPlayer = (w: World) => {
       if (w.invuln > 0 && Math.floor(w.t * 14) % 2 === 0) return;
       const x = PX;
       const feet = w.y + R;
-      // a bounding trot on the table, nose up on the way up and down on the way down
-      const hop = w.ground ? Math.abs(Math.sin(w.runFrame * 0.9)) * 6 : 0;
-      const tilt = w.ground ? Math.sin(w.runFrame * 0.9) * 0.035 : Math.max(-0.26, Math.min(0.2, w.vy / 2600));
+      const [fill, far, rim] = legs.current;
+      const onGround = !!w.ground;
+      const ph = w.runFrame * 1.15;
+      // the body bounces twice a stride; in the air it tilts nose-up rising, nose-down falling
+      const bob = onGround ? Math.abs(Math.sin(ph)) * 4 : 0;
+      const tilt = onGround ? Math.sin(ph * 2) * 0.025 : Math.max(-0.26, Math.min(0.2, w.vy / 2600));
+
       if (w.boost > 0) {
         ctx.strokeStyle = "rgba(255,74,79,.55)";
         ctx.lineWidth = 3;
         ctx.lineCap = "round";
         for (let i = 1; i < 4; i++) {
           ctx.beginPath();
-          ctx.moveTo(x - 50 - i * 12, feet - 24 - i * 12);
-          ctx.lineTo(x - 50 - i * 12 - 34, feet - 24 - i * 12);
+          ctx.moveTo(x - 50 - i * 12, feet - 30 - i * 12);
+          ctx.lineTo(x - 50 - i * 12 - 34, feet - 30 - i * 12);
           ctx.stroke();
         }
       }
-      // soft shadow on the table
-      if (w.ground) {
+      if (onGround) {
         ctx.fillStyle = "rgba(0,0,0,.35)";
         ctx.beginPath();
-        ctx.ellipse(x, feet + 1, 40 - hop * 2, 5, 0, 0, Math.PI * 2);
+        ctx.ellipse(x, feet + 1, 42, 5, 0, 0, Math.PI * 2);
         ctx.fill();
       }
-      const img = imgs.current.skin;
+
+      // where each paw goes: a gallop on the table (hind pair and front pair out of phase,
+      // each foot lifting as it swings forward), tucked and stretched in the air
+      const hipY = HIP_Y - bob;
+      const paw = (hx: number, phase: number, front: boolean): [number, number] => {
+        if (onGround) {
+          const swing = Math.sin(phase);
+          const up = Math.max(0, Math.cos(phase)) * 8;
+          return [hx + swing * 11, -up];
+        }
+        if (w.vy < 0) return front ? [hx + 15, hipY + LEG - 6] : [hx - 15, hipY + LEG - 8];
+        return front ? [hx + 8, hipY + LEG] : [hx - 6, hipY + LEG];
+      };
+      const legsOf = (near: boolean) => {
+        const i = near ? 0 : 1;
+        const off = near ? 0 : 0.7;
+        return [
+          [HIPS.hind[i], paw(HIPS.hind[i], ph + off, false)],
+          [HIPS.front[i], paw(HIPS.front[i], ph + Math.PI + off, true)],
+        ] as const;
+      };
+
       ctx.save();
-      ctx.translate(x, feet - hop);
+      ctx.translate(x, feet);
       ctx.rotate(tilt);
+      // far legs behind the body, in shadow
+      for (const [hx, [px, py]] of legsOf(false)) drawLeg(hx, hipY, px, py, far, far);
+      const img = imgs.current.skin;
       if (img?.complete && img.naturalWidth) {
         const k = SPRITE.scale;
-        ctx.drawImage(img, -SPRITE.ax * k, -SPRITE.h * k, SPRITE.w * k, SPRITE.h * k);
+        ctx.drawImage(img, -SPRITE.ax * k, -SPRITE.h * k - LIFT - bob, SPRITE.w * k, SPRITE.h * k);
       } else {
-        ctx.fillStyle = "#d5b67a";
+        ctx.fillStyle = fill;
         ctx.beginPath();
-        ctx.arc(0, -R, R, 0, Math.PI * 2);
+        ctx.arc(0, -R - LIFT, R, 0, Math.PI * 2);
         ctx.fill();
       }
+      // near legs in front
+      for (const [hx, [px, py]] of legsOf(true)) drawLeg(hx, hipY, px, py, fill, rim);
       ctx.restore();
     };
 
