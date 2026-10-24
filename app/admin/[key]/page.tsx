@@ -244,6 +244,7 @@ function Registrations({
                   <span className={`pill ${r.status === "new" ? "red" : r.status === "puller" ? "" : "dim"}`}>
                     {r.status === "puller" ? `Riser ${formatId(r.puller_id!)}` : r.status}
                   </span>
+                  {r.with_friend ? <span className="pill">With a friend{r.friend_name ? `: ${r.friend_name}` : ""}</span> : null}
                   {r.requested_id && r.status !== "puller" ? (
                     <span className="pill gold-pill">Wants {formatId(r.requested_id)} · $2 gold coin</span>
                   ) : null}

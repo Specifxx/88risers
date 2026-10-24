@@ -6526,3 +6526,51 @@ b.gold {
 .merch-go.merch-cta {
   white-space: nowrap;
 }
+
+/* ─────────── Code of Conduct ─────────── */
+.conduct {
+  display: grid;
+  gap: 16px;
+  max-width: 860px;
+}
+.conduct .panel {
+  margin: 0;
+}
+.conduct-rule {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.conduct-num {
+  font: 900 44px/1 var(--f-display);
+  color: var(--gold);
+}
+.conduct-rule h2,
+.conduct-contact h2 {
+  font: 900 30px/1.05 var(--f-display);
+  text-transform: uppercase;
+  color: var(--bone);
+  margin: 2px 0 10px;
+}
+.conduct-rule ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.conduct-contact p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+.conduct-contact a:not(.btn) {
+  color: var(--gold-hi);
+}
+.conduct-contact .btn {
+  margin-top: 8px;
+}
+.friend-field .friend-name {
+  margin-top: 10px;
+}

@@ -33,10 +33,26 @@ const TICKER = [
   SPONSOR,
 ];
 
-const FAQ = [
+const FAQ: ReadonlyArray<readonly [string, React.ReactNode]> = [
   [
     "I've never arm wrestled. Can I come?",
     "Absolutely — most people at their first meet haven't. Tell us you're new and someone will walk you through grip, setup and safe technique before you pull anyone.",
+  ],
+  [
+    "Is it just for guys?",
+    "Not at all. We're a new club and most of our regulars are guys so far, but arm wrestling is for everyone and we'd love more women at the table. Bring a friend, or come and watch first. There's no pressure to pull.",
+  ],
+  [
+    "Is it safe? Will I get hurt?",
+    "We teach safe technique before anyone pulls: keeping your arm in front of you, staying in a strong position and knowing when to stop. You're matched with someone around your size and experience, and anyone can stop a pull at any time, no questions asked.",
+  ],
+  [
+    "I'm small or not very strong. Does that matter?",
+    "No. Technique beats size, and we pair people by weight and experience so it's a fair, friendly pull. Lots of people start with zero strength training, and Chalk rewards showing up, not just winning.",
+  ],
+  [
+    "Can I just come and watch, or bring a friend?",
+    "Yes to both. Watch first if you like, and bring a friend so you know someone. Tick \u201cI'm coming with a friend\u201d when you register and we'll look out for you both.",
   ],
   [
     "What should I bring?",
@@ -58,7 +74,13 @@ const FAQ = [
     "Who are you affiliated with?",
     `We're associated with the ${SITE.federation}.`,
   ],
-] as const;
+  [
+    "What are the club rules?",
+    <>
+      Respect, no pressure, safety first and ask before you film. Read our <Link href="/conduct">Code of Conduct</Link>.
+    </>,
+  ],
+];
 
 export default async function Home() {
   const [stats, leaders, founders, calendar, giveaway, chalkCfg, meet] = await Promise.all([

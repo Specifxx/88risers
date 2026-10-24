@@ -232,6 +232,9 @@ CREATE INDEX IF NOT EXISTS chalk_tx_season ON chalk_tx (season, account_id);
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS invited_by integer REFERENCES accounts(id) ON DELETE SET NULL;
 -- A Riser number someone asked for when registering ($2 gold coin donation).
 ALTER TABLE registrations ADD COLUMN IF NOT EXISTS requested_id integer;
+-- "I'm coming with a friend" on the join form.
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS with_friend boolean NOT NULL DEFAULT false;
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS friend_name text;
 -- Placings at competitions (outside comps included), shown on Riser profiles.
 CREATE TABLE IF NOT EXISTS comp_results (
   id          serial PRIMARY KEY,
@@ -298,7 +301,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v18";
+const MIGRATION_MARKER = "founders_v19";
 
 async function migrate(db: Db) {
   // Fast path for every cold start after the first: one tiny query instead of the whole schema.

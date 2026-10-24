@@ -19,6 +19,7 @@ export function JoinForm({ nextId, unavailable = [] }: { nextId: number; unavail
   const [photoBusy, setPhotoBusy] = useState(false);
   const [pickOn, setPickOn] = useState(false);
   const [pickNum, setPickNum] = useState("");
+  const [friendOn, setFriendOn] = useState(false);
   const [taken, setTaken] = useState<number[]>(unavailable);
   // The page is cached, so fetch fresh availability once someone opens the picker.
   useEffect(() => {
@@ -179,6 +180,19 @@ export function JoinForm({ nextId, unavailable = [] }: { nextId: number; unavail
         <input id="j-ig" name="instagram" type="text" placeholder="@yourhandle" autoCapitalize="off" autoCorrect="off" />
       </div>
 
+      <div className="field friend-field">
+        <label className="check" style={{ margin: 0 }}>
+          <input type="checkbox" name="with_friend" checked={friendOn} onChange={(e) => setFriendOn(e.target.checked)} />
+          <span>I&apos;m coming with a friend</span>
+        </label>
+        {friendOn ? (
+          <>
+            <input name="friend_name" type="text" placeholder="Friend's name (optional)" maxLength={80} className="friend-name" />
+            <p className="field-hint">We&apos;ll look out for you both. Your friend can register too, or just come along.</p>
+          </>
+        ) : null}
+      </div>
+
       <div className="field pick-field" data-invalid={invalid("requested_id")}>
         <label className="check" style={{ margin: 0 }}>
           <input type="checkbox" checked={pickOn} onChange={(e) => setPickOn(e.target.checked)} />
@@ -244,7 +258,7 @@ export function JoinForm({ nextId, unavailable = [] }: { nextId: number; unavail
       </button>
       <p className="fine">
         Your number and photo stay private to the club organisers. If you compete, your name, photo and results appear on
-        your public Riser profile.
+        your public Riser profile. By registering you agree to our <a href="/conduct">Code of Conduct</a>.
       </p>
     </form>
   );

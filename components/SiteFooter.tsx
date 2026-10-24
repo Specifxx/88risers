@@ -21,6 +21,7 @@ export function SiteFooter() {
               <li><Link href="/events">Events</Link></li>
               <li><Link href="/#table-time">Table time</Link></li>
               <li><Link href="/#faq">FAQ</Link></li>
+              <li><Link href="/conduct">Code of Conduct</Link></li>
             </ul>
           </div>
           <div>

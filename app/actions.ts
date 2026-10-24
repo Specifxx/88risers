@@ -20,6 +20,8 @@ export async function register(_prev: JoinState, form: FormData): Promise<JoinSt
   const phone = normalisePhone(String(form.get("phone") ?? ""));
   const instagram = String(form.get("instagram") ?? "").trim().replace(/^@/, "").slice(0, 60) || null;
   const consent = form.get("consent") === "on";
+  const withFriend = form.get("with_friend") === "on";
+  const friendName = withFriend ? String(form.get("friend_name") ?? "").trim().replace(/\s+/g, " ").slice(0, 80) || null : null;
   const reqRaw = String(form.get("requested_id") ?? "").replace(/^#/, "").trim();
   const requested = reqRaw ? Number(reqRaw) : null;
   if (requested !== null && (!Number.isInteger(requested) || requested < PICK_MIN || requested > PICK_MAX))
@@ -54,17 +56,19 @@ export async function register(_prev: JoinState, form: FormData): Promise<JoinSt
       }
 
       const [row] = await tx.query<{ inserted: boolean }>(
-        `INSERT INTO registrations (name, phone, instagram, photo_id, sms_consent, requested_id)
-         VALUES ($1, $2, $3, $4, true, $5)
+        `INSERT INTO registrations (name, phone, instagram, photo_id, sms_consent, requested_id, with_friend, friend_name)
+         VALUES ($1, $2, $3, $4, true, $5, $6, $7)
          ON CONFLICT (phone) DO UPDATE SET
            name = EXCLUDED.name,
            instagram = coalesce(EXCLUDED.instagram, registrations.instagram),
            requested_id = coalesce(EXCLUDED.requested_id, registrations.requested_id),
+           with_friend = EXCLUDED.with_friend OR registrations.with_friend,
+           friend_name = coalesce(EXCLUDED.friend_name, registrations.friend_name),
            photo_id = EXCLUDED.photo_id,
            sms_consent = true,
            updated_at = now()
          RETURNING (xmax = 0) AS inserted`,
-        [name, phone, instagram, photo.id, requested],
+        [name, phone, instagram, photo.id, requested, withFriend, friendName],
       );
       return { status: "ok", name: name.split(" ")[0], updated: !row.inserted, requested } as const;
     });
