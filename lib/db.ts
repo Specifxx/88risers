@@ -270,6 +270,24 @@ CREATE TABLE IF NOT EXISTS game_scores (
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
 
+-- Pin Run: coins grabbed in runs (Temple coins, separate from 88Risers coins) and lion skins.
+CREATE TABLE IF NOT EXISTS pinrun_wallet (
+  account_id  integer PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+  coins       integer NOT NULL DEFAULT 0 CHECK (coins >= 0),
+  skin        text NOT NULL DEFAULT 'stone',
+  owned       text[] NOT NULL DEFAULT '{stone}',
+  updated_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS pinrun_tx (
+  id          serial PRIMARY KEY,
+  account_id  integer NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  amount      integer NOT NULL,
+  reason      text NOT NULL,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS pinrun_tx_account ON pinrun_tx (account_id, created_at);
+
 CREATE TABLE IF NOT EXISTS meta (
   key    text PRIMARY KEY,
   value  text
@@ -308,7 +326,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v23";
+const MIGRATION_MARKER = "founders_v24";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [

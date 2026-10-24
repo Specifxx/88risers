@@ -6,6 +6,7 @@ import { PinRun } from "@/components/PinRun";
 import { currentAccount } from "@/lib/auth";
 import { DAILY_GAME_COINS } from "@/lib/coins";
 import { getDb } from "@/lib/db";
+import { getWallet } from "@/lib/pinrun-db";
 
 export const dynamic = "force-dynamic";
 
@@ -17,13 +18,14 @@ export const metadata: Metadata = {
 export default async function PlayPage() {
   const me = await currentAccount();
   const db = await getDb();
-  const [top, mine, rtpTop, rtpBest] = await Promise.all([
+  const [top, mine, rtpTop, rtpBest, wallet] = await Promise.all([
     db.query<{ display_name: string; handle: string; best: number }>(
       `SELECT a.display_name, a.handle, g.best FROM game_scores g JOIN accounts a ON a.id = g.account_id ORDER BY g.best DESC, g.updated_at ASC LIMIT 10`,
     ),
     me ? db.query<{ best: number }>(`SELECT best FROM game_scores WHERE account_id = $1`, [me.id]) : Promise.resolve([]),
     rtpLeaders(5),
     me ? rtpMine(me.id) : Promise.resolve({} as Awaited<ReturnType<typeof rtpMine>>),
+    me ? getWallet(me.id) : Promise.resolve(null),
   ]);
 
   return (
@@ -38,14 +40,14 @@ export default async function PlayPage() {
           </h1>
           <p className="lede">
             One button. Jump the tables, win the grip fights, don&apos;t fall in the chalk pit. Play any minigame here once a day and logged-in
-            Risers earn +{DAILY_GAME_COINS} coins. Prefer a straight-up arm wrestle?{" "}
+            Risers earn +{DAILY_GAME_COINS} coins. Every coin you grab in Pin Run is banked for new lions in the Lion Temple. Prefer a straight-up arm wrestle?{" "}
             <a href="#race-to-the-pin">Play Race to the Pin</a>.
           </p>
         </div>
       </section>
       <section className="section" style={{ paddingTop: 16 }}>
         <div className="wrap play-grid">
-          <PinRun loggedIn={!!me} best={mine[0]?.best ?? null} />
+          <PinRun loggedIn={!!me} best={mine[0]?.best ?? null} wallet={wallet} />
           <div className="panel">
             <h2 className="panel-title">High scores</h2>
             <ol className="coin-leaders">

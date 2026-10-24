@@ -7,6 +7,8 @@ import { DAILY_GAME_COINS, MAX_STAKE, WELCOME_COINS, balanceOf, grant, isRepeata
 import { RTP_GAME, RTP_LEVELS, RTP_MAX_SCORE, isRtpLevel } from "@/lib/arcade";
 import { CHALK, recordCheckin, sydneyToday } from "@/lib/chalk";
 import { type Db, getDb } from "@/lib/db";
+import { type Wallet, skinById } from "@/lib/pinrun";
+import { bankRunCoins, getWallet } from "@/lib/pinrun-db";
 import { fmtOdds, payoutAt, quoteOdds } from "@/lib/odds";
 import { SITE } from "@/lib/site";
 
@@ -253,11 +255,14 @@ export async function claimDailyGameCoins(): Promise<{ coins: number }> {
   return { coins: got ? DAILY_GAME_COINS : 0 };
 }
 
-export async function submitScore(score: number): Promise<{ best: number | null; coins: number; message: string }> {
+export async function submitScore(
+  score: number,
+  runCoins = 0,
+): Promise<{ best: number | null; coins: number; message: string; saved: number; wallet: Wallet | null }> {
   const me = await currentAccount();
-  if (!me) return { best: null, coins: 0, message: "Log in to save your score and earn coins." };
+  if (!me) return { best: null, coins: 0, message: "Log in to save your score and earn coins.", saved: 0, wallet: null };
   const n = Math.floor(Number(score));
-  if (!Number.isFinite(n) || n < 0 || n > 2_000_000) return { best: null, coins: 0, message: "Score not saved." };
+  if (!Number.isFinite(n) || n < 0 || n > 2_000_000) return { best: null, coins: 0, message: "Score not saved.", saved: 0, wallet: null };
   const db = await getDb();
   const [row] = await db.query<{ best: number }>(
     `INSERT INTO game_scores (account_id, best) VALUES ($1, $2)
@@ -267,8 +272,11 @@ export async function submitScore(score: number): Promise<{ best: number | null;
     [me.id, n],
   );
   const got = await dailyGameBonus(db, me.id, "Pin Run");
+  const bank = await bankRunCoins(me.id, n, runCoins);
   revalidatePath("/play");
   return {
+    saved: bank.saved,
+    wallet: bank.wallet,
     best: row.best,
     coins: got ? DAILY_GAME_COINS : 0,
     message: got ? `+${DAILY_GAME_COINS} coins for today's game!` : n > 0 && row.best === n ? "New personal best!" : "Score saved.",
@@ -336,4 +344,37 @@ export async function checkIn(_prev: FormState, form: FormData): Promise<FormSta
     return { status: "error", message: "Something went wrong on our side. Try again." };
   }
   return { status: "ok", message: `Checked in! +${CHALK.checkin} Chalk.` };
+}
+
+/* ─────────── Pin Run: Lion Temple ─────────── */
+
+export async function buySkin(id: string): Promise<{ ok: boolean; message: string; wallet: Wallet | null }> {
+  const me = await currentAccount();
+  if (!me) return { ok: false, message: "Log in to unlock lions.", wallet: null };
+  const skin = skinById(id);
+  if (!skin) return { ok: false, message: "That lion isn't in the temple.", wallet: null };
+  const db = await getDb();
+  const res = await db.transaction(async (tx) => {
+    await tx.query(`INSERT INTO pinrun_wallet (account_id) VALUES ($1) ON CONFLICT DO NOTHING`, [me.id]);
+    const [w] = await tx.query<Wallet>(`SELECT coins, skin, owned FROM pinrun_wallet WHERE account_id = $1 FOR UPDATE`, [me.id]);
+    if (w.owned.includes(skin.id)) return "You already have this lion.";
+    if (w.coins < skin.price) return `You need ${skin.price - w.coins} more Temple coins.`;
+    await tx.query(
+      `UPDATE pinrun_wallet SET coins = coins - $2, owned = array_append(owned, $3), skin = $3, updated_at = now() WHERE account_id = $1`,
+      [me.id, skin.price, skin.id],
+    );
+    await tx.query(`INSERT INTO pinrun_tx (account_id, amount, reason) VALUES ($1, $2, $3)`, [me.id, -skin.price, `Lion skin: ${skin.name}`]);
+    return null;
+  });
+  const wallet = await getWallet(me.id);
+  if (res) return { ok: false, message: res, wallet };
+  return { ok: true, message: `${skin.name} unlocked and equipped.`, wallet };
+}
+
+export async function equipSkin(id: string): Promise<{ ok: boolean; wallet: Wallet | null }> {
+  const me = await currentAccount();
+  if (!me || !skinById(id)) return { ok: false, wallet: null };
+  const db = await getDb();
+  await db.query(`UPDATE pinrun_wallet SET skin = $2, updated_at = now() WHERE account_id = $1 AND $2 = ANY(owned)`, [me.id, id]);
+  return { ok: true, wallet: await getWallet(me.id) };
 }

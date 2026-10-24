@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { submitScore } from "@/app/(site)/account/actions";
+import { createPortal } from "react-dom";
+import { buySkin, equipSkin, submitScore } from "@/app/(site)/account/actions";
 import { lionSays } from "@/lib/lion";
+import { DEFAULT_SKIN, SKINS, type Wallet, skinById } from "@/lib/pinrun";
 
 /**
  * PIN RUN — a one-button arm wrestling platformer.
  * Auto-run across floating arm wrestling tables. Tap to jump (tap again in the air to double jump,
  * hold for height). Run into a rival and it's a grip fight: tap when the needle is in the gold zone
  * to PIN them and get launched; miss and you lose a heart. Chain pins for a combo multiplier.
+ * Coins grabbed in a run are banked as Temple coins and spent on lion skins in the Lion Temple.
  */
 
 const W = 960;
@@ -17,7 +20,9 @@ const G = 2300; // gravity px/s²
 const JUMP = 820;
 const JUMP2 = 720;
 const PX = 230; // player screen x
-const R = 26; // player radius
+const R = 26; // player hit radius
+/** Lion sprites in /pinrun are 320×168 with the lion's feet centred at x=173 on the bottom edge. */
+const SPRITE = { w: 320, h: 168, ax: 173, scale: 0.6 };
 
 type Plat = { x: number; w: number; y: number; rival: Rival | null };
 type Rival = { x: number; state: "idle" | "pinned" | "gone"; vy: number; y: number; vx: number; spin: number };
@@ -109,7 +114,7 @@ function extend(w: World) {
   w.coinsList = w.coinsList.filter((c) => c.x > w.dist - 400);
 }
 
-export function PinRun({ loggedIn, best: initialBest }: { loggedIn: boolean; best: number | null }) {
+export function PinRun({ loggedIn, best: initialBest, wallet: initialWallet }: { loggedIn: boolean; best: number | null; wallet: Wallet | null }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const world = useRef<World>(newWorld());
   const [phase, setPhase] = useState<"title" | "play" | "over">("title");
@@ -121,7 +126,12 @@ export function PinRun({ loggedIn, best: initialBest }: { loggedIn: boolean; bes
   const mutedRef = useRef(false);
   const audio = useRef<AudioContext | null>(null);
   const overAt = useRef(0);
-  const imgs = useRef<{ lion?: HTMLImageElement; cloud?: HTMLImageElement; ring?: HTMLImageElement }>({});
+  const imgs = useRef<{ skin?: HTMLImageElement; cloud?: HTMLImageElement; ring?: HTMLImageElement }>({});
+  const [wallet, setWallet] = useState<Wallet | null>(initialWallet);
+  const [temple, setTemple] = useState(false);
+  const templeRef = useRef(false);
+  templeRef.current = temple;
+  const skin = wallet?.skin ?? DEFAULT_SKIN;
 
   phaseRef.current = phase;
   mutedRef.current = muted;
@@ -186,15 +196,17 @@ export function PinRun({ loggedIn, best: initialBest }: { loggedIn: boolean; bes
   };
 
   useEffect(() => {
-    const lion = new Image();
-    lion.src = "/ink/lion-badge.webp";
     const cloud = new Image();
     cloud.src = "/ink/cloud.webp";
     const ring = new Image();
     ring.src = "/ink/circle.webp";
-    imgs.current = { lion, cloud, ring };
+    imgs.current = { ...imgs.current, cloud, ring };
 
     const key = (e: KeyboardEvent) => {
+      if (templeRef.current) {
+        if (e.code === "Escape") setTemple(false);
+        return;
+      }
       if (["Space", "ArrowUp", "KeyW", "Enter"].includes(e.code)) {
         e.preventDefault();
         if (e.type === "keydown" && !e.repeat) press();
@@ -209,6 +221,13 @@ export function PinRun({ loggedIn, best: initialBest }: { loggedIn: boolean; bes
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The equipped lion.
+  useEffect(() => {
+    const img = new Image();
+    img.src = `/pinrun/${skin}.webp`;
+    imgs.current = { ...imgs.current, skin: img };
+  }, [skin]);
 
   useEffect(() => {
     const cv = canvas.current;
@@ -226,9 +245,10 @@ export function PinRun({ loggedIn, best: initialBest }: { loggedIn: boolean; bes
       overAt.current = performance.now();
       beep(160, 0.5, "sawtooth", 0.06);
       if (loggedIn) {
-        submitScore(score).then((r) => {
+        submitScore(score, w.coins).then((r) => {
           if (r.best !== null) setBest(r.best);
-          setSaveMsg(r.message);
+          if (r.wallet) setWallet(r.wallet);
+          setSaveMsg([r.message, r.saved ? `+${r.saved} Temple coins banked.` : ""].filter(Boolean).join(" "));
           if (r.coins) lionSays("cheer", `+${r.coins} coins for today's run!`);
         });
       } else setBest((b) => Math.max(b ?? 0, score));
@@ -337,7 +357,8 @@ export function PinRun({ loggedIn, best: initialBest }: { loggedIn: boolean; bes
 
       // coins
       for (const c of w.coinsList) {
-        if (!c.got && Math.abs(c.x - px) < 30 && Math.abs(c.y - w.y) < 34) {
+        // the lion is taller than its hit circle, so coins are grabbed anywhere from paws to mane
+        if (!c.got && Math.abs(c.x - px) < 42 && c.y > w.y + R - 105 && c.y < w.y + R + 10) {
           c.got = true;
           w.coins++;
           w.score += 10 * w.combo;
@@ -440,50 +461,44 @@ export function PinRun({ loggedIn, best: initialBest }: { loggedIn: boolean; bes
     };
 
     const drawPlayer = (w: World) => {
-      const x = PX;
-      const y = w.y;
       if (w.invuln > 0 && Math.floor(w.t * 14) % 2 === 0) return;
-      const leg = w.ground ? Math.sin(w.runFrame) * 9 : 6;
-      ctx.strokeStyle = "#d5b67a";
-      ctx.lineWidth = 7;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(x - 6, y + 14);
-      ctx.lineTo(x - 6 + leg, y + R + 2);
-      ctx.moveTo(x + 6, y + 14);
-      ctx.lineTo(x + 6 - leg, y + R + 2);
-      ctx.stroke();
-      // tail
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(x - R + 4, y + 4);
-      ctx.quadraticCurveTo(x - R - 18, y - 2 + Math.sin(w.t * 10) * 6, x - R - 10, y - 18);
-      ctx.stroke();
-      // head
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(x, y, R, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.fillStyle = "#16130f";
-      ctx.fill();
-      ctx.clip();
-      const img = imgs.current.lion;
-      if (img?.complete) ctx.drawImage(img, x - R - 4, y - R - 4, (R + 4) * 2, (R + 4) * 2);
-      ctx.restore();
-      ctx.strokeStyle = w.boost > 0 ? "#ff4a4f" : "#d5b67a";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(x, y, R, 0, Math.PI * 2);
-      ctx.stroke();
+      const x = PX;
+      const feet = w.y + R;
+      // a bounding trot on the table, nose up on the way up and down on the way down
+      const hop = w.ground ? Math.abs(Math.sin(w.runFrame * 0.9)) * 6 : 0;
+      const tilt = w.ground ? Math.sin(w.runFrame * 0.9) * 0.035 : Math.max(-0.26, Math.min(0.2, w.vy / 2600));
       if (w.boost > 0) {
-        ctx.strokeStyle = "rgba(255,74,79,.5)";
+        ctx.strokeStyle = "rgba(255,74,79,.55)";
+        ctx.lineWidth = 3;
+        ctx.lineCap = "round";
         for (let i = 1; i < 4; i++) {
           ctx.beginPath();
-          ctx.moveTo(x - R - i * 14, y - 12 + i * 8);
-          ctx.lineTo(x - R - i * 14 - 30, y - 12 + i * 8);
+          ctx.moveTo(x - 50 - i * 12, feet - 24 - i * 12);
+          ctx.lineTo(x - 50 - i * 12 - 34, feet - 24 - i * 12);
           ctx.stroke();
         }
       }
+      // soft shadow on the table
+      if (w.ground) {
+        ctx.fillStyle = "rgba(0,0,0,.35)";
+        ctx.beginPath();
+        ctx.ellipse(x, feet + 1, 40 - hop * 2, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      const img = imgs.current.skin;
+      ctx.save();
+      ctx.translate(x, feet - hop);
+      ctx.rotate(tilt);
+      if (img?.complete && img.naturalWidth) {
+        const k = SPRITE.scale;
+        ctx.drawImage(img, -SPRITE.ax * k, -SPRITE.h * k, SPRITE.w * k, SPRITE.h * k);
+      } else {
+        ctx.fillStyle = "#d5b67a";
+        ctx.beginPath();
+        ctx.arc(0, -R, R, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
     };
 
     const drawDuel = (w: World) => {
@@ -686,9 +701,12 @@ export function PinRun({ loggedIn, best: initialBest }: { loggedIn: boolean; bes
             </li>
             <li>Chain pins for a combo. Don&apos;t fall in the chalk pit.</li>
           </ul>
-          <button type="button" className="btn btn-primary">
-            Start
-          </button>
+          <div className="pinrun-btns">
+            <button type="button" className="btn btn-primary">
+              Start
+            </button>
+            <TempleButton onOpen={() => setTemple(true)} coins={wallet?.coins ?? 0} loggedIn={loggedIn} />
+          </div>
           {best ? <p className="pinrun-best">Your best: {best.toLocaleString("en-AU")}</p> : null}
         </div>
       ) : null}
@@ -697,17 +715,20 @@ export function PinRun({ loggedIn, best: initialBest }: { loggedIn: boolean; bes
           <p className="eyebrow">Game over</p>
           <h2>{final.score.toLocaleString("en-AU")}</h2>
           <p className="pinrun-stats">
-            {final.pins} pins · {final.coins} coins grabbed
+            {final.pins} pins · {final.coins} {final.coins === 1 ? "coin" : "coins"} grabbed
             {best ? ` · best ${best.toLocaleString("en-AU")}` : ""}
           </p>
-          <button type="button" className="btn btn-primary pinrun-again" onClick={start}>
-            ↻ Run it back
-          </button>
+          <div className="pinrun-btns">
+            <button type="button" className="btn btn-primary pinrun-again" onClick={start}>
+              ↻ Run it back
+            </button>
+            <TempleButton onOpen={() => setTemple(true)} coins={wallet?.coins ?? 0} loggedIn={loggedIn} />
+          </div>
           <p className="pinrun-hint">or tap / press Space</p>
           {saveMsg ? <p className="pinrun-save">{saveMsg}</p> : null}
           {!loggedIn ? (
             <p className="pinrun-save">
-              <a href="/account?next=/play">Create a free account</a> to save scores and earn coins.
+              <a href="/account?next=/play">Create a free account</a> to save scores and keep the coins you grab for lion skins.
             </p>
           ) : null}
         </div>
@@ -715,6 +736,141 @@ export function PinRun({ loggedIn, best: initialBest }: { loggedIn: boolean; bes
       <button type="button" className="pinrun-mute" onClick={() => setMuted((m) => !m)} aria-label={muted ? "Sound on" : "Sound off"}>
         {muted ? "♪̸" : "♪"}
       </button>
+      {temple ? <LionTemple wallet={wallet} loggedIn={loggedIn} onWallet={setWallet} onClose={() => setTemple(false)} /> : null}
     </div>
+  );
+}
+
+function TempleButton({ onOpen, coins, loggedIn }: { onOpen: () => void; coins: number; loggedIn: boolean }) {
+  return (
+    <button
+      type="button"
+      className="btn btn-ghost pinrun-temple-btn"
+      // the title overlay starts a run on any press, so keep this one to ourselves
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpen();
+      }}
+    >
+      ⛩ <span className="pt-lion">Lion&nbsp;</span>Temple{loggedIn ? <span className="pinrun-temple-bal"> · {coins}</span> : null}
+    </button>
+  );
+}
+
+/** The Lion Temple: spend banked Temple coins on lion skins, and pick which one runs. */
+function LionTemple({
+  wallet,
+  loggedIn,
+  onWallet,
+  onClose,
+}: {
+  wallet: Wallet | null;
+  loggedIn: boolean;
+  onWallet: (w: Wallet) => void;
+  onClose: () => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const coins = wallet?.coins ?? 0;
+  const owned = new Set(wallet?.owned ?? [DEFAULT_SKIN]);
+  const current = wallet?.skin ?? DEFAULT_SKIN;
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  const act = async (id: string, kind: "buy" | "equip") => {
+    setBusy(id);
+    setMsg(null);
+    try {
+      if (kind === "buy") {
+        const r = await buySkin(id);
+        if (r.wallet) onWallet(r.wallet);
+        setMsg({ text: r.message, ok: r.ok });
+        if (r.ok) lionSays("roar", `ROAR! ${skinById(id)?.name} unlocked.`);
+      } else {
+        const r = await equipSkin(id);
+        if (r.wallet) onWallet(r.wallet);
+      }
+    } catch {
+      setMsg({ text: "Something went wrong. Try again.", ok: false });
+    }
+    setBusy(null);
+  };
+
+  return createPortal(
+    <div className="temple-backdrop" onPointerDown={onClose}>
+      <div className="temple" role="dialog" aria-modal="true" aria-label="Lion Temple" onPointerDown={(e) => e.stopPropagation()}>
+        <header className="temple-head">
+          <div>
+            <p className="eyebrow">Pin Run</p>
+            <h2>
+              <span aria-hidden>⛩</span> Lion <span className="gold-text">Temple</span>
+            </h2>
+            <p className="temple-sub">Every coin you grab in a run is banked here. Spend them on new lions.</p>
+          </div>
+          <div className="temple-bal">
+            <span className="coin" aria-hidden /> <b>{coins}</b>
+            <small>Temple coins</small>
+          </div>
+          <button type="button" className="temple-close" onClick={onClose} aria-label="Close the temple">
+            ×
+          </button>
+        </header>
+        {!loggedIn ? (
+          <p className="temple-note">
+            Playing as a guest: coins aren&apos;t kept. <a href="/account?next=/play">Make a free account</a> to bank them and unlock lions.
+          </p>
+        ) : null}
+        {msg ? <p className={`temple-msg${msg.ok ? " ok" : ""}`}>{msg.text}</p> : null}
+        <div className="temple-grid">
+          {SKINS.map((k) => {
+            const has = owned.has(k.id);
+            const on = current === k.id;
+            return (
+              <article key={k.id} className={`temple-card${on ? " on" : ""}${has ? " owned" : ""}`}>
+                <div className="temple-art">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/pinrun/thumb/${k.id}.webp`} alt="" loading="lazy" />
+                </div>
+                <h3>{k.name}</h3>
+                <p>{k.blurb}</p>
+                <div className="temple-foot">
+                  {has ? (
+                    on ? (
+                      <span className="pill">Running</span>
+                    ) : (
+                      <button type="button" className="btn btn-sm" disabled={!loggedIn || busy !== null} onClick={() => act(k.id, "equip")}>
+                        {busy === k.id ? "…" : "Equip"}
+                      </button>
+                    )
+                  ) : (
+                    <>
+                      <span className="temple-price">
+                        <span className="coin" aria-hidden /> {k.price}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary"
+                        disabled={!loggedIn || busy !== null || coins < k.price}
+                        onClick={() => act(k.id, "buy")}
+                      >
+                        {busy === k.id ? "…" : loggedIn ? "Unlock" : "Log in"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
