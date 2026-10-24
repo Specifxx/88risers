@@ -28,6 +28,7 @@ main[data-level=kelvinator] { --tone:#3cc8f0; --tone-hi:#b3eeff; --tone-deep:#03
 * { box-sizing:border-box; }
 html,body { height:100%; }
 body { margin:0; background:var(--ink); color:var(--paper); font:16px/1.4 var(--body); overflow-x:hidden; }
+* { -webkit-tap-highlight-color: transparent; }
 main { max-width:1040px; margin:auto; padding:16px; }
 .embedded main { max-width:none; height:100%; padding:0; }
 .embedded h1 { display:none; }

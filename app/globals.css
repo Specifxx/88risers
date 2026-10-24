@@ -7371,3 +7371,13 @@ b.gold {
 .sw-handle b {
   color: var(--gold-hi);
 }
+
+/* No tap flash or long-press menu on the games (iOS/Android highlight tapped elements). */
+.pinrun,
+.pinrun * {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+.pinrun-canvas:focus {
+  outline: none;
+}
