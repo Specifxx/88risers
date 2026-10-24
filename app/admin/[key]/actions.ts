@@ -10,7 +10,8 @@ import { fromSydneyInput } from "@/lib/schedule";
 import { setGiveawayDrawAt } from "@/lib/giveaway";
 import { awardResultsChalk } from "@/lib/results";
 import { CHALK, awardChalk, currentSeason, meetLabel, newMeetCode, recordCheckin, saveChalkSettings, sydneyToday } from "@/lib/chalk";
-import { videoEmbed } from "@/lib/video";
+import { liveEmbed, videoEmbed } from "@/lib/video";
+import { saveLiveSettings } from "@/lib/tv";
 import { mailConfigured, mailStatus, sendClubMail } from "@/lib/mail";
 import { hashPassword } from "@/lib/auth";
 import { grant, itemById } from "@/lib/coins";
@@ -328,6 +329,15 @@ export async function saveReel(form: FormData) {
     done(key, "tv", friendly(err), true);
   }
   done(key, "tv", id ? "Reel updated." : "Reel added to 88RisersTV.");
+}
+
+export async function saveLiveFeed(form: FormData) {
+  const key = guard(form);
+  const url = str(form, "url");
+  if (url && !liveEmbed(url)) done(key, "tv", "That stream link isn't supported. Use YouTube Live, Twitch, Kick or an .m3u8 link.", true);
+  const m = str(form, "mode");
+  await saveLiveSettings({ url, title: str(form, "title"), mode: m === "on" || m === "off" ? m : "auto" });
+  done(key, "tv", url ? "Live feed saved." : "Live feed cleared. 88RisersTV plays the radio.");
 }
 
 export async function deleteReel(form: FormData) {

@@ -14,6 +14,7 @@ import { type CompResult, allResults, placeLabel } from "@/lib/results";
 import { CHALK, chalkboard, chalkSettings, currentSeason, listMeets, meetAttendees, sydneyToday } from "@/lib/chalk";
 import { type Backer, type Supermatch, listBackers, listSupermatches } from "@/lib/supermatch";
 import { PRODUCTS } from "@/lib/shop";
+import { type LiveState, tvLive } from "@/lib/tv";
 import { SITE, formatId } from "@/lib/site";
 import {
   deleteEvent,
@@ -46,6 +47,7 @@ import {
   saveMatch,
   savePuller,
   saveReel,
+  saveLiveFeed,
   saveRegistrationNote,
   sendTestEmail,
   setInterestDone,
@@ -87,7 +89,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
   const k = decodeURIComponent(key);
   const base = `/admin/${encodeURIComponent(k)}`;
 
-  const [stats, regs, pullers, matches, events, reels, interest, sms, accts, redeems, backers, giveaway, results] = await Promise.all([
+  const [stats, regs, pullers, matches, events, reels, interest, sms, accts, redeems, backers, giveaway, results, live] = await Promise.all([
     getClubStats(),
     listRegistrations(),
     listPullers({ includeHidden: true }),
@@ -101,6 +103,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
     listBackers(),
     getGiveaway(),
     allResults(),
+    tvLive(),
   ]);
   const newRegs = regs.filter((r) => r.status === "new").length;
   const newInterest = interest.filter((r) => !r.done).length;
@@ -158,7 +161,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
         {tab === "pullers" ? <Pullers pullers={pullers} accts={accts} results={results} k={k} nextId={stats.next_id} /> : null}
         {tab === "matches" ? <Matches matches={matches} pullers={pullers} events={events} k={k} /> : null}
         {tab === "events" ? <Events events={events} k={k} /> : null}
-        {tab === "tv" ? <Tv reels={reels} k={k} /> : null}
+        {tab === "tv" ? <Tv reels={reels} live={live} k={k} /> : null}
         {tab === "shop" ? <Shop interest={interest} k={k} /> : null}
         {tab === "chalk" ? <ChalkTab accts={accts} k={k} /> : null}
         {tab === "coins" ? <Coins sms={sms} accts={accts} redeems={redeems} pullers={pullers} backers={backers} giveaway={giveaway} k={k} /> : null}
@@ -775,7 +778,7 @@ function ReelFields({ r }: { r?: Reel }) {
   );
 }
 
-function Tv({ reels, k }: { reels: Reel[]; k: string }) {
+function Tv({ reels, live, k }: { reels: Reel[]; live: LiveState; k: string }) {
   return (
     <>
       <div className="admin-head">
@@ -786,6 +789,46 @@ function Tv({ reels, k }: { reels: Reel[]; k: string }) {
             featured broadcast on <Link href="/tv" target="_blank">/tv</Link>.
           </p>
         </div>
+      </div>
+      <div className="panel">
+        <h2 className="panel-title">
+          Live feed{" "}
+          {live.onAir ? <span className="pill">On air now</span> : <span className="pill dim">Playing 88Risers FM</span>}
+        </h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Paste the stream link once you&apos;ve set one up (YouTube Live, a YouTube channel&apos;s <code>/channel/UC…/live</code> link,
+          Twitch, Kick or an .m3u8). On <b>Auto</b>, /tv shows the feed from 30 minutes before a supermatch closes until it&apos;s
+          settled (up to 4 hours), and all day on tournament days. The rest of the time it plays the radio.
+          {live.event ? (
+            <>
+              {" "}
+              <b>Happening now: {live.event.title}</b>
+              {live.url ? "" : " (no stream link yet, so the radio is showing a 'live feed coming soon' banner)"}.
+            </>
+          ) : null}
+        </p>
+        <form action={saveLiveFeed} className="form-grid">
+          <input type="hidden" name="key" value={k} />
+          <div className="field span4">
+            <label>Stream link</label>
+            <input name="url" type="url" defaultValue={live.url ?? ""} placeholder="https://www.youtube.com/live/… or https://twitch.tv/88risers" />
+          </div>
+          <div className="field span2">
+            <label>Title (optional)</label>
+            <input name="title" defaultValue={live.title ?? ""} placeholder="Supermatch night, live from Rhodes" />
+          </div>
+          <div className="field span2">
+            <label>When to show it</label>
+            <select name="mode" defaultValue={live.mode}>
+              <option value="auto">Auto: supermatches &amp; tournaments</option>
+              <option value="on">Always on air</option>
+              <option value="off">Off (radio only)</option>
+            </select>
+          </div>
+          <div className="span4">
+            <button className="btn btn-primary btn-sm">Save live feed</button>
+          </div>
+        </form>
       </div>
       <div className="panel">
         <h2 className="panel-title">Add a reel</h2>
