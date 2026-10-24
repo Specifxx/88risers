@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { CopyButton } from "@/components/CopyButton";
 import { SITE } from "@/lib/site";
-import { PAYPAL_EMAIL, paypalLink } from "@/lib/support";
+import { donateHref } from "@/lib/support";
 
 export const metadata: Metadata = {
   title: "Support the club",
@@ -58,17 +57,15 @@ export default function SupportPage() {
             </p>
             <div className="support-amounts">
               {AMOUNTS.map((a) => (
-                <a key={a} className="support-amt" href={paypalLink("88 Risers club funds", a)} target="_blank" rel="noreferrer">
+                <a key={a} className="support-amt" href={donateHref("funds", a)} target="_blank" rel="noreferrer">
                   ${a}
                 </a>
               ))}
             </div>
-            <a className="btn btn-primary" href={paypalLink("88 Risers club funds")} target="_blank" rel="noreferrer">
+            <a className="btn btn-primary" href={donateHref("funds")} target="_blank" rel="noreferrer">
               Donate any amount with PayPal
             </a>
-            <p className="support-alt">
-              Or send it straight to <b>{PAYPAL_EMAIL}</b> on PayPal <CopyButton text={PAYPAL_EMAIL} label="Copy" />
-            </p>
+            <p className="support-alt">Secure checkout by PayPal. You&apos;ll get a receipt by email.</p>
             <ul className="support-funds">
               {FUNDS.map(([t, d]) => (
                 <li key={t}>
@@ -103,7 +100,7 @@ export default function SupportPage() {
             </div>
             <p className="support-alt">
               Agreed on a package? Pay it here:{" "}
-              <a href={paypalLink("88 Risers sponsorship")} target="_blank" rel="noreferrer">
+              <a href={donateHref("sponsor")} target="_blank" rel="noreferrer">
                 sponsorship payment via PayPal ↗
               </a>
             </p>
