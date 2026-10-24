@@ -99,9 +99,8 @@ export default function SupportPage() {
               </a>
             </div>
             <p className="support-alt">
-              Agreed on a package? Pay it here:{" "}
-              <a href={donateHref("sponsor")} target="_blank" rel="noreferrer">
-                sponsorship payment via PayPal ↗
+              <a href={donateHref("funds")} target="_blank" rel="noreferrer">
+                Donate to club funds via PayPal ↗
               </a>
             </p>
             <div className="support-current">
