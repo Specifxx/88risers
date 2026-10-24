@@ -4,7 +4,7 @@ import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Code of Conduct",
-  description: "How we look after each other at 88 Risers: respect, no pressure, safety first, fair play and consent for photos and filming.",
+  description: "How we look after each other at 88 Risers: respect, no pressure, safety first and fair play.",
 };
 
 const RULES: { title: string; points: string[] }[] = [
@@ -38,21 +38,6 @@ const RULES: { title: string; points: string[] }[] = [
     points: [
       "Follow the referee's calls and the table rules: elbows on the pads, start on “go”.",
       "No cheating, no deliberately dangerous moves, and no showboating that puts anyone at risk.",
-    ],
-  },
-  {
-    title: "Photos & filming",
-    points: [
-      "Ask before you film or photograph someone pulling, and before you post it.",
-      "Tell an organiser if you'd rather not appear in club photos or videos, and we'll keep you out of them.",
-      "If you ask us to take down a photo or video of you, we will.",
-    ],
-  },
-  {
-    title: "Speak up",
-    points: [
-      "If anyone makes you uncomfortable, tell an organiser at the meet, or message us privately afterwards. We'll take it seriously and keep it confidential.",
-      "Organisers can ask anyone who breaks these rules to leave, and repeat or serious breaches mean you won't be welcome back.",
     ],
   },
 ];

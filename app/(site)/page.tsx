@@ -77,7 +77,7 @@ const FAQ: ReadonlyArray<readonly [string, React.ReactNode]> = [
   [
     "What are the club rules?",
     <>
-      Respect, no pressure, safety first and ask before you film. Read our <Link href="/conduct">Code of Conduct</Link>.
+      Respect, no pressure, safety first and fair play. Read our <Link href="/conduct">Code of Conduct</Link>.
     </>,
   ],
 ];
