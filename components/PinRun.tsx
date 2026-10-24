@@ -534,7 +534,7 @@ export function PinRun({ loggedIn, best: initialBest, wallet: initialWallet }: {
         ctx.fill();
       }
 
-      // where each paw goes: a gallop on the table (hind pair and front pair out of phase,
+      // where each paw goes: a bound on the table (front pair together, back pair together, out of phase with each other;
       // each foot lifting as it swings forward), tucked and stretched in the air
       const hipY = HIP_Y - bob;
       const paw = (hx: number, phase: number, front: boolean): [number, number] => {
@@ -548,7 +548,7 @@ export function PinRun({ loggedIn, best: initialBest, wallet: initialWallet }: {
       };
       const legsOf = (near: boolean) => {
         const i = near ? 0 : 1;
-        const off = near ? 0 : 0.7;
+        const off = 0; // a bound: the front pair moves together, the back pair together
         return [
           [HIPS.hind[i], paw(HIPS.hind[i], ph + off, false)],
           [HIPS.front[i], paw(HIPS.front[i], ph + Math.PI + off, true)],
