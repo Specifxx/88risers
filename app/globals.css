@@ -6574,3 +6574,65 @@ b.gold {
 .friend-field .friend-name {
   margin-top: 10px;
 }
+
+/* reserved seats ($2 gold coin) */
+.cell.reserved {
+  border: 1px dashed var(--gold);
+  background: repeating-linear-gradient(135deg, rgba(213, 182, 122, 0.14) 0 6px, rgba(213, 182, 122, 0.04) 6px 12px);
+  color: var(--gold-hi);
+}
+.cell.reserved:hover {
+  transform: translateY(-3px);
+  border-style: solid;
+}
+.cell.reserved small {
+  position: absolute;
+  bottom: 12%;
+  font: 600 clamp(5px, 0.62vw, 8px)/1 var(--f-tech);
+  letter-spacing: 0.06em;
+  color: var(--gold);
+}
+.grid88-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  margin-top: 16px;
+  font: 600 11px/1.4 var(--f-tech);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.grid88-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.grid88-legend .lg {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  display: inline-block;
+}
+.lg.taken {
+  border: 1px solid var(--line-strong);
+  background: var(--ink-4);
+}
+.lg.reserved {
+  border: 1px dashed var(--gold);
+  background: rgba(213, 182, 122, 0.18);
+}
+.lg.next {
+  border: 1px solid var(--red);
+  background: rgba(212, 42, 47, 0.25);
+}
+.grid88-legend .lg-note {
+  flex-basis: 100%;
+  display: block;
+  text-transform: none;
+  letter-spacing: 0;
+  font: 400 14px/1.5 var(--f-body, inherit);
+}
+.grid88-legend .lg-note a {
+  color: var(--gold-hi);
+}

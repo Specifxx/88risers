@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertAdmin } from "@/lib/admin";
-import { NEXT_ID_SQL, recomputeElo } from "@/lib/data";
+import { NEXT_ID_SQL, PICK_MAX, PICK_MIN, recomputeElo } from "@/lib/data";
 import { getDb, type Db } from "@/lib/db";
 import { savePhoto, photoUrl } from "@/lib/photos";
 import { fromSydneyInput } from "@/lib/schedule";
@@ -686,4 +686,24 @@ export async function deleteResult(form: FormData) {
     await tx.query(`DELETE FROM comp_results WHERE id = $1`, [id]);
   });
   done(key, "pullers", "Result removed (and its Chalk).");
+}
+
+/** Sets (or clears) the Riser number a registration has reserved for a $2 gold coin donation. */
+export async function setRequestedId(form: FormData) {
+  const key = guard(form);
+  const regId = int(form, "registration_id");
+  const n = int(form, "requested_id");
+  if (n !== null && (n < PICK_MIN || n > PICK_MAX)) done(key, "registrations", `Reserved numbers are #${PICK_MIN}–#${PICK_MAX}.`, true);
+  const db = await getDb();
+  if (n !== null) {
+    const [clash] = await db.query(
+      `SELECT 1 FROM pullers WHERE id = $1
+       UNION ALL
+       SELECT 1 FROM registrations WHERE requested_id = $1 AND id <> $2 AND puller_id IS NULL AND status <> 'archived'`,
+      [n, regId],
+    );
+    if (clash) done(key, "registrations", `#${String(n).padStart(3, "0")} is already taken or reserved.`, true);
+  }
+  await db.query(`UPDATE registrations SET requested_id = $2, updated_at = now() WHERE id = $1`, [regId, n]);
+  done(key, "registrations", n ? `Reserved #${String(n).padStart(3, "0")}.` : "Reservation cleared.");
 }

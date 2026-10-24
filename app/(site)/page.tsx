@@ -94,6 +94,7 @@ export default async function Home() {
   ]);
   const chalkTarget = chalkCfg.target;
   const taken = new Set(stats.taken);
+  const held = new Set(stats.held);
   const next = calendar.find((c) => !c.cancelled) ?? calendar[0];
   const nextTraining = calendar.find((c) => c.kind === "training" && !c.cancelled);
   const pct = Math.min(100, (stats.members / SITE.goal) * 100);
@@ -233,6 +234,13 @@ export default async function Home() {
                       {p ? <small>{p.name.split(" ")[0]}</small> : null}
                     </Link>
                   );
+                if (held.has(n))
+                  return (
+                    <Link key={n} href="#join" className="cell reserved" title={`Riser ${formatId(n)} is reserved ($2 gold coin donation)`}>
+                      {String(n).padStart(2, "0")}
+                      <small>RESERVED</small>
+                    </Link>
+                  );
                 if (n === stats.next_id)
                   return (
                     <Link key={n} href="#join" className="cell next" title="Claim this number">
@@ -247,6 +255,21 @@ export default async function Home() {
                 );
               })}
             </div>
+            <p className="grid88-legend">
+              <span>
+                <i className="lg taken" /> Riser
+              </span>
+              <span>
+                <i className="lg reserved" /> Reserved
+              </span>
+              <span>
+                <i className="lg next" /> Next up
+              </span>
+              <span className="lg-note">
+                Want a particular number from #009–#087? Reserve it for a $2 gold coin donation when you{" "}
+                <Link href="#join">register</Link>.
+              </span>
+            </p>
           </div>
 
           <div className="id-explainer" data-reveal>

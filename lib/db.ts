@@ -301,7 +301,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v19";
+const MIGRATION_MARKER = "founders_v20";
 
 async function migrate(db: Db) {
   // Fast path for every cold start after the first: one tiny query instead of the whole schema.
@@ -415,6 +415,22 @@ async function migrate(db: Db) {
         ["A custom 88 Risers katana: real, sharp, one of one"],
       );
       await tx.query(`INSERT INTO meta (key, value) VALUES ('top_prize_katana_v1', now()::text)`);
+    }
+    // Felix opted in to reserve #017 ($2 gold coin). Once only, and only if exactly one open
+    // registration is named Felix and #017 is still free.
+    const [felixDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'reserve_felix_17'`);
+    if (!felixDone) {
+      const felix = await tx.query<{ id: number }>(
+        `SELECT id FROM registrations WHERE name ILIKE 'felix%' AND puller_id IS NULL AND status <> 'archived'`,
+      );
+      const [clash] = await tx.query(
+        `SELECT 1 FROM pullers WHERE id = 17 UNION ALL
+         SELECT 1 FROM registrations WHERE requested_id = 17 AND puller_id IS NULL AND status <> 'archived'`,
+      );
+      if (felix.length === 1 && !clash) {
+        await tx.query(`UPDATE registrations SET requested_id = 17, updated_at = now() WHERE id = $1`, [felix[0].id]);
+        await tx.query(`INSERT INTO meta (key, value) VALUES ('reserve_felix_17', now()::text)`);
+      }
     }
     // The November supermatch is left arm. Once only, so a later admin edit isn't overwritten.
     const [armDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'sm_arm_v1'`);

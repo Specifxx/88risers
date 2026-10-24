@@ -168,13 +168,14 @@ export async function getLeaderboard(limit = 10) {
 
 export async function getClubStats() {
   const d = await db();
-  const [s] = await d.query<{ members: number; matches: number; next_id: number; taken: number[]; unavailable: number[] }>(
+  const [s] = await d.query<{ members: number; matches: number; next_id: number; taken: number[]; unavailable: number[]; held: number[] }>(
     `SELECT
        (SELECT count(*)::int FROM pullers WHERE NOT hidden) AS members,
        (SELECT count(*)::int FROM matches) AS matches,
        ${NEXT_ID_SQL} AS next_id,
        (SELECT coalesce(array_agg(id ORDER BY id), '{}') FROM pullers WHERE NOT hidden) AS taken,
-       (SELECT coalesce(array_agg(DISTINCT x ORDER BY x), '{}') FROM (SELECT id AS x FROM pullers UNION ${HELD_IDS}) u) AS unavailable`,
+       (SELECT coalesce(array_agg(DISTINCT x ORDER BY x), '{}') FROM (SELECT id AS x FROM pullers UNION ${HELD_IDS}) u) AS unavailable,
+       (SELECT coalesce(array_agg(DISTINCT x ORDER BY x), '{}') FROM (${HELD_IDS}) h(x) WHERE x NOT IN (SELECT id FROM pullers)) AS held`,
   );
   return s;
 }

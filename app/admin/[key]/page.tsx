@@ -28,6 +28,7 @@ import {
   saveSupermatch,
   setGiveawayDate,
   openCheckin,
+  setRequestedId,
   addResult,
   deleteResult,
   linkPullerAccount,
@@ -259,6 +260,17 @@ function Registrations({
                   ) : null}
                   <span>Registered {fmtWhen(new Date(r.created_at))}</span>
                 </div>
+                {r.status !== "puller" ? (
+                  <form action={setRequestedId} className="reg-note">
+                    <input type="hidden" name="key" value={k} />
+                    <input type="hidden" name="registration_id" value={r.id} />
+                    <label className="muted" style={{ whiteSpace: "nowrap" }}>
+                      Reserve # <em>($2 gold coin)</em>
+                    </label>
+                    <input name="requested_id" type="number" min={9} max={87} className="input" defaultValue={r.requested_id ?? ""} placeholder="9–87" style={{ maxWidth: 110 }} />
+                    <button className="btn btn-sm btn-ghost">Save</button>
+                  </form>
+                ) : null}
                 <form action={saveRegistrationNote} className="reg-note">
                   <input type="hidden" name="key" value={k} />
                   <input type="hidden" name="registration_id" value={r.id} />
