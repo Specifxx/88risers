@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cleanHandle, currentAccount, endSession, hashPassword, startSession, verifyPassword } from "@/lib/auth";
-import { DAILY_GAME_COINS, MAX_STAKE, WELCOME_COINS, balanceOf, grant, itemById, lockAccount, newCode } from "@/lib/coins";
+import { DAILY_GAME_COINS, MAX_STAKE, WELCOME_COINS, balanceOf, grant, isRepeatable, itemById, lockAccount, newCode } from "@/lib/coins";
 import { RTP_GAME, RTP_LEVELS, RTP_MAX_SCORE, isRtpLevel } from "@/lib/arcade";
 import { CHALK, recordCheckin, sydneyToday } from "@/lib/chalk";
 import { getDb } from "@/lib/db";
@@ -151,6 +151,11 @@ export async function buyItem(_prev: FormState, form: FormData): Promise<FormSta
   if (!item) return { status: "error", message: "That item isn't available." };
   const title = s(form, "title").replace(/\s+/g, " ").slice(0, 32);
   if (item.kind === "title" && title.length < 2) return { status: "error", message: "Type the title you want (2–32 characters)." };
+  const newHandle = item.kind === "handle" ? cleanHandle(s(form, "handle")) : null;
+  if (item.kind === "handle") {
+    if (!newHandle) return { status: "error", message: "Handles are 3–20 letters, numbers or underscores." };
+    if (newHandle === me.handle) return { status: "error", message: "That's already your handle." };
+  }
 
   const db = await getDb();
   let code = "";
@@ -161,10 +166,15 @@ export async function buyItem(_prev: FormState, form: FormData): Promise<FormSta
         `SELECT count(*)::int AS n FROM redemptions WHERE account_id = $1 AND item = $2`,
         [me.id, item.id],
       );
-      // A title can be changed later by buying again; everything else respects its limit.
-      if (item.kind !== "title" && n >= item.limit)
+      // Titles and handles can be changed again by buying again; everything else respects its limit.
+      if (!isRepeatable(item) && n >= item.limit)
         return item.limit === 1 ? "You already own this." : `That's the limit of ${item.limit}.`;
       if ((await balanceOf(tx, me.id)) < item.cost) return "Not enough coins yet.";
+      if (newHandle) {
+        const [taken] = await tx.query(`SELECT 1 FROM accounts WHERE handle = $1`, [newHandle]);
+        if (taken) return `@${newHandle} is taken. Try another.`;
+        await tx.query(`UPDATE accounts SET handle = $2 WHERE id = $1`, [me.id, newHandle]);
+      }
       code = newCode();
       await tx.query(`INSERT INTO redemptions (account_id, item, cost, code) VALUES ($1, $2, $3, $4)`, [me.id, item.id, item.cost, code]);
       await tx.query(`INSERT INTO coin_tx (account_id, amount, reason) VALUES ($1, $2, $3)`, [me.id, -item.cost, item.name]);
@@ -176,6 +186,7 @@ export async function buyItem(_prev: FormState, form: FormData): Promise<FormSta
     });
     if (res) return { status: "error", message: res };
   } catch (err) {
+    if (newHandle && /unique|duplicate/i.test(String(err))) return { status: "error", message: `@${newHandle} is taken. Try another.` };
     console.error("buyItem failed", err);
     return { status: "error", message: "Something went wrong on our side. Try again." };
   }
@@ -184,7 +195,9 @@ export async function buyItem(_prev: FormState, form: FormData): Promise<FormSta
       ? `Done! Your code is ${code}. Show it to an organiser.`
       : item.kind === "entry"
         ? `You're in the draw (code ${code}). Good luck!`
-        : `${item.name} unlocked and equipped.`;
+        : item.kind === "handle"
+          ? `Done! You're now @${newHandle}. Use it next time you log in.`
+          : `${item.name} unlocked and equipped.`;
   return { status: "ok", message: msg };
 }
 

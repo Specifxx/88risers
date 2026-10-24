@@ -7322,3 +7322,52 @@ b.gold {
 .merch-lion {
   z-index: 45;
 }
+
+/* Rewards: previews for the title and handle items */
+.store-title .store-swatch,
+.store-handle .store-swatch {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(120% 120% at 20% 0%, rgba(213, 182, 122, 0.16), transparent 60%), var(--ink-2);
+}
+.sw-pass {
+  display: grid;
+  gap: 3px;
+  text-align: center;
+}
+.sw-pass b {
+  font: 900 20px/1 var(--f-display);
+  text-transform: uppercase;
+  color: var(--bone);
+}
+.sw-pass em {
+  font: italic 600 13px/1.2 var(--f-body);
+  color: var(--gold-hi);
+  padding: 2px 8px;
+  border: 1px dashed var(--gold);
+  border-radius: 6px;
+}
+.sw-pass small {
+  font: 600 11px/1 var(--f-tech);
+  color: var(--faint);
+}
+.sw-handle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 700 14px/1 var(--f-tech);
+  max-width: 100%;
+  padding: 0 10px;
+}
+.sw-handle s {
+  color: var(--faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sw-handle i {
+  font-style: normal;
+  color: var(--red-hi);
+}
+.sw-handle b {
+  color: var(--gold-hi);
+}

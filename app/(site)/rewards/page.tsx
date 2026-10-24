@@ -3,7 +3,7 @@ import Link from "next/link";
 import { BuyButton } from "@/components/BuyButton";
 import { GiveawayCounter } from "@/components/GiveawayCounter";
 import { currentAccount } from "@/lib/auth";
-import { DAILY_GAME_COINS, STORE, WELCOME_COINS, coinLeaders, itemById, redemptionsOf } from "@/lib/coins";
+import { DAILY_GAME_COINS, STORE, WELCOME_COINS, coinLeaders, isRepeatable, itemById, redemptionsOf } from "@/lib/coins";
 import { GIVEAWAY_ITEM, getGiveaway } from "@/lib/giveaway";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 const GROUPS = [
-  { kind: ["frame", "title", "badge"], title: "Card cosmetics", note: "Show off on your member pass and the leaderboards." },
+  { kind: ["frame", "title", "handle", "badge"], title: "Card cosmetics", note: "Show off on your member pass and the leaderboards." },
   { kind: ["perk"], title: "Club perks", note: "You get a code; show it to an organiser at table time." },
   { kind: ["entry"], title: "Giveaways", note: "Entries into the End of Year Giveaway. More entries, better odds. The winner is drawn by the organisers and announced on Instagram." },
 ] as const;
@@ -73,10 +73,24 @@ export default async function RewardsPage() {
               <div className="store-grid">
                 {STORE.filter((i) => (g.kind as readonly string[]).includes(i.kind)).map((i) => {
                   const n = owned(i.id);
-                  const maxed = i.kind !== "title" && n >= i.limit;
+                  const maxed = !isRepeatable(i) && n >= i.limit;
                   return (
                     <article key={i.id} id={i.id === GIVEAWAY_ITEM ? GIVEAWAY_ITEM : undefined} className={`store-item store-${i.kind}${i.style ? ` store-${i.style}` : ""}`}>
-                      <div className="store-swatch" aria-hidden />
+                      <div className="store-swatch" aria-hidden>
+                        {i.kind === "title" ? (
+                          <span className="sw-pass">
+                            <b>{me?.display_name ?? "Your name"}</b>
+                            <em>Hook specialist</em>
+                            <small>@{me?.handle ?? "handle"}</small>
+                          </span>
+                        ) : i.kind === "handle" ? (
+                          <span className="sw-handle">
+                            <s>@{me?.handle ?? "old_name"}</s>
+                            <i>→</i>
+                            <b>@new_name</b>
+                          </span>
+                        ) : null}
+                      </div>
                       <h3>{i.name}</h3>
                       <p>{i.blurb}</p>
                       <div className="store-foot">
@@ -91,8 +105,9 @@ export default async function RewardsPage() {
                               item={i.id}
                               cost={i.cost}
                               needsTitle={i.kind === "title"}
+                              needsHandle={i.kind === "handle"}
                               disabled={me.coins < i.cost}
-                              label={i.kind === "title" && n ? `Change · ${i.cost}` : i.kind === "entry" ? `Enter · ${i.cost}${n ? ` (${n} in)` : ""}` : undefined}
+                              label={i.kind === "handle" || (isRepeatable(i) && n) ? `Change · ${i.cost}` : i.kind === "entry" ? `Enter · ${i.cost}${n ? ` (${n} in)` : ""}` : undefined}
                             />
                           )
                         ) : null}

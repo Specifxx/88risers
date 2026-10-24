@@ -12,7 +12,7 @@ export const WELCOME_COINS = 25;
 export const DAILY_GAME_COINS = 5;
 export const MAX_STAKE = 500;
 
-export type ItemKind = "frame" | "title" | "badge" | "perk" | "entry";
+export type ItemKind = "frame" | "title" | "handle" | "badge" | "perk" | "entry";
 export interface StoreItem {
   id: string;
   kind: ItemKind;
@@ -29,7 +29,22 @@ export const STORE: StoreItem[] = [
   { id: "frame-gold", kind: "frame", name: "Gold frame", cost: 60, blurb: "A brushed gold border for your Riser card.", limit: 1, style: "gold" },
   { id: "frame-ink", kind: "frame", name: "Red ink frame", cost: 100, blurb: "Brushstroke red ring, straight off the crest.", limit: 1, style: "ink" },
   { id: "frame-holo", kind: "frame", name: "Holo frame", cost: 180, blurb: "Shimmering holographic foil, like the champion cards.", limit: 1, style: "holo" },
-  { id: "title", kind: "title", name: "Custom title", cost: 80, blurb: "Set your own title under your name, e.g. “Hook specialist”.", limit: 1 },
+  {
+    id: "title",
+    kind: "title",
+    name: "Custom title",
+    cost: 80,
+    blurb: "A tagline shown under your name on your pass, profile and search card, e.g. “Hook specialist”. Your name and @handle stay the same. Buy again to change it.",
+    limit: 1,
+  },
+  {
+    id: "handle",
+    kind: "handle",
+    name: "Change your @handle",
+    cost: 20,
+    blurb: "Swap your username for a new one. You log in with the new @handle, and your profile link changes with it. Coins, Chalk and picks all carry over.",
+    limit: 1,
+  },
   { id: "badge-lion", kind: "badge", name: "Lion badge", cost: 120, blurb: "The lion sits on your card and next to your name on leaderboards.", limit: 1 },
   { id: "perk-sticker", kind: "perk", name: "Sticker pack at a meet", cost: 150, blurb: "Show your code at table time and grab a sticker pack.", limit: 1 },
   { id: "perk-tee-10", kind: "perk", name: "10% off a Club Tee", cost: 500, blurb: "A discount code for when the shop opens.", limit: 1 },
@@ -37,6 +52,8 @@ export const STORE: StoreItem[] = [
 ];
 
 export const itemById = (id: string) => STORE.find((i) => i.id === id) ?? null;
+/** Items you can buy again and again (each purchase replaces the last). */
+export const isRepeatable = (i: StoreItem) => i.kind === "title" || i.kind === "handle";
 
 export async function balanceOf(db: Db, accountId: number) {
   const [r] = await db.query<{ n: number }>(`SELECT coalesce(sum(amount), 0)::int AS n FROM coin_tx WHERE account_id = $1`, [accountId]);
