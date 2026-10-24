@@ -260,7 +260,7 @@ export default async function Home() {
                 <i className="lg taken" /> Riser
               </span>
               <span>
-                <i className="lg reserved" /> Reserved
+                <i className="lg reserved" /> Reserved for a $2 gold coin donation
               </span>
               <span>
                 <i className="lg next" /> Next up
