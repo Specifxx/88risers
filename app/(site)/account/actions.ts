@@ -7,7 +7,8 @@ import { DAILY_GAME_COINS, MAX_STAKE, WELCOME_COINS, balanceOf, grant, isRepeata
 import { RTP_GAME, RTP_LEVELS, RTP_MAX_SCORE, isRtpLevel } from "@/lib/arcade";
 import { CHALK, recordCheckin, sydneyToday } from "@/lib/chalk";
 import { type Db, getDb } from "@/lib/db";
-import { LEVEL2_UNLOCK, LEVEL3_UNLOCK, type Wallet, skinById } from "@/lib/pinrun";
+import { LEVEL2_UNLOCK, LEVEL3_UNLOCK, type Raid, type Wallet, plausibleDamage, skinById } from "@/lib/pinrun";
+import { hitRaid } from "@/lib/raid";
 import { bankRunCoins, getWallet } from "@/lib/pinrun-db";
 import { fmtOdds, payoutAt, quoteOdds } from "@/lib/odds";
 import { SITE } from "@/lib/site";
@@ -288,7 +289,17 @@ export async function submitScore(
   score: number,
   runCoins = 0,
   level = 1,
-): Promise<{ best: number | null; coins: number; message: string; saved: number; wallet: Wallet | null; l1Best?: number }> {
+  damage = 0,
+): Promise<{
+  best: number | null;
+  coins: number;
+  message: string;
+  saved: number;
+  wallet: Wallet | null;
+  l1Best?: number;
+  /** Level 3: damage landed on the Club Raid, the raid now, and whether this run finished the boss. */
+  raid?: { dealt: number; now: Raid | null; killed: null | { name: string; reward: number } };
+}> {
   const me = await currentAccount();
   if (!me) return { best: null, coins: 0, message: "Log in to save your score and earn coins.", saved: 0, wallet: null };
   const n = Math.floor(Number(score));
@@ -313,9 +324,12 @@ export async function submitScore(
       [me.id, n, String(level)],
     );
     const got2 = await dailyGameBonus(db, me.id, "Pin Run");
+    // Level 3 runs hit the Club Raid boss (before banking, so a kill's reward shows in the wallet)
+    const hit = level === 3 ? await hitRaid(me.id, Math.min(Math.floor(Number(damage)) || 0, plausibleDamage(n))) : null;
     const bank2 = await bankRunCoins(me.id, n, runCoins);
     revalidatePath("/play");
     return {
+      raid: hit ? { dealt: hit.dealt, now: hit.raid, killed: hit.killed } : undefined,
       saved: bank2.saved,
       wallet: bank2.wallet,
       best: row2.best,

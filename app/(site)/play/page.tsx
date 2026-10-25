@@ -7,7 +7,8 @@ import { currentAccount } from "@/lib/auth";
 import { DAILY_GAME_COINS } from "@/lib/coins";
 import { getDb } from "@/lib/db";
 import { getWallet } from "@/lib/pinrun-db";
-import { BOSS_ART, type Boss, LEVEL2_UNLOCK, LEVEL3_UNLOCK } from "@/lib/pinrun";
+import { BOSS_ART, type Boss, LEVEL2_UNLOCK, LEVEL3_UNLOCK, RAID_REWARD, RAID_TOP_BONUS } from "@/lib/pinrun";
+import { getRaid, raidBoard } from "@/lib/raid";
 import { PinRunBoards } from "@/components/PinRunBoards";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +41,8 @@ export default async function PlayPage() {
     ),
     me ? db.query<{ best: number }>(`SELECT best FROM arcade_scores WHERE account_id = $1 AND game = 'pinrun' AND level = '3'`, [me.id]) : Promise.resolve([]),
   ]);
+  const raid = await getRaid();
+  const raidTop = raid ? await raidBoard(raid.id) : [];
   const bossList = bosses.map((b) => ({ ...b, art: BOSS_ART.has(b.id) ? `/pinrun/bosses/${b.id}.webp` : null }));
 
   return (
@@ -54,20 +57,29 @@ export default async function PlayPage() {
           </h1>
           <p className="lede">
             One button. Jump the tables, win the grip fights, don&apos;t fall in the chalk pit. Play any minigame here once a day and logged-in
-            Risers earn +{DAILY_GAME_COINS} coins. Every coin you grab in Pin Run is banked for new lions in the Lion Temple. Score 12,000 to unlock Level 2: Crimson Peak, with moving ledges, power-ups, lion abilities and real Risers as bosses. Score 12,000 on Level 2 to reach Level 3: The Arena, a tournament night of real arm-wrestle matches, Beast Mode and a crowd that throws things. Prefer a straight-up arm wrestle?{" "}
+            Risers earn +{DAILY_GAME_COINS} coins. Every coin you grab in Pin Run is banked for new lions in the Lion Temple. Score 12,000 to unlock Level 2: Crimson Peak, with moving ledges, power-ups, lion abilities and real Risers as bosses. Score 12,000 on Level 2 to reach Level 3: The Arena, where the club&apos;s raid boss chases you and every run chips at their health. Prefer a straight-up arm wrestle?{" "}
             <a href="#race-to-the-pin">Play Race to the Pin</a>.
           </p>
         </div>
       </section>
       <section className="section" style={{ paddingTop: 16 }}>
         <div className="wrap play-grid">
-          <PinRun loggedIn={!!me} best={mine[0]?.best ?? null} best2={mine2[0]?.best ?? null} best3={mine3[0]?.best ?? null} wallet={wallet} bosses={bossList} />
+          <PinRun loggedIn={!!me} best={mine[0]?.best ?? null} best2={mine2[0]?.best ?? null} best3={mine3[0]?.best ?? null} raid={raid} wallet={wallet} bosses={bossList} />
           <div className="panel">
             <PinRunBoards
               boards={[
                 { label: "Lv.1 Lion Temple", rows: top, empty: "No scores yet. Claim the crown." },
                 { label: "Lv.2 Crimson Peak", rows: top2, empty: `Locked until someone scores ${LEVEL2_UNLOCK.toLocaleString("en-AU")} on Level 1.` },
                 { label: "Lv.3 The Arena", rows: top3, empty: `Locked until someone scores ${LEVEL3_UNLOCK.toLocaleString("en-AU")} on Level 2.` },
+                {
+                  label: "Club Raid",
+                  rows: raidTop,
+                  empty: "No hits yet. Level 3 runs chip at the raid boss.",
+                  note: raid
+                    ? `${raid.boss.name}: ${raid.hp.toLocaleString("en-AU")} / ${raid.hpMax.toLocaleString("en-AU")} HP left. When the club takes them down, everyone who landed a hit gets ${RAID_REWARD} Temple coins (top damage +${RAID_TOP_BONUS}).`
+                    : undefined,
+                  unit: "dmg",
+                },
               ]}
             />
             {!me ? (

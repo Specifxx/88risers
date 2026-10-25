@@ -301,6 +301,23 @@ CREATE TABLE IF NOT EXISTS pinrun_tx (
 );
 CREATE INDEX IF NOT EXISTS pinrun_tx_account ON pinrun_tx (account_id, created_at);
 
+-- Pin Run Club Raid: one Riser boss at a time with a health pool the whole club chips at on Level 3.
+CREATE TABLE IF NOT EXISTS pinrun_raids (
+  id           serial PRIMARY KEY,
+  boss_id      integer NOT NULL,
+  hp_max       integer NOT NULL,
+  hp           integer NOT NULL,
+  started_at   timestamptz NOT NULL DEFAULT now(),
+  defeated_at  timestamptz
+);
+CREATE TABLE IF NOT EXISTS pinrun_raid_hits (
+  raid_id     integer NOT NULL REFERENCES pinrun_raids(id) ON DELETE CASCADE,
+  account_id  integer NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  damage      integer NOT NULL DEFAULT 0,
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (raid_id, account_id)
+);
+
 CREATE TABLE IF NOT EXISTS meta (
   key    text PRIMARY KEY,
   value  text
@@ -339,7 +356,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v28";
+const MIGRATION_MARKER = "founders_v29";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [

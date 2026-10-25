@@ -120,7 +120,7 @@ export const LEVEL3_UNLOCK = 12000;
 export const LEVELS = [
   { n: 1, name: "Lion Temple", blurb: "The original run." },
   { n: 2, name: "Crimson Peak", blurb: "Moving platforms, power-ups, lion abilities and Riser bosses." },
-  { n: 3, name: "The Arena", blurb: "Tournament night: gauntlets, arm-wrestle matches, Beast Mode and a crowd that throws things." },
+  { n: 3, name: "The Arena", blurb: "Club Raid: the raid boss chases you and throws their moves at the level." },
 ] as const;
 
 /** Lion abilities: active on Levels 2 and 3. */
@@ -146,7 +146,7 @@ export const ABILITIES3: Record<string, { name: string; text: string }> = {
   flame: { name: "Wildfire", text: "Beast Mode lasts 50% longer." },
   thunder: { name: "Thunderclap", text: "Beast Mode starts with a lightning strike that pins every rival on screen." },
   moon: { name: "One Hand", text: "Double grips only need one hand." },
-  eclipse: { name: "Blood Moon", text: "Every arm wrestle starts leaning your way." },
+  eclipse: { name: "Blood Moon", text: "The raid boss chases you 25% slower." },
 };
 
 export type PowerKind = "shield" | "magnet" | "x2";
@@ -195,3 +195,21 @@ const MOVE_ORDER: MoveKind[] = ["toproll", "hook", "hydraulic", "press", "side",
 export const moveOf = (id: number): MoveKind => BOSS_MOVES[id] ?? MOVE_ORDER[(id - 1) % MOVE_ORDER.length];
 /** Champion's Chain: the move used on each grip round (0, 1, 2…). */
 export const chainMove = (round: number): MoveKind => (["toproll", "hook", "press"] as MoveKind[])[round % 3];
+
+/* ─────────── Club Raid (Level 3) ─────────── */
+
+/** Health of each raid boss; the whole club's Level 3 runs chip at it. */
+export const RAID_HP = 40000;
+/** Temple coins for everyone who hit a raid boss when it falls, and a bonus for the top hitter. */
+export const RAID_REWARD = 250;
+export const RAID_TOP_BONUS = 250;
+
+export interface Raid {
+  id: number;
+  hp: number;
+  hpMax: number;
+  boss: Boss;
+}
+
+/** Raid damage can't run far ahead of a run's score (it's earned the same way). */
+export const plausibleDamage = (score: number) => 200 + Math.floor(score * 0.8);
