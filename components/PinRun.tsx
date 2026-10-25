@@ -342,9 +342,10 @@ export function PinRun({
   // Boss portraits (real Risers).
   useEffect(() => {
     for (const b of bosses) {
-      if (!b.photo || bossImgs.current[b.id]) continue;
+      const src = b.art ?? b.photo;
+      if (!src || bossImgs.current[b.id]) continue;
       const img = new Image();
-      img.src = b.photo;
+      img.src = src;
       bossImgs.current[b.id] = img;
     }
   }, [bosses]);
@@ -729,6 +730,20 @@ export function PinRun({
       }
     };
 
+    /** A boss's face in a circle: from the cartoon art (face sits upper-middle) or a photo/card (top crop). */
+    const drawFace = (img: HTMLImageElement, art: boolean, cx: number, cy: number, rr: number) => {
+      const iw = img.naturalWidth;
+      const ih = img.naturalHeight;
+      if (art) {
+        // the face in the boss art: roughly x 30-62%, y 4-36% of the square
+        ctx.drawImage(img, iw * 0.3, ih * 0.04, iw * 0.32, ih * 0.32, cx - rr, cy - rr, rr * 2, rr * 2);
+        return;
+      }
+      const s2 = Math.max((rr * 2) / iw, (rr * 2) / (ih * 0.55));
+      const dw = iw * s2;
+      ctx.drawImage(img, cx - dw / 2, cy - rr - ih * s2 * 0.08, dw, ih * s2);
+    };
+
     /** A boss: a bigger rival with the Riser's portrait, name and remaining grip (hp). */
     const drawBoss = (r: Rival, p: Plat, cam: number) => {
       const bf = r.boss!;
@@ -768,12 +783,9 @@ export function PinRun({
       ctx.fillStyle = "#2a2230";
       ctx.fill();
       ctx.clip();
-      const img = bf.b.photo ? bossImgs.current[bf.b.id] : undefined;
+      const img = bossImgs.current[bf.b.id];
       if (img?.complete && img.naturalWidth) {
-        // cover-crop toward the top (faces), works for photos and champion cards
-        const s2 = Math.max((rr * 2) / img.naturalWidth, (rr * 2) / (img.naturalHeight * 0.55));
-        const dw = img.naturalWidth * s2;
-        ctx.drawImage(img, hx - dw / 2, hy - rr - img.naturalHeight * s2 * 0.08, dw, img.naturalHeight * s2);
+        drawFace(img, !!bf.b.art, hx, hy, rr);
       } else {
         ctx.fillStyle = "#efe7d6";
         ctx.font = "900 22px 'Saira Extra Condensed', Impact, sans-serif";
@@ -939,6 +951,24 @@ export function PinRun({
         ctx.font = "700 14px 'Chakra Petch', monospace";
         ctx.fillStyle = "#d5b67a";
         ctx.fillText(`RISER #${String(bf.b.id).padStart(3, "0")} · ${bf.max} GOOD GRIPS TO PIN`, cx, cy - 12);
+        // the full boss art on the right, like a fighting-game portrait
+        const artImg = bf.b.art ? bossImgs.current[bf.b.id] : undefined;
+        if (artImg?.complete && artImg.naturalWidth) {
+          const aw = 160;
+          const ax = cx + 296 - aw;
+          const ay = cy + 86;
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(ax, ay, aw, aw, 14);
+          ctx.clip();
+          ctx.drawImage(artImg, ax, ay, aw, aw);
+          ctx.restore();
+          ctx.strokeStyle = "rgba(242,193,78,.6)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.roundRect(ax, ay, aw, aw, 14);
+          ctx.stroke();
+        }
         // the Riser's portrait, name and grips landed
         const px2 = cx - 228;
         const py2 = cy + 128;
@@ -949,11 +979,9 @@ export function PinRun({
         ctx.fillStyle = "#2a2230";
         ctx.fill();
         ctx.clip();
-        const img = bf.b.photo ? bossImgs.current[bf.b.id] : undefined;
+        const img = bossImgs.current[bf.b.id];
         if (img?.complete && img.naturalWidth) {
-          const s2 = Math.max((rr * 2) / img.naturalWidth, (rr * 2) / (img.naturalHeight * 0.55));
-          const dw = img.naturalWidth * s2;
-          ctx.drawImage(img, px2 - dw / 2, py2 - rr - img.naturalHeight * s2 * 0.08, dw, img.naturalHeight * s2);
+          drawFace(img, !!bf.b.art, px2, py2, rr);
         } else {
           ctx.fillStyle = "#efe7d6";
           ctx.font = "900 34px 'Saira Extra Condensed', Impact, sans-serif";

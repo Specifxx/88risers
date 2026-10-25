@@ -7,7 +7,7 @@ import { currentAccount } from "@/lib/auth";
 import { DAILY_GAME_COINS } from "@/lib/coins";
 import { getDb } from "@/lib/db";
 import { getWallet } from "@/lib/pinrun-db";
-import { type Boss, LEVEL2_UNLOCK } from "@/lib/pinrun";
+import { BOSS_ART, type Boss, LEVEL2_UNLOCK } from "@/lib/pinrun";
 import { PinRunBoards } from "@/components/PinRunBoards";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +35,7 @@ export default async function PlayPage() {
     me ? db.query<{ best: number }>(`SELECT best FROM arcade_scores WHERE account_id = $1 AND game = 'pinrun' AND level = '2'`, [me.id]) : Promise.resolve([]),
     db.query<Boss>(`SELECT id, name, coalesce(photo_url, card_url) AS photo FROM pullers WHERE NOT hidden ORDER BY id`),
   ]);
+  const bossList = bosses.map((b) => ({ ...b, art: BOSS_ART.has(b.id) ? `/pinrun/bosses/${b.id}.webp` : null }));
 
   return (
     <>
@@ -55,7 +56,7 @@ export default async function PlayPage() {
       </section>
       <section className="section" style={{ paddingTop: 16 }}>
         <div className="wrap play-grid">
-          <PinRun loggedIn={!!me} best={mine[0]?.best ?? null} best2={mine2[0]?.best ?? null} wallet={wallet} bosses={bosses} />
+          <PinRun loggedIn={!!me} best={mine[0]?.best ?? null} best2={mine2[0]?.best ?? null} wallet={wallet} bosses={bossList} />
           <div className="panel">
             <PinRunBoards
               boards={[

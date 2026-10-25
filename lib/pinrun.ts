@@ -142,4 +142,9 @@ export interface Boss {
   id: number;
   name: string;
   photo: string | null;
+  /** Cartoon boss art in /pinrun/bosses/<id>.webp, when we have it. */
+  art?: string | null;
 }
+
+/** Risers with cartoon boss art (square, waist-up, flexing, face in the upper middle). */
+export const BOSS_ART = new Set([1, 2, 3, 4, 5, 8]);
