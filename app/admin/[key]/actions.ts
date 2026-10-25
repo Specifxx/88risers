@@ -525,7 +525,7 @@ export async function setLevel2(form: FormData) {
   if (!id) done(key, "coins", "Pick an account.", true);
   const db = await getDb();
   await db.query(`INSERT INTO pinrun_wallet (account_id, l2) VALUES ($1, $2) ON CONFLICT (account_id) DO UPDATE SET l2 = $2`, [id, on]);
-  done(key, "coins", on ? "Pin Run Level 2 unlocked for that account." : "Level 2 unlock removed (they can still unlock it by scoring 20,000).");
+  done(key, "coins", on ? "Pin Run Level 2 unlocked for that account." : "Level 2 unlock removed (they can still unlock it by scoring 15,000).");
 }
 
 export async function makeResetLink(form: FormData) {
