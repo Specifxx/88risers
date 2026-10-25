@@ -255,12 +255,15 @@ export function PinRun({ loggedIn, best: initialBest, wallet: initialWallet }: {
       overAt.current = performance.now();
       beep(160, 0.5, "sawtooth", 0.06);
       if (loggedIn) {
-        submitScore(score, w.coins).then((r) => {
-          if (r.best !== null) setBest(r.best);
-          if (r.wallet) setWallet(r.wallet);
-          setSaveMsg([r.message, r.saved ? `+${r.saved} Temple coins banked.` : ""].filter(Boolean).join(" "));
-          if (r.coins) lionSays("cheer", `+${r.coins} coins for today's run!`);
-        });
+        submitScore(score, w.coins)
+          .then((r) => {
+            if (r.best !== null) setBest(r.best);
+            if (r.wallet) setWallet(r.wallet);
+            const banked = r.saved && r.wallet ? `+${r.saved} Temple coins banked (${r.wallet.coins.toLocaleString("en-AU")} total).` : "";
+            setSaveMsg([r.message, banked].filter(Boolean).join(" "));
+            if (r.coins) lionSays("cheer", `+${r.coins} coins for today's run!`);
+          })
+          .catch(() => setSaveMsg("Couldn't save that run. Check your connection and play again."));
       } else setBest((b) => Math.max(b ?? 0, score));
     };
 
@@ -657,7 +660,7 @@ export function PinRun({ loggedIn, best: initialBest, wallet: initialWallet }: {
       ctx.fillText(String(Math.floor(w.score)).padStart(6, "0"), 24, 46);
       ctx.font = "700 13px 'Chakra Petch', monospace";
       ctx.fillStyle = "#d5b67a";
-      ctx.fillText(`PINS ${w.pins}   COINS ${w.coins}${w.combo > 1 ? `   COMBO x${w.combo}` : ""}`, 24, 68);
+      ctx.fillText(`PINS ${w.pins}   TEMPLE COINS ${w.coins}${w.combo > 1 ? `   COMBO x${w.combo}` : ""}`, 24, 68);
       for (let i = 0; i < 3; i++) {
         ctx.fillStyle = i < w.hearts ? "#d42a2f" : "#2a251d";
         ctx.beginPath();

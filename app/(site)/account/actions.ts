@@ -279,7 +279,9 @@ export async function submitScore(
     wallet: bank.wallet,
     best: row.best,
     coins: got ? DAILY_GAME_COINS : 0,
-    message: got ? `+${DAILY_GAME_COINS} coins for today's game!` : n > 0 && row.best === n ? "New personal best!" : "Score saved.",
+    message: got
+      ? `+${DAILY_GAME_COINS} 88Risers coins for today's game!`
+      : `${n > 0 && row.best === n ? "New personal best!" : "Score saved."} Today's +${DAILY_GAME_COINS} 88Risers coins already collected.`,
   };
 }
 

@@ -7,6 +7,7 @@ import { earnedAchievements } from "@/lib/achievements";
 import { getMember } from "@/lib/members";
 import { ChalkLift } from "@/components/ChalkLift";
 import { LionShowcase } from "@/components/LionShowcase";
+import { getWallet } from "@/lib/pinrun-db";
 import { CheckInBox } from "@/components/CheckInBox";
 import { CHALK, chalkHistory, chalkOf, chalkSettings, checkedInToday, liftCompletedEver, todaysMeet } from "@/lib/chalk";
 import { currentAccount } from "@/lib/auth";
@@ -53,12 +54,13 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
     );
   }
 
-  const [history, style, items, rec, profile] = await Promise.all([
+  const [history, style, items, rec, profile, wallet] = await Promise.all([
     coinHistory(me.id),
     styleOf(me.id),
     redemptionsOf(me.id),
     predictionRecord(me.id),
     getMember(me.handle),
+    getWallet(me.id),
   ]);
   const [settings, chalk, chalkLog, meet] = await Promise.all([chalkSettings(), chalkOf(me.id), chalkHistory(me.id), todaysMeet()]);
   const [here, liftDone] = await Promise.all([meet ? checkedInToday(me.id) : false, liftCompletedEver(me.id, settings.target)]);
@@ -130,7 +132,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
               </form>
             ) : null}
             <div style={{ marginTop: 20 }}>
-              <LionShowcase skin={profile?.lion ?? "stone"} title="Your lion" mine />
+              <LionShowcase skin={profile?.lion ?? "stone"} title="Your lion" mine templeCoins={wallet.coins} />
             </div>
           </div>
 
