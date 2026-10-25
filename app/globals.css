@@ -8001,3 +8001,33 @@ b.gold {
     display: none;
   }
 }
+
+/* Pin Run overlays never scroll sideways: the buttons share the width, and the sound button
+   moves to the top-right corner while an overlay is showing (the HUD hearts are hidden then). */
+.pinrun-overlay {
+  overflow-x: hidden;
+}
+@media (max-width: 560px) {
+  .pinrun-overlay .pinrun-btns {
+    padding-right: 0;
+    width: 100%;
+    max-width: 100%;
+    justify-content: center;
+    gap: 6px;
+  }
+  .pinrun-overlay .pinrun-btns .btn {
+    min-width: 0;
+    flex: 0 1 auto;
+    padding: 0 10px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+  .pinrun-overlay .pinrun-save {
+    padding: 0 6px;
+  }
+  .pinrun:has(.pinrun-overlay) .pinrun-mute {
+    top: 8px;
+    bottom: auto;
+  }
+}
