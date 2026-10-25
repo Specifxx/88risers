@@ -7,7 +7,7 @@ import { DAILY_GAME_COINS, MAX_STAKE, WELCOME_COINS, balanceOf, grant, isRepeata
 import { RTP_GAME, RTP_LEVELS, RTP_MAX_SCORE, isRtpLevel } from "@/lib/arcade";
 import { CHALK, recordCheckin, sydneyToday } from "@/lib/chalk";
 import { type Db, getDb } from "@/lib/db";
-import { LEVEL2_UNLOCK, type Wallet, skinById } from "@/lib/pinrun";
+import { LEVEL2_UNLOCK, LEVEL3_UNLOCK, type Wallet, skinById } from "@/lib/pinrun";
 import { bankRunCoins, getWallet } from "@/lib/pinrun-db";
 import { fmtOdds, payoutAt, quoteOdds } from "@/lib/odds";
 import { SITE } from "@/lib/site";
@@ -294,20 +294,23 @@ export async function submitScore(
   const n = Math.floor(Number(score));
   if (!Number.isFinite(n) || n < 0 || n > 2_000_000) return { best: null, coins: 0, message: "Score not saved.", saved: 0, wallet: null };
   const db = await getDb();
-  if (level === 2) {
-    // Level 2 has its own leaderboard, and only counts once Level 1 has unlocked it.
-    const [l1] = await db.query<{ best: number; l2: boolean }>(
+  if (level === 2 || level === 3) {
+    // Levels 2 and 3 have their own leaderboards, and only count once the level before unlocks them.
+    const [u] = await db.query<{ best: number; best2: number; l2: boolean; l3: boolean }>(
       `SELECT (SELECT best FROM game_scores WHERE account_id = $1) AS best,
-              coalesce((SELECT l2 FROM pinrun_wallet WHERE account_id = $1), false) AS l2`,
+              (SELECT best FROM arcade_scores WHERE account_id = $1 AND game = 'pinrun' AND level = '2') AS best2,
+              coalesce((SELECT l2 FROM pinrun_wallet WHERE account_id = $1), false) AS l2,
+              coalesce((SELECT l3 FROM pinrun_wallet WHERE account_id = $1), false) AS l3`,
       [me.id],
     );
-    if ((l1?.best ?? 0) < LEVEL2_UNLOCK && !l1?.l2) return { best: null, coins: 0, message: "Level 2 isn't unlocked yet.", saved: 0, wallet: null };
+    const open = level === 2 ? (u?.best ?? 0) >= LEVEL2_UNLOCK || !!u?.l2 : (u?.best2 ?? 0) >= LEVEL3_UNLOCK || !!u?.l3;
+    if (!open) return { best: null, coins: 0, message: `Level ${level} isn't unlocked yet.`, saved: 0, wallet: null };
     const [row2] = await db.query<{ best: number }>(
-      `INSERT INTO arcade_scores (account_id, game, level, best) VALUES ($1, 'pinrun', '2', $2)
+      `INSERT INTO arcade_scores (account_id, game, level, best) VALUES ($1, 'pinrun', $3, $2)
        ON CONFLICT (account_id, game, level) DO UPDATE SET best = GREATEST(arcade_scores.best, EXCLUDED.best),
          updated_at = CASE WHEN EXCLUDED.best > arcade_scores.best THEN now() ELSE arcade_scores.updated_at END
        RETURNING best`,
-      [me.id, n],
+      [me.id, n, String(level)],
     );
     const got2 = await dailyGameBonus(db, me.id, "Pin Run");
     const bank2 = await bankRunCoins(me.id, n, runCoins);
@@ -319,7 +322,7 @@ export async function submitScore(
       coins: got2 ? DAILY_GAME_COINS : 0,
       message: got2
         ? `+${DAILY_GAME_COINS} 88Risers coins for today's game!`
-        : `${n > 0 && row2.best === n ? "New Level 2 best!" : "Score saved."} Today's +${DAILY_GAME_COINS} 88Risers coins already collected.`,
+        : `${n > 0 && row2.best === n ? `New Level ${level} best!` : "Score saved."} Today's +${DAILY_GAME_COINS} 88Risers coins already collected.`,
     };
   }
   const [row] = await db.query<{ best: number }>(

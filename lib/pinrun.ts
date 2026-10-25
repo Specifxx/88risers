@@ -106,19 +106,24 @@ export interface Wallet {
   owned: string[];
   /** Level 2 unlocked by an organiser (as well as by scoring 12,000). */
   l2?: boolean;
+  /** Level 3 unlocked by an organiser (as well as by scoring 12,000 on Level 2). */
+  l3?: boolean;
 }
 
 /* ─────────── Levels ─────────── */
 
 /** Score on Level 1 that unlocks Level 2. */
 export const LEVEL2_UNLOCK = 12000;
+/** Score on Level 2 that unlocks Level 3. */
+export const LEVEL3_UNLOCK = 12000;
 
 export const LEVELS = [
   { n: 1, name: "Lion Temple", blurb: "The original run." },
   { n: 2, name: "Crimson Peak", blurb: "Moving platforms, power-ups, lion abilities and Riser bosses." },
+  { n: 3, name: "The Arena", blurb: "Hype meter, Beast Mode, double grips, hazards and supermatches." },
 ] as const;
 
-/** Lion abilities: active on Level 2. */
+/** Lion abilities: active on Levels 2 and 3. */
 export const ABILITIES: Record<string, { name: string; text: string }> = {
   stone: { name: "Steady Grip", text: "Grip-fight gold zone is 15% wider." },
   sakura: { name: "Petal Float", text: "Hold to glide: you fall much slower." },

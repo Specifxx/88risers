@@ -289,6 +289,8 @@ CREATE TABLE IF NOT EXISTS pinrun_wallet (
 
 -- Organisers can unlock Pin Run Level 2 for an account without the 12,000 score.
 ALTER TABLE pinrun_wallet ADD COLUMN IF NOT EXISTS l2 boolean NOT NULL DEFAULT false;
+-- ...and Level 3 without the 12,000 on Level 2.
+ALTER TABLE pinrun_wallet ADD COLUMN IF NOT EXISTS l3 boolean NOT NULL DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS pinrun_tx (
   id          serial PRIMARY KEY,
@@ -337,7 +339,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v26";
+const MIGRATION_MARKER = "founders_v27";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [

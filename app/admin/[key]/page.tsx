@@ -28,6 +28,7 @@ import {
   resetAccountPassword,
   makeResetLink,
   setLevel2,
+  setLevel3,
   saveSupermatch,
   setGiveawayDate,
   openCheckin,
@@ -1200,6 +1201,13 @@ function Coins({
                 <input type="hidden" name="on" value={a.l2 ? "" : "on"} />
                 <button className="btn btn-sm btn-ghost">{a.l2 ? "Remove Pin Run Lv.2 unlock" : "Unlock Pin Run Lv.2"}</button>
                 {a.l2 ? <span className="pill">Lv.2 unlocked</span> : null}
+              </form>
+              <form action={setLevel3} className="btn-row" style={{ marginTop: 10 }}>
+                <input type="hidden" name="key" value={k} />
+                <input type="hidden" name="account_id" value={a.id} />
+                <input type="hidden" name="on" value={a.l3 ? "" : "on"} />
+                <button className="btn btn-sm btn-ghost">{a.l3 ? "Remove Pin Run Lv.3 unlock" : "Unlock Pin Run Lv.3"}</button>
+                {a.l3 ? <span className="pill">Lv.3 unlocked</span> : null}
               </form>
               <form action={makeResetLink} className="btn-row" style={{ marginTop: 10 }}>
                 <input type="hidden" name="key" value={k} />

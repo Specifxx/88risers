@@ -4,12 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { buySkin, equipSkin, submitScore } from "@/app/(site)/account/actions";
 import { lionSays } from "@/lib/lion";
-import { ABILITIES, ANIM, type Boss, DEFAULT_SKIN, LEVEL2_UNLOCK, LEVELS, MOVES, type MoveKind, POWERS, type PowerKind, SKINS, type Wallet, chainMove, moveOf, skinById } from "@/lib/pinrun";
+import { ABILITIES, ANIM, type Boss, DEFAULT_SKIN, LEVEL2_UNLOCK, LEVEL3_UNLOCK, LEVELS, MOVES, type MoveKind, POWERS, type PowerKind, SKINS, type Wallet, chainMove, moveOf, skinById } from "@/lib/pinrun";
 import { drawAura, drawFx, newFx, stepFx } from "@/lib/pinrun-fx";
 import { RADIO } from "@/lib/radio";
 
-/** 88.5 Golden Hour (summer Afro house) plays while you run. */
+/** 88.5 Golden Hour (summer Afro house) plays while you run; the Arena switches to 88.8 Phonk. */
 const GAME_STATION = RADIO.find((c) => c.id === "golden-hour") ?? RADIO[0];
+const ARENA_STATION = RADIO.find((c) => c.id === "phonk") ?? GAME_STATION;
+const stationFor = (level: number) => (level === 3 ? ARENA_STATION : GAME_STATION);
+
+type Lv = 1 | 2 | 3;
 
 /**
  * PIN RUN — a one-button arm wrestling platformer.
@@ -37,9 +41,14 @@ type Plat = {
   /** Level 2: platforms that bob up and down around baseY. */
   baseY: number;
   move: null | { amp: number; spd: number; ph: number };
+  /** The Arena: spilled water, you skid. */
+  wet?: boolean;
 };
-type BossFight = { b: Boss; hp: number; max: number };
-type Rival = { x: number; state: "idle" | "pinned" | "gone"; vy: number; y: number; vx: number; spin: number; boss?: BossFight };
+/** hp = grips still needed. In an Arena supermatch, `lost` counts the rounds the boss has won (first to 2). */
+type BossFight = { b: Boss; hp: number; max: number; sm?: boolean; lost?: number };
+/** `two`: a double grip (lock both hands). */
+type Rival = { x: number; state: "idle" | "pinned" | "gone"; vy: number; y: number; vx: number; spin: number; boss?: BossFight; two?: boolean };
+type Cloud = { x: number; y: number; got: boolean };
 type Power = { x: number; y: number; kind: PowerKind; got: boolean };
 type Coin = { x: number; y: number; got: boolean };
 type Particle = { x: number; y: number; vx: number; vy: number; life: number; c: string; s: number };
@@ -90,9 +99,12 @@ interface World {
     used: boolean;
     /** Shake on the boss art when a move kicks in. */
     fx: number;
+    /** Double grip: where the first hand locked (null until it has). */
+    two: boolean;
+    lockA: number | null;
   };
   over: boolean;
-  level: 1 | 2;
+  level: Lv;
   skin: string;
   maxHearts: number;
   shield: boolean;
@@ -112,31 +124,43 @@ interface World {
   runFrame: number;
   /** Landing squash timer. */
   land: number;
+  /** The Arena: crowd hype (0-100); full sets off Beast Mode for `beast` seconds. */
+  hype: number;
+  beast: number;
+  /** Chalk in your eyes (seconds), chalk clouds to dodge, the ref's whistle freeze. */
+  chalk: number;
+  clouds: Cloud[];
+  whistle: number;
+  frozen: number;
+  /** The crowd jumping (decays). */
+  cheer: number;
+  /** Last wet table we skidded on (so the "SLIPPERY" pop shows once). */
+  wetSeen: Plat | null;
 }
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 
-function newWorld(level: 1 | 2 = 1, skin = DEFAULT_SKIN): World {
+function newWorld(level: Lv = 1, skin = DEFAULT_SKIN): World {
   const first: Plat = { x: -200, w: 900, y: 400, rival: null, baseY: 400, move: null };
-  const l2 = level === 2;
-  const hearts = l2 && skin === "eclipse" ? 4 : 3;
+  const adv = level >= 2;
+  const hearts = adv && skin === "eclipse" ? 4 : 3;
   return {
     level,
     skin,
     maxHearts: hearts,
-    shield: l2 && skin === "moon",
+    shield: adv && skin === "moon",
     pw: { magnet: 0, x2: 0 },
     shieldBack: 0,
     frostUsed: false,
     powers: [],
-    nextBoss: 6000,
+    nextBoss: level === 3 ? 7000 : 6000,
     bossIdx: Math.floor(Math.random() * 1000),
     waveUsed: false,
     unlockShown: false,
     banner: null,
     t: 0,
     dist: 0,
-    speed: l2 ? 365 : 330,
+    speed: level === 3 ? 390 : level === 2 ? 365 : 330,
     boost: 0,
     y: first.y - R,
     vy: 0,
@@ -159,6 +183,14 @@ function newWorld(level: 1 | 2 = 1, skin = DEFAULT_SKIN): World {
     over: false,
     runFrame: 0,
     land: 0,
+    hype: 0,
+    beast: 0,
+    chalk: 0,
+    clouds: [],
+    whistle: rand(14, 22),
+    frozen: 0,
+    cheer: 0,
+    wetSeen: null,
   };
 }
 
@@ -178,6 +210,29 @@ function extend(w: World, bosses: Boss[] = []) {
       const rivalChance = n < 4 ? 0 : 0.32 + level * 0.25;
       p = { x, w: width, y, rival: null, baseY: y, move: null };
       if (Math.random() < rivalChance && width > 200) p.rival = { x: x + width * rand(0.45, 0.7), state: "idle", vy: 0, y: 0, vx: 0, spin: 0 };
+    } else if (w.level === 3) {
+      // The Arena: stage tables, some wet; floating rigs; double-grip rivals; a supermatch every ~12,000.
+      const boss = bosses.length > 0 && w.dist + W * 2 > w.nextBoss && n > 3;
+      const stair = !boss && n > 3 && Math.random() < 0.15;
+      gap = (stair ? rand(50, 80) : rand(115, 185 + level * 130)) * (w.speed / 390);
+      const width = boss ? rand(380, 440) : stair ? rand(140, 190) : rand(165, 300) - level * 55;
+      const step = stair ? (Math.random() < 0.5 ? -1 : 1) * rand(95, 130) : rand(-150, 135);
+      const y = Math.max(225, Math.min(450, last.baseY + step));
+      const x = last.x + last.w + gap;
+      const mover = !boss && !stair && n > 3 && Math.random() < 0.3 + level * 0.12;
+      const amp = mover ? rand(35, 65) : 0;
+      const baseY = Math.max(215 + amp, Math.min(455 - amp, y));
+      p = { x, w: width, y: baseY, rival: null, baseY, move: mover ? { amp, spd: rand(1.3, 2.3), ph: rand(0, Math.PI * 2) } : null };
+      if (!boss && !mover && n > 3 && Math.random() < 0.22) p.wet = true;
+      if (boss) {
+        const b = bosses[w.bossIdx++ % bosses.length];
+        p.rival = { x: x + width * 0.62, state: "idle", vy: 0, y: 0, vx: 0, spin: 0, boss: { b, hp: 2, max: 2, sm: true, lost: 0 } };
+        w.nextBoss = x + 12000;
+      } else if (!mover && n > 3 && width > 185 && Math.random() < 0.34 + level * 0.25) {
+        p.rival = { x: x + width * rand(0.45, 0.7), state: "idle", vy: 0, y: 0, vx: 0, spin: 0, two: n > 5 && Math.random() < 0.4 };
+      }
+      // a chalk cloud hanging over the gap
+      if (n > 4 && !boss && Math.random() < 0.14) w.clouds.push({ x: x - gap / 2, y: baseY - rand(90, 150), got: false });
     } else {
       // Crimson Peak: narrower ledges, steep staircases and platforms that bob up and down.
       const boss = bosses.length > 0 && w.dist + W * 2 > w.nextBoss && n > 3;
@@ -216,18 +271,21 @@ function extend(w: World, bosses: Boss[] = []) {
   w.plats = w.plats.filter((p) => p.x + p.w > w.dist - 400);
   w.coinsList = w.coinsList.filter((c) => c.x > w.dist - 400);
   w.powers = w.powers.filter((c) => c.x > w.dist - 400);
+  w.clouds = w.clouds.filter((c) => c.x > w.dist - 400);
 }
 
 export function PinRun({
   loggedIn,
   best: initialBest,
   best2: initialBest2 = null,
+  best3: initialBest3 = null,
   wallet: initialWallet,
   bosses = [],
 }: {
   loggedIn: boolean;
   best: number | null;
   best2?: number | null;
+  best3?: number | null;
   wallet: Wallet | null;
   bosses?: Boss[];
 }) {
@@ -235,16 +293,22 @@ export function PinRun({
   const world = useRef<World>(newWorld());
   const [phase, setPhase] = useState<"title" | "play" | "over">("title");
   const phaseRef = useRef(phase);
-  const [final, setFinal] = useState<{ score: number; pins: number; coins: number; level: 1 | 2 }>({ score: 0, pins: 0, coins: 0, level: 1 });
+  const [final, setFinal] = useState<{ score: number; pins: number; coins: number; level: Lv }>({ score: 0, pins: 0, coins: 0, level: 1 });
   const [best, setBest] = useState<number | null>(initialBest);
   const [best2, setBest2] = useState<number | null>(initialBest2);
-  const [level, setLevel] = useState<1 | 2>(1);
-  const levelRef = useRef<1 | 2>(1);
+  const [best3, setBest3] = useState<number | null>(initialBest3);
+  const bestOf = (l: Lv) => (l === 3 ? best3 : l === 2 ? best2 : best);
+  const setBestOf = (l: Lv) => (l === 3 ? setBest3 : l === 2 ? setBest2 : setBest);
+  const [level, setLevel] = useState<Lv>(1);
+  const levelRef = useRef<Lv>(1);
   levelRef.current = level;
   const [wallet, setWallet] = useState<Wallet | null>(initialWallet);
   const unlocked = (best ?? 0) >= LEVEL2_UNLOCK || !!wallet?.l2;
   const unlockedRef = useRef(unlocked);
   unlockedRef.current = unlocked;
+  const unlocked3 = (best2 ?? 0) >= LEVEL3_UNLOCK || !!wallet?.l3;
+  const unlocked3Ref = useRef(unlocked3);
+  unlocked3Ref.current = unlocked3;
   const bossImgs = useRef<Record<number, HTMLImageElement>>({});
   const bossesRef = useRef(bosses);
   bossesRef.current = bosses;
@@ -253,7 +317,7 @@ export function PinRun({
   const mutedRef = useRef(false);
   const audio = useRef<AudioContext | null>(null);
   const overAt = useRef(0);
-  const imgs = useRef<{ skin?: HTMLImageElement; cloud?: HTMLImageElement; ring?: HTMLImageElement; l2bg?: HTMLImageElement }>({});
+  const imgs = useRef<{ skin?: HTMLImageElement; cloud?: HTMLImageElement; ring?: HTMLImageElement; l2bg?: HTMLImageElement; l3bg?: HTMLImageElement }>({});
   const [temple, setTemple] = useState(false);
   const templeRef = useRef(false);
   templeRef.current = temple;
@@ -290,8 +354,9 @@ export function PinRun({
   const [onAir, setOnAir] = useState(false);
   const onAirRef = useRef(false);
   onAirRef.current = onAir;
+  const station = useRef(GAME_STATION);
   const tuneRadio = (i = 0) => {
-    const stations = GAME_STATION.stations;
+    const stations = station.current.stations;
     if (i >= stations.length) return;
     radio.current ??= new Audio();
     const a = radio.current;
@@ -328,10 +393,16 @@ export function PinRun({
   );
 
   const start = () => {
-    startRadio();
+    const want = stationFor(levelRef.current);
+    if (want !== station.current) {
+      // switching channel (the Arena plays Phonk)
+      station.current = want;
+      setOnAir(false);
+      if (!mutedRef.current) tuneRadio(0);
+    } else startRadio();
     world.current = newWorld(levelRef.current, skinRef.current);
     extend(world.current, bossesRef.current);
-    if (levelRef.current === 2) {
+    if (levelRef.current >= 2) {
       const ab = ABILITIES[skinRef.current];
       if (ab) world.current.banner = { t: `${(skinById(skinRef.current)?.name ?? "").toUpperCase()} · ${ab.name.toUpperCase()}`, sub: ab.text, life: 3, c: "#f2e1b6" };
     }
@@ -351,6 +422,16 @@ export function PinRun({
       if (w.duel.result) return;
       const hit = Math.abs(w.duel.pos - w.duel.zone) < w.duel.width / 2;
       const boss = w.duel.rival.boss;
+      if (w.duel.two && w.duel.lockA === null && hit) {
+        // first hand locked in; now the second needle, a touch faster
+        const d = w.duel;
+        d.lockA = d.pos;
+        d.t = 0;
+        d.ph = rand(0, Math.PI * 2);
+        d.speed *= 1.15;
+        beep(760, 0.08, "square", 0.05);
+        return;
+      }
       if (hit && boss) {
         boss.hp--;
         w.duel.result = boss.hp > 0 ? "hit" : "pin";
@@ -366,7 +447,7 @@ export function PinRun({
       w.coyote = 0;
       w.jumps = 1;
       beep(520, 0.09);
-    } else if (w.jumps < (w.level === 2 && w.skin === "thunder" ? 3 : 2)) {
+    } else if (w.jumps < (w.level >= 2 && w.skin === "thunder" ? 3 : 2)) {
       w.vy = -JUMP2;
       w.jumps++;
       beep(700, 0.09);
@@ -384,7 +465,9 @@ export function PinRun({
     ring.src = "/ink/circle.webp";
     const l2bg = new Image();
     l2bg.src = "/pinrun/l2-bg.webp";
-    imgs.current = { ...imgs.current, cloud, ring, l2bg };
+    const l3bg = new Image();
+    l3bg.src = "/pinrun/l3-bg.webp";
+    imgs.current = { ...imgs.current, cloud, ring, l2bg, l3bg };
 
     const key = (e: KeyboardEvent) => {
       if (templeRef.current) {
@@ -444,14 +527,14 @@ export function PinRun({
         const lv = w.level;
         submitScore(score, w.coins, lv)
           .then((r) => {
-            if (r.best !== null) (lv === 2 ? setBest2 : setBest)(r.best);
+            if (r.best !== null) setBestOf(lv)(r.best);
             if (r.wallet) setWallet(r.wallet);
             const banked = r.saved && r.wallet ? `+${r.saved} Temple coins banked (${r.wallet.coins.toLocaleString("en-AU")} total).` : "";
             setSaveMsg([r.message, banked].filter(Boolean).join(" "));
             if (r.coins) lionSays("cheer", `+${r.coins} coins for today's run!`);
           })
           .catch(() => setSaveMsg("Couldn't save that run. Check your connection and play again."));
-      } else (w.level === 2 ? setBest2 : setBest)((b) => Math.max(b ?? 0, score));
+      } else setBestOf(w.level)((b) => Math.max(b ?? 0, score));
     };
 
     /** Lose a heart, unless a shield soaks it up. Returns true if the run is over. */
@@ -460,12 +543,13 @@ export function PinRun({
       w.shake = 0.3;
       if (w.shield) {
         w.shield = false;
-        if (w.level === 2 && w.skin === "moon") w.shieldBack = 30;
+        if (w.level >= 2 && w.skin === "moon") w.shieldBack = 30;
         w.pops.push({ x: w.dist + PX, y: w.y - 80, t: "SHIELD!", life: 1, c: "#7fc8ff" });
         beep(600, 0.15, "triangle", 0.06);
         return false;
       }
       w.hearts--;
+      if (w.level === 3) w.hype = Math.max(0, w.hype - 25);
       w.pops.push({ x: w.dist + PX, y: w.y - 70, t: label, life: 1, c: "#ff4a4f" });
       beep(200, 0.25, "sawtooth", 0.06);
       return w.hearts <= 0;
@@ -474,7 +558,7 @@ export function PinRun({
     const newRound = (w: World, boss: boolean) => {
       const d = w.duel!;
       const diff = Math.min(1, w.dist / 30000);
-      const l2 = w.level === 2;
+      const l2 = w.level >= 2;
       let width = boss ? 0.2 - diff * 0.05 - (d.rival.boss!.max - d.rival.boss!.hp) * 0.02 : 0.24 - diff * 0.12;
       let speed = boss ? 5 + diff * 3 + (d.rival.boss!.max - d.rival.boss!.hp) * 0.7 : 4.2 + diff * 3.5;
       if (l2 && w.skin === "stone") width *= 1.15;
@@ -484,6 +568,10 @@ export function PinRun({
       const move = bf ? (moveOf(id) === "chain" ? chainMove(bf.max - bf.hp) : moveOf(id)) : null;
       if (move === "press") width *= 1.3; // starts wide, then gets crushed
       if (move === "toproll" || move === "kings") width *= 1.1;
+      if (bf?.sm) speed *= 1.1; // supermatch: everything a notch faster
+      d.two = !bf && !!d.rival.two;
+      d.lockA = null;
+      if (d.two) width *= 1.1;
       d.t = 0;
       d.zone = move === "side" ? rand(0.55, 0.8) : rand(0.25, 0.75);
       d.width = width;
@@ -538,13 +626,14 @@ export function PinRun({
     const step = (dt: number) => {
       const w = world.current;
       w.t += dt;
-      const l2 = w.level === 2;
+      const l2 = w.level >= 2; // lion abilities are on from Level 2
+      const l3 = w.level === 3;
       if (w.duel) {
         const d = w.duel;
         const boss = d.rival.boss;
         d.t += dt;
         if (!d.result) stepNeedle(d, dt);
-        if (!d.result && d.t > (boss ? 3 : 2.4)) {
+        if (!d.result && d.t > (boss ? 3 : d.two ? 2.8 : 2.4)) {
           d.result = "miss";
           d.rt = 0;
         }
@@ -558,18 +647,24 @@ export function PinRun({
             if (d.result === "pin") {
               w.pins++;
               const blaze = l2 && w.skin === "flame";
-              const gain = Math.round((boss ? 1500 : 100 * w.combo) * (blaze ? 1.5 : 1));
+              const sm = !!boss?.sm;
+              const gain = Math.round((sm ? 3000 : boss ? 1500 : 100 * w.combo * (d.two ? 2 : 1)) * (blaze ? 1.5 : 1));
               w.score += gain;
               w.pops.push({
                 x: w.dist + PX,
                 y: w.y - 70,
-                t: boss ? `BOSS PINNED! +${gain}` : `PIN! +${gain}`,
+                t: sm ? `ARENA CHAMPION! +${gain}` : boss ? `BOSS PINNED! +${gain}` : `${d.two ? "DOUBLE PIN" : "PIN"}! +${gain}`,
                 life: boss ? 1.8 : 1.1,
                 c: "#f2e1b6",
               });
+              if (l3) {
+                w.hype = Math.min(100, w.hype + (boss ? 40 : d.two ? 26 : 18));
+                w.cheer = boss ? 2 : 1;
+              }
+              if (sm) w.banner = { t: "ARENA CHAMPION!", sub: `You beat ${boss!.b.name} in the supermatch.`, life: 2.6, c: "#f2c14e" };
               if (boss) {
                 // a shower of coins (each worth score, like any coin)
-                const k = 12;
+                const k = sm ? 25 : 12;
                 w.coins += k;
                 w.score += 10 * k;
                 w.pops.push({ x: w.dist + PX + 40, y: w.y - 110, t: `+${k} coins`, life: 1.6, c: "#d5b67a" });
@@ -603,6 +698,16 @@ export function PinRun({
                 beep(600, 0.15, "triangle", 0.06);
               } else dead = hurt(w, boss ? "SLAMMED!" : "SLIPPED!");
               if (dead) return endGame();
+              if (boss?.sm && (boss.lost = (boss.lost ?? 0) + 1) >= 2) {
+                // lost the supermatch: the boss takes it 2 rounds to whatever, and you run on
+                w.banner = { t: "SUPERMATCH LOST", sub: `${boss.b.name} takes it. Run it back next time.`, life: 2.4, c: "#ff4a4f" };
+                w.invuln = 1.4;
+                d.rival.state = "gone";
+                w.vy = -420;
+                w.ground = null;
+                w.duel = null;
+                return;
+              }
               if (boss) {
                 // a boss doesn't let go: next round
                 newRound(w, true);
@@ -629,7 +734,31 @@ export function PinRun({
         w.pops.push({ x: w.dist + PX, y: w.y - 90, t: "MOON SHIELD", life: 1.1, c: "#b994ff" });
       }
 
-      const speed = (w.speed + Math.min(330, w.dist / 90)) * (w.boost > 0 ? 1.35 : 1);
+      // the Arena: Beast Mode, chalk, the ref's whistle, the crowd
+      if (l3) {
+        w.beast = Math.max(0, w.beast - dt);
+        w.chalk = Math.max(0, w.chalk - dt);
+        w.frozen = Math.max(0, w.frozen - dt);
+        w.cheer = Math.max(0, w.cheer - dt);
+        if ((w.whistle -= dt) <= 0) {
+          w.whistle = rand(14, 24);
+          w.frozen = 1.8;
+          w.pops.push({ x: w.dist + PX + 160, y: 150, t: "WHISTLE! FREEZE", life: 1.4, c: "#efe7d6" });
+          beep(2600, 0.12, "sine", 0.05);
+          setTimeout(() => beep(2600, 0.25, "sine", 0.05), 160);
+        }
+        if (w.hype >= 100 && w.beast === 0) {
+          w.hype = 0;
+          w.beast = 6;
+          w.cheer = 2;
+          w.banner = { t: "BEAST MODE!", sub: "Rivals get pinned on contact. Coins come to you.", life: 2.2, c: "#ff4a4f" };
+          beep(220, 0.3, "sawtooth", 0.06);
+          setTimeout(() => beep(440, 0.3, "sawtooth", 0.06), 120);
+        }
+      }
+      const wet = l3 && !!w.ground?.wet;
+      const speed = (w.speed + Math.min(330, w.dist / 90)) * (w.boost > 0 ? 1.35 : 1) * (w.beast > 0 ? 1.25 : 1) * (wet ? 1.3 : 1);
+      if (wet && Math.random() < 0.5) w.parts.push({ x: w.dist + PX - 20, y: w.y + R, vx: rand(-260, -80), vy: rand(-200, -60), life: 0.35, c: "#9fd4ff", s: 2.5 });
       w.boost = Math.max(0, w.boost - dt);
       w.invuln = Math.max(0, w.invuln - dt);
       w.dist += speed * dt;
@@ -641,9 +770,15 @@ export function PinRun({
         w.banner = { t: "LEVEL 2 UNLOCKED!", sub: "Crimson Peak is waiting on the start screen.", life: 3, c: "#ff4a4f" };
         beep(990, 0.2, "square", 0.06);
       }
+      if (w.level === 2 && !w.unlockShown && w.score >= LEVEL3_UNLOCK && !unlocked3Ref.current) {
+        w.unlockShown = true;
+        w.banner = { t: "LEVEL 3 UNLOCKED!", sub: "The Arena is waiting on the start screen.", life: 3, c: "#f2c14e" };
+        beep(990, 0.2, "square", 0.06);
+      }
 
       // moving platforms
-      for (const p of w.plats) if (p.move) p.y = p.baseY + Math.sin(w.t * p.move.spd + p.move.ph) * p.move.amp;
+      // (the ref's whistle freezes them where they are)
+      if (w.frozen <= 0) for (const p of w.plats) if (p.move) p.y = p.baseY + Math.sin(w.t * p.move.spd + p.move.ph) * p.move.amp;
 
       // vertical
       const prevBottom = w.y + R;
@@ -666,6 +801,11 @@ export function PinRun({
             w.ground = p;
             w.jumps = 0;
             w.land = 0.16;
+            if (l3 && p.wet && w.wetSeen !== p) {
+              w.wetSeen = p;
+              w.pops.push({ x: px + 30, y: p.y - 80, t: "SLIPPERY!", life: 0.9, c: "#9fd4ff" });
+            }
+            if (l3 && p.move && w.beast === 0) w.hype = Math.min(100, w.hype + 3);
             for (let i = 0; i < 6; i++) w.parts.push({ x: px, y: p.y, vx: rand(-90, 90), vy: rand(-140, -40), life: 0.35, c: "#efe7d6", s: 2.5 });
             break;
           }
@@ -684,11 +824,37 @@ export function PinRun({
           r.spin += dt * 9;
           continue;
         }
+        if (r.state === "idle" && w.beast > 0 && !r.boss && Math.abs(px - r.x) < R + 14 && w.y + R > p.y - 70) {
+          // Beast Mode: straight through them
+          r.state = "pinned";
+          r.vx = 620;
+          r.vy = -760;
+          w.pins++;
+          const gain = 100 * w.combo;
+          w.score += gain;
+          w.combo = Math.min(8, w.combo + 1);
+          w.cheer = 1;
+          w.shake = 0.2;
+          w.pops.push({ x: px, y: w.y - 70, t: `BEAST PIN! +${gain}`, life: 1, c: "#ff6a4f" });
+          beep(880, 0.1, "square", 0.06);
+          for (let i = 0; i < 20; i++) w.parts.push({ x: r.x, y: p.y - 30, vx: rand(-300, 300), vy: rand(-400, 40), life: rand(0.3, 0.7), c: i % 2 ? "#ff4a4f" : "#f2c14e", s: rand(2, 5) });
+          continue;
+        }
         if (r.state === "idle" && w.invuln === 0 && Math.abs(px - r.x) < R + (r.boss ? 22 : 14) && w.y + R > p.y - 70) {
-          w.duel = { rival: r, plat: p, t: 0, zone: 0.5, width: 0.2, speed: 4, result: null, rt: 0, ph: 0, dir: 1, pos: 0.5, move: null, z0: 0.5, w0: 0.2, flip: 1, used: false, fx: 0 };
+          w.duel = { rival: r, plat: p, t: 0, zone: 0.5, width: 0.2, speed: 4, result: null, rt: 0, ph: 0, dir: 1, pos: 0.5, move: null, z0: 0.5, w0: 0.2, flip: 1, used: false, fx: 0, two: false, lockA: null };
           newRound(w, !!r.boss);
           beep(r.boss ? 220 : 330, r.boss ? 0.3 : 0.12, "triangle", 0.06);
           return;
+        }
+      }
+
+      // chalk clouds: walk into one and you can't see for a moment
+      for (const c of w.clouds) {
+        if (!c.got && Math.abs(c.x - px) < 46 && Math.abs(c.y - (w.y - 18)) < 52) {
+          c.got = true;
+          w.chalk = 2.4;
+          w.pops.push({ x: px, y: w.y - 90, t: "CHALK!", life: 1, c: "#ffffff" });
+          beep(150, 0.2, "triangle", 0.05);
         }
       }
 
@@ -707,7 +873,7 @@ export function PinRun({
       // coins (the magnet pulls nearby ones in)
       for (const c of w.coinsList) {
         if (c.got) continue;
-        if (w.pw.magnet > 0) {
+        if (w.pw.magnet > 0 || w.beast > 0) {
           const dx = px - c.x;
           const dy = w.y - 20 - c.y;
           const dd = Math.hypot(dx, dy);
@@ -723,6 +889,7 @@ export function PinRun({
           if (l2 && w.skin === "jade" && Math.random() < 0.5) k++;
           w.coins += k;
           w.score += 10 * w.combo * (l2 && w.skin === "jade" ? 1.25 : 1);
+          if (l3 && w.beast === 0) w.hype = Math.min(100, w.hype + 1.5);
           beep(1180, 0.05, "square", 0.035);
         }
       }
@@ -861,6 +1028,124 @@ export function PinRun({
       }
     };
 
+    /** The Arena: a black stage table with a gold rim and a red LED strip; wet ones have a puddle. */
+    const drawStage = (p: Plat, cam: number, t: number) => {
+      const x = p.x - cam;
+      if (!p.move) {
+        // steel truss legs
+        ctx.strokeStyle = "#2a2730";
+        ctx.lineWidth = 3;
+        for (const lx of [x + 22, x + p.w - 22]) {
+          ctx.beginPath();
+          ctx.moveTo(lx, p.y + 22);
+          ctx.lineTo(lx, H);
+          ctx.stroke();
+        }
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (let yy = p.y + 22; yy < H; yy += 40) {
+          ctx.moveTo(x + 22, yy);
+          ctx.lineTo(x + p.w - 22, yy + 40);
+          ctx.moveTo(x + p.w - 22, yy);
+          ctx.lineTo(x + 22, yy + 40);
+        }
+        ctx.stroke();
+      } else {
+        // a hanging rig: cables up into the dark
+        ctx.strokeStyle = "rgba(160,150,170,.35)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x + 14, p.y);
+        ctx.lineTo(x + 14, 0);
+        ctx.moveTo(x + p.w - 14, p.y);
+        ctx.lineTo(x + p.w - 14, 0);
+        ctx.stroke();
+      }
+      const g = ctx.createLinearGradient(0, p.y, 0, p.y + 24);
+      g.addColorStop(0, "#26222c");
+      g.addColorStop(1, "#0c0b10");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.roundRect(x, p.y, p.w, 24, 5);
+      ctx.fill();
+      ctx.fillStyle = "#f2c14e";
+      ctx.fillRect(x + 3, p.y, p.w - 6, 3);
+      // LED strip (chases along the edge)
+      for (let lx = x + 8; lx < x + p.w - 8; lx += 12) {
+        const on = (Math.floor(lx / 12 + t * 10) % 6) < 2;
+        ctx.fillStyle = on ? "#ff3b41" : "rgba(255,59,65,.25)";
+        ctx.fillRect(lx, p.y + 14, 6, 3);
+      }
+      if (p.wet) {
+        // a puddle with a moving sheen
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(x + p.w / 2, p.y + 1, p.w * 0.42, 5, 0, 0, Math.PI * 2);
+        ctx.clip();
+        const sg = ctx.createLinearGradient(x, 0, x + p.w, 0);
+        const k = (t * 0.6) % 1;
+        sg.addColorStop(0, "rgba(120,190,255,.45)");
+        sg.addColorStop(Math.max(0, k - 0.1), "rgba(120,190,255,.45)");
+        sg.addColorStop(k, "rgba(230,245,255,.95)");
+        sg.addColorStop(Math.min(1, k + 0.1), "rgba(120,190,255,.45)");
+        sg.addColorStop(1, "rgba(120,190,255,.45)");
+        ctx.fillStyle = sg;
+        ctx.fillRect(x, p.y - 6, p.w, 12);
+        ctx.restore();
+        // drips
+        ctx.fillStyle = "rgba(140,200,255,.7)";
+        for (let dx = x + 30; dx < x + p.w - 20; dx += 47) {
+          const dy = ((t * 60 + dx) % 40);
+          ctx.fillRect(dx, p.y + 24 + dy, 2, 4);
+        }
+      }
+    };
+
+    const drawCloud = (c: Cloud, cam: number, t: number) => {
+      const x = c.x - cam;
+      if (x < -80 || x > W + 80) return;
+      const y = c.y + Math.sin(t * 1.5 + c.x) * 5;
+      ctx.fillStyle = "rgba(245,242,235,.82)";
+      for (const [ox, oy, r] of [[-22, 6, 20], [0, -4, 26], [22, 6, 20], [10, 12, 18], [-10, 12, 18]] as const) {
+        ctx.beginPath();
+        ctx.arc(x + ox + Math.sin(t * 2 + ox) * 2, y + oy, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = "rgba(20,18,22,.55)";
+      ctx.font = "900 12px 'Chakra Petch', monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("CHALK", x, y + 8);
+    };
+
+    /** The Arena crowd along the bottom: silhouettes with phone lights; they jump when the crowd is hyped. */
+    const drawCrowd = (w: World, cam: number) => {
+      const hype = Math.max(w.cheer, w.beast > 0 ? 1 : 0, w.hype / 140);
+      for (let i = 0; i < 34; i++) {
+        const sx = (((i * 61 - cam * 0.6) % (W + 60)) + W + 60) % (W + 60) - 30;
+        const jump = Math.max(0, Math.sin(w.t * (7 + (i % 5)) + i * 1.7)) * 14 * hype;
+        const base = H - 6 - (i % 3) * 7 - jump;
+        ctx.fillStyle = i % 2 ? "#050407" : "#0a080d";
+        ctx.beginPath();
+        ctx.arc(sx, base - 26, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.roundRect(sx - 14, base - 17, 28, 30, 9);
+        ctx.fill();
+        if (i % 3 === 0 || hype > 0.6) {
+          // an arm up (with a phone light)
+          ctx.strokeStyle = ctx.fillStyle;
+          ctx.lineWidth = 5;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(sx + 9, base - 12);
+          ctx.lineTo(sx + 14, base - 44);
+          ctx.stroke();
+          ctx.fillStyle = `rgba(255,248,220,${0.55 + Math.sin(w.t * 3 + i) * 0.25})`;
+          ctx.fillRect(sx + 12, base - 50, 4, 6);
+        }
+      }
+    };
+
     /** A boss's face in a circle: from the cartoon art (face sits upper-middle) or a photo/card (top crop). */
     const drawFace = (img: HTMLImageElement, art: boolean, cx: number, cy: number, rr: number) => {
       const iw = img.naturalWidth;
@@ -943,7 +1228,7 @@ export function PinRun({
         ctx.fillText(label, hx, hy - rr - 16);
         ctx.font = "700 11px 'Chakra Petch', monospace";
         ctx.fillStyle = "#f2c14e";
-        ctx.fillText("BOSS", hx, hy - rr - 40);
+        ctx.fillText(bf.sm ? "SUPERMATCH" : "BOSS", hx, hy - rr - 40);
       }
     };
 
@@ -1089,7 +1374,9 @@ export function PinRun({
           ctx.fillText(`${bf.b.name.split(" ")[0].toUpperCase()}'S ${mv.name.toUpperCase()}!`, 0, 0);
           ctx.restore();
         } else {
-          const title = d.result === "pin" ? "BOSS PINNED!" : d.result === "miss" ? "SLAMMED!" : d.result === "hit" ? "GOOD GRIP!" : `BOSS: ${bf.b.name.toUpperCase()}`;
+          const title = bf.sm
+            ? d.result === "pin" ? "CHAMPION!" : d.result === "miss" ? "ROUND TO " + bf.b.name.split(" ")[0].toUpperCase() : d.result === "hit" ? "ROUND TO YOU!" : `SUPERMATCH: ${bf.b.name.toUpperCase()}`
+            : d.result === "pin" ? "BOSS PINNED!" : d.result === "miss" ? "SLAMMED!" : d.result === "hit" ? "GOOD GRIP!" : `BOSS: ${bf.b.name.toUpperCase()}`;
           ctx.fillText(title, cx, cy - 40);
         }
         ctx.font = "700 14px 'Chakra Petch', monospace";
@@ -1138,20 +1425,32 @@ export function PinRun({
         ctx.arc(px2, py2, rr, 0, Math.PI * 2);
         ctx.stroke();
         ctx.textAlign = "center";
-        for (let i = 0; i < bf.max; i++) {
-          ctx.fillStyle = i < bf.max - bf.hp ? "#f2c14e" : "#2a251d";
-          ctx.strokeStyle = "#f2c14e";
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.arc(px2 - (bf.max - 1) * 13 + i * 26, py2 + rr + 20, 8, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-        }
+        if (bf.sm) {
+          // best of three: YOU 1 – 0 ERICK
+          const you = bf.max - bf.hp;
+          const them = bf.lost ?? 0;
+          ctx.font = "900 26px 'Saira Extra Condensed', Impact, sans-serif";
+          ctx.fillStyle = "#f2c14e";
+          ctx.fillText(`${you} – ${them}`, px2, py2 + rr + 30);
+          ctx.font = "700 10px 'Chakra Petch', monospace";
+          ctx.fillStyle = "#d5b67a";
+          ctx.fillText(`YOU · ${bf.b.name.split(" ")[0].toUpperCase()} · FIRST TO 2`, px2, py2 + rr + 46);
+        } else
+          for (let i = 0; i < bf.max; i++) {
+            ctx.fillStyle = i < bf.max - bf.hp ? "#f2c14e" : "#2a251d";
+            ctx.strokeStyle = "#f2c14e";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(px2 - (bf.max - 1) * 13 + i * 26, py2 + rr + 20, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          }
       } else {
-        ctx.fillText(d.result === "pin" ? "PIN!" : d.result === "miss" ? "SLIPPED!" : "GRIP FIGHT", cx, cy - 40);
+        ctx.fillText(d.result === "pin" ? (d.two ? "DOUBLE PIN!" : "PIN!") : d.result === "miss" ? "SLIPPED!" : d.two ? "DOUBLE GRIP" : "GRIP FIGHT", cx, cy - 40);
         ctx.font = "700 14px 'Chakra Petch', monospace";
         ctx.fillStyle = "#d5b67a";
-        if (!d.result) ctx.fillText("TAP WHEN THE NEEDLE HITS GOLD", cx, cy - 12);
+        if (!d.result)
+          ctx.fillText(d.two ? (d.lockA === null ? "LOCK BOTH HANDS: TAP GOLD · HAND 1 OF 2" : "FIRST HAND LOCKED · NOW HAND 2") : "TAP WHEN THE NEEDLE HITS GOLD", cx, cy - 12);
       }
       const bw = 520;
       const bx = cx - bw / 2;
@@ -1183,6 +1482,14 @@ export function PinRun({
           ctx.closePath();
           ctx.fill();
         }
+      }
+      if (d.two && d.lockA !== null) {
+        // the first hand, locked in place
+        ctx.fillStyle = "#f2c14e";
+        ctx.fillRect(bx + bw * d.lockA - 3, by - 8, 6, 46);
+        ctx.font = "900 13px 'Saira Extra Condensed', Impact, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("✓", bx + bw * d.lockA, by - 12);
       }
       const nx = bx + bw * d.pos;
       ctx.fillStyle = d.result === "pin" || d.result === "hit" ? "#f2e1b6" : d.result === "miss" ? "#ff4a4f" : "#ffffff";
@@ -1220,21 +1527,48 @@ export function PinRun({
       ctx.save();
       if (w.shake > 0) ctx.translate(rand(-6, 6) * w.shake * 3, rand(-6, 6) * w.shake * 3);
       const l2 = w.level === 2;
+      const l3 = w.level === 3;
       // sky
       const g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, l2 ? "#0b1024" : "#160d0c");
-      g.addColorStop(0.6, l2 ? "#0b0d18" : "#0a0908");
-      g.addColorStop(1, l2 ? "#07080f" : "#120a09");
+      g.addColorStop(0, l3 ? "#0d0a14" : l2 ? "#0b1024" : "#160d0c");
+      g.addColorStop(0.6, l3 ? "#08070b" : l2 ? "#0b0d18" : "#0a0908");
+      g.addColorStop(1, l3 ? "#050407" : l2 ? "#07080f" : "#120a09");
       ctx.fillStyle = g;
       ctx.fillRect(-20, -20, W + 40, H + 40);
-      const bg = imgs.current.l2bg;
-      if (l2 && bg?.complete && bg.naturalWidth) {
+      const bg = l3 ? imgs.current.l3bg : imgs.current.l2bg;
+      if ((l2 || l3) && bg?.complete && bg.naturalWidth) {
         const tw = bg.naturalWidth;
         const off = -(((cam * 0.08) % tw) + tw) % tw;
         ctx.drawImage(bg, off, -20, tw, H + 20);
         ctx.drawImage(bg, off + tw, -20, tw, H + 20);
       }
-      if (!l2) {
+      if (l3) {
+        // sweeping spotlights (they flash red in Beast Mode)
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        for (let i = 0; i < 3; i++) {
+          const ox = W * (0.2 + i * 0.3);
+          const a = Math.sin(w.t * (0.5 + i * 0.17) + i * 2) * 0.55;
+          ctx.save();
+          ctx.translate(ox, -10);
+          ctx.rotate(a);
+          const sg = ctx.createLinearGradient(0, 0, 0, H);
+          const col = w.beast > 0 ? "255,60,60" : i === 1 ? "255,90,90" : "255,240,210";
+          sg.addColorStop(0, `rgba(${col},${0.2 + w.cheer * 0.08})`);
+          sg.addColorStop(1, `rgba(${col},0)`);
+          ctx.fillStyle = sg;
+          ctx.beginPath();
+          ctx.moveTo(-6, 0);
+          ctx.lineTo(6, 0);
+          ctx.lineTo(90, H);
+          ctx.lineTo(-90, H);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+      if (!l2 && !l3) {
       // red sun ring, far parallax
       const ring = imgs.current.ring;
       if (ring?.complete) {
@@ -1255,10 +1589,11 @@ export function PinRun({
       }
       // pit haze
       const fog = ctx.createLinearGradient(0, H - 110, 0, H);
-      fog.addColorStop(0, l2 ? "rgba(120,140,200,0)" : "rgba(212,42,47,0)");
-      fog.addColorStop(1, l2 ? "rgba(150,170,230,.22)" : "rgba(212,42,47,.25)");
+      fog.addColorStop(0, l3 ? "rgba(242,193,78,0)" : l2 ? "rgba(120,140,200,0)" : "rgba(212,42,47,0)");
+      fog.addColorStop(1, l3 ? "rgba(212,42,47,.2)" : l2 ? "rgba(150,170,230,.22)" : "rgba(212,42,47,.25)");
       ctx.fillStyle = fog;
       ctx.fillRect(0, H - 110, W, 110);
+      if (l3) drawCrowd(w, cam);
       if (l2) {
         // drifting snow and crimson petals
         for (let i = 0; i < 46; i++) {
@@ -1279,7 +1614,8 @@ export function PinRun({
         ctx.globalAlpha = 1;
       }
 
-      for (const p of w.plats) if (p.x - cam < W + 40 && p.x + p.w - cam > -40) (l2 ? drawLedge : drawTable)(p, cam);
+      for (const p of w.plats) if (p.x - cam < W + 40 && p.x + p.w - cam > -40) (l3 ? drawStage(p, cam, w.t) : l2 ? drawLedge(p, cam) : drawTable(p, cam));
+      for (const c of w.clouds) if (!c.got) drawCloud(c, cam, w.t);
       for (const pu of w.powers) if (!pu.got) drawPower(pu, cam, w.t);
       for (const p of w.plats) if (p.rival) drawRival(p.rival, p, cam);
       for (const c of w.coinsList) {
@@ -1301,6 +1637,19 @@ export function PinRun({
       }
       ctx.globalAlpha = 1;
       if (!(w.invuln > 0 && Math.floor(w.t * 14) % 2 === 0)) drawAura(ctx, skinRef.current, PX, w.y + R - 10, w.t);
+      if (w.beast > 0) {
+        // Beast Mode: a red-gold fire around the lion
+        const by = w.y + R - 45;
+        const bgr = ctx.createRadialGradient(PX, by, 10, PX, by, 95 + Math.sin(w.t * 20) * 8);
+        bgr.addColorStop(0, "rgba(255,200,80,.55)");
+        bgr.addColorStop(0.5, "rgba(255,60,40,.35)");
+        bgr.addColorStop(1, "rgba(255,40,40,0)");
+        ctx.fillStyle = bgr;
+        ctx.beginPath();
+        ctx.arc(PX, by, 110, 0, Math.PI * 2);
+        ctx.fill();
+        if (Math.random() < 0.8) w.parts.push({ x: w.dist + PX + rand(-40, 30), y: w.y + R - rand(10, 80), vx: rand(-260, -120), vy: rand(-160, -40), life: 0.4, c: Math.random() < 0.5 ? "#ff4a2f" : "#f2c14e", s: rand(2, 4) });
+      }
       drawFx(ctx, fx.current, cam, "back");
       drawPlayer(w);
       drawFx(ctx, fx.current, cam, "front");
@@ -1336,6 +1685,29 @@ export function PinRun({
       ctx.globalAlpha = 1;
       ctx.restore();
 
+      if (l3) {
+        if (w.chalk > 0) {
+          // chalk in your eyes: a white haze that only clears near the lion
+          const a = Math.min(1, w.chalk / 0.6) * 0.84;
+          const cg = ctx.createRadialGradient(PX, w.y - 10, 80, PX, w.y - 10, 320);
+          cg.addColorStop(0, `rgba(245,242,235,${a * 0.08})`);
+          cg.addColorStop(1, `rgba(245,242,235,${a})`);
+          ctx.fillStyle = cg;
+          ctx.fillRect(0, 0, W, H);
+        }
+        if (w.beast > 0) {
+          const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, W * 0.65);
+          vg.addColorStop(0, "rgba(255,40,40,0)");
+          vg.addColorStop(1, `rgba(255,40,40,${0.28 + Math.sin(w.t * 10) * 0.08})`);
+          ctx.fillStyle = vg;
+          ctx.fillRect(0, 0, W, H);
+        }
+        if (w.frozen > 0) {
+          ctx.fillStyle = `rgba(160,200,255,${Math.min(0.18, w.frozen * 0.2)})`;
+          ctx.fillRect(0, 0, W, H);
+        }
+      }
+
       // HUD
       ctx.textAlign = "left";
       ctx.font = "900 34px 'Saira Extra Condensed', Impact, sans-serif";
@@ -1343,7 +1715,7 @@ export function PinRun({
       ctx.fillText(String(Math.floor(w.score)).padStart(6, "0"), 24, 46);
       ctx.font = "700 13px 'Chakra Petch', monospace";
       ctx.fillStyle = "#d5b67a";
-      ctx.fillText(`${w.level === 2 ? "LV.2 CRIMSON PEAK   " : ""}PINS ${w.pins}   TEMPLE COINS ${w.coins}${w.combo > 1 ? `   COMBO x${w.combo}` : ""}`, 24, 68);
+      ctx.fillText(`${w.level === 3 ? "LV.3 THE ARENA   " : w.level === 2 ? "LV.2 CRIMSON PEAK   " : ""}PINS ${w.pins}   TEMPLE COINS ${w.coins}${w.combo > 1 ? `   COMBO x${w.combo}` : ""}`, 24, 68);
       // active power-ups
       let ix = 24;
       const active: [string, string, number][] = [];
@@ -1365,7 +1737,28 @@ export function PinRun({
         ctx.textAlign = "left";
         ctx.font = "700 11px 'Chakra Petch', monospace";
         ctx.fillStyle = "rgba(242,225,182,.7)";
-        ctx.fillText(`♪ ${GAME_STATION.freq} FM · ${GAME_STATION.name.toUpperCase()}`, 24, H - 18);
+        ctx.fillText(`♪ ${station.current.freq} FM · ${station.current.name.toUpperCase()}`, 24, H - 18);
+      }
+      if (l3) {
+        // the hype meter (top middle); full = Beast Mode
+        const mw = 260;
+        const mx = W / 2 - mw / 2;
+        ctx.fillStyle = "rgba(10,9,8,.75)";
+        ctx.beginPath();
+        ctx.roundRect(mx - 4, 20, mw + 8, 22, 11);
+        ctx.fill();
+        const f = w.beast > 0 ? w.beast / 6 : w.hype / 100;
+        const hg = ctx.createLinearGradient(mx, 0, mx + mw, 0);
+        hg.addColorStop(0, "#d42a2f");
+        hg.addColorStop(1, w.beast > 0 ? "#ff6a3d" : "#f2c14e");
+        ctx.fillStyle = hg;
+        ctx.beginPath();
+        ctx.roundRect(mx, 24, Math.max(0, mw * f), 14, 7);
+        ctx.fill();
+        ctx.textAlign = "center";
+        ctx.font = "900 15px 'Saira Extra Condensed', Impact, sans-serif";
+        ctx.fillStyle = w.beast > 0 ? "#fff1d6" : "#efe7d6";
+        ctx.fillText(w.beast > 0 ? "BEAST MODE" : w.hype >= 80 ? "HYPE · CROWD'S GOING WILD" : "HYPE", W / 2, 37);
       }
       for (let i = 0; i < w.maxHearts; i++) {
         ctx.fillStyle = i < w.hearts ? "#d42a2f" : "#2a251d";
@@ -1455,14 +1848,19 @@ export function PinRun({
             </li>
             <li>Chain pins for a combo. Don&apos;t fall in the chalk pit.</li>
           </ul>
-          <LevelPicker level={level} onPick={setLevel} unlocked={unlocked} best={best} best2={best2} />
+          <LevelPicker level={level} onPick={setLevel} unlocked={unlocked} unlocked3={unlocked3} best={best} best2={best2} best3={best3} />
           <div className="pinrun-btns">
             <button type="button" className="btn btn-primary">
-              Start{level === 2 ? " Lv.2" : ""}
+              Start{level > 1 ? ` Lv.${level}` : ""}
             </button>
             <TempleButton onOpen={() => setTemple(true)} coins={wallet?.coins ?? 0} loggedIn={loggedIn} />
           </div>
-          {level === 2 && ABILITIES[skin] ? (
+          {level === 3 ? (
+            <p className="pinrun-best">
+              <b>The Arena:</b> fill the hype meter for <b>Beast Mode</b>. Supermatches are first to 2.
+            </p>
+          ) : null}
+          {level >= 2 && ABILITIES[skin] ? (
             <p className="pinrun-best">
               {skinById(skin)?.name}: <b>{ABILITIES[skin].name}</b> · {ABILITIES[skin].text}
             </p>
@@ -1475,7 +1873,7 @@ export function PinRun({
           <h2>{final.score.toLocaleString("en-AU")}</h2>
           <p className="pinrun-stats">
             {final.pins} pins · {final.coins} {final.coins === 1 ? "coin" : "coins"} grabbed
-            {(final.level === 2 ? best2 : best) ? ` · best ${(final.level === 2 ? best2 : best)!.toLocaleString("en-AU")}` : ""}
+            {bestOf(final.level) ? ` · best ${bestOf(final.level)!.toLocaleString("en-AU")}` : ""}
           </p>
           <div className="pinrun-btns">
             <button type="button" className="btn btn-primary pinrun-again" onClick={start}>
@@ -1488,6 +1886,9 @@ export function PinRun({
           </div>
           {final.level === 1 && unlocked && (best ?? 0) >= LEVEL2_UNLOCK && final.score >= LEVEL2_UNLOCK ? (
             <p className="pinrun-unlock">Level 2 unlocked: Crimson Peak. Tap Levels.</p>
+          ) : null}
+          {final.level === 2 && unlocked3 && (best2 ?? 0) >= LEVEL3_UNLOCK && final.score >= LEVEL3_UNLOCK ? (
+            <p className="pinrun-unlock">Level 3 unlocked: The Arena. Tap Levels.</p>
           ) : null}
           <p className="pinrun-hint">or tap / press Space</p>
           {saveMsg ? <p className="pinrun-save">{saveMsg}</p> : null}
@@ -1509,7 +1910,7 @@ export function PinRun({
           else if (phase === "play") startRadio();
         }}
         aria-label={muted ? "Sound and radio on" : "Sound and radio off"}
-        title={muted ? "Sound and 88.5 FM on" : "Mute sound and 88.5 FM"}
+        title={muted ? "Sound and radio on" : "Mute sound and radio"}
       >
         {muted ? "♪̸" : "♪"}
       </button>
@@ -1518,22 +1919,26 @@ export function PinRun({
   );
 }
 
-/** Level select: Lion Temple, Crimson Peak (unlocks at 12,000 on Level 1) and a teaser for what's next. */
+/** Level select: Lion Temple, Crimson Peak (12,000 on Level 1) and The Arena (12,000 on Level 2). */
 function LevelPicker({
   level,
   onPick,
   unlocked,
+  unlocked3,
   best,
   best2,
+  best3,
 }: {
-  level: 1 | 2;
-  onPick: (l: 1 | 2) => void;
+  level: Lv;
+  onPick: (l: Lv) => void;
   unlocked: boolean;
+  unlocked3: boolean;
   best: number | null;
   best2: number | null;
+  best3: number | null;
 }) {
   const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
-  const card = (n: 1 | 2, img: string, name: string, sub: string, locked = false) => (
+  const card = (n: Lv, img: string, name: string, sub: string, locked = false) => (
     <button
       type="button"
       className={`lv-card${level === n ? " on" : ""}${locked ? " locked" : ""}`}
@@ -1562,11 +1967,13 @@ function LevelPicker({
         unlocked ? (best2 ? `Best ${best2.toLocaleString("en-AU")}` : "New!") : `Reach ${LEVEL2_UNLOCK.toLocaleString("en-AU")}`,
         !unlocked,
       )}
-      <div className="lv-card lv-soon" aria-hidden>
-        <span className="lv-n">Lv.3</span>
-        <b>???</b>
-        <i className="lv-lock">🔒</i>
-      </div>
+      {card(
+        3,
+        "/pinrun/l3-card.webp",
+        "The Arena",
+        unlocked3 ? (best3 ? `Best ${best3.toLocaleString("en-AU")}` : "New!") : `${LEVEL3_UNLOCK.toLocaleString("en-AU")} on Lv.2`,
+        !unlocked3,
+      )}
     </div>
   );
 }
@@ -1683,7 +2090,7 @@ function LionTemple({
                 <p>{k.blurb}</p>
                 {ABILITIES[k.id] ? (
                   <p className="temple-ability">
-                    <b>Lv.2 ability · {ABILITIES[k.id].name}</b> {ABILITIES[k.id].text}
+                    <b>Lv.2+ ability · {ABILITIES[k.id].name}</b> {ABILITIES[k.id].text}
                   </p>
                 ) : null}
                 <div className="temple-foot">
