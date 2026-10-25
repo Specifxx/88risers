@@ -136,6 +136,19 @@ export const ABILITIES: Record<string, { name: string; text: string }> = {
   eclipse: { name: "Eclipse Heart", text: "Start with 4 hearts, and every boss you pin gives a heart back." },
 };
 
+/** Arena abilities: extra, on top of the Level 2 ability, on Level 3 only. */
+export const ABILITIES3: Record<string, { name: string; text: string }> = {
+  stone: { name: "Crowd Favourite", text: "Hype fills 20% faster." },
+  sakura: { name: "Petal Veil", text: "Chalk clouds can't blind you." },
+  jade: { name: "Golden Crowd", text: "Coins give double hype." },
+  wave: { name: "Surf's Up", text: "Wet tables don't skid you: you surf them for +50 points and hype." },
+  crystal: { name: "Cold Stare", text: "After the ref's whistle, your next grip needle is 40% slower." },
+  flame: { name: "Wildfire", text: "Beast Mode lasts 50% longer." },
+  thunder: { name: "Thunderclap", text: "Beast Mode starts with a lightning strike that pins every rival on screen." },
+  moon: { name: "One Hand", text: "Double grips only need one hand." },
+  eclipse: { name: "Blood Moon", text: "You only need 1 round to win a supermatch (they still need 2)." },
+};
+
 export type PowerKind = "shield" | "magnet" | "x2";
 export const POWERS: Record<PowerKind, { name: string; secs: number; color: string; icon: string }> = {
   shield: { name: "Shield", secs: 0, color: "#7fc8ff", icon: "⛨" },

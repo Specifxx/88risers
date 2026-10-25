@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { buySkin, equipSkin, submitScore } from "@/app/(site)/account/actions";
 import { lionSays } from "@/lib/lion";
-import { ABILITIES, ANIM, type Boss, DEFAULT_SKIN, LEVEL2_UNLOCK, LEVEL3_UNLOCK, LEVELS, MOVES, type MoveKind, POWERS, type PowerKind, SKINS, type Wallet, chainMove, moveOf, skinById } from "@/lib/pinrun";
+import { ABILITIES, ABILITIES3, ANIM, type Boss, DEFAULT_SKIN, LEVEL2_UNLOCK, LEVEL3_UNLOCK, LEVELS, MOVES, type MoveKind, POWERS, type PowerKind, SKINS, type Wallet, chainMove, moveOf, skinById } from "@/lib/pinrun";
 import { drawAura, drawFx, newFx, stepFx } from "@/lib/pinrun-fx";
 import { RADIO } from "@/lib/radio";
 
@@ -136,6 +136,10 @@ interface World {
   cheer: number;
   /** Last wet table we skidded on (so the "SLIPPERY" pop shows once). */
   wetSeen: Plat | null;
+  /** Beast Mode length this time (Wildfire makes it longer). */
+  beastMax: number;
+  /** Cold Stare: the next grip needle after a whistle is slower. */
+  coldNext: boolean;
 }
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
@@ -191,6 +195,8 @@ function newWorld(level: Lv = 1, skin = DEFAULT_SKIN): World {
     frozen: 0,
     cheer: 0,
     wetSeen: null,
+    beastMax: 6,
+    coldNext: false,
   };
 }
 
@@ -226,7 +232,7 @@ function extend(w: World, bosses: Boss[] = []) {
       if (!boss && !mover && n > 3 && Math.random() < 0.22) p.wet = true;
       if (boss) {
         const b = bosses[w.bossIdx++ % bosses.length];
-        p.rival = { x: x + width * 0.62, state: "idle", vy: 0, y: 0, vx: 0, spin: 0, boss: { b, hp: 2, max: 2, sm: true, lost: 0 } };
+        p.rival = { x: x + width * 0.62, state: "idle", vy: 0, y: 0, vx: 0, spin: 0, boss: { b, hp: w.skin === "eclipse" ? 1 : 2, max: w.skin === "eclipse" ? 1 : 2, sm: true, lost: 0 } };
         w.nextBoss = x + 12000;
       } else if (!mover && n > 3 && width > 185 && Math.random() < 0.34 + level * 0.25) {
         p.rival = { x: x + width * rand(0.45, 0.7), state: "idle", vy: 0, y: 0, vx: 0, spin: 0, two: n > 5 && Math.random() < 0.4 };
@@ -403,7 +409,7 @@ export function PinRun({
     world.current = newWorld(levelRef.current, skinRef.current);
     extend(world.current, bossesRef.current);
     if (levelRef.current >= 2) {
-      const ab = ABILITIES[skinRef.current];
+      const ab = (levelRef.current === 3 ? ABILITIES3 : ABILITIES)[skinRef.current];
       if (ab) world.current.banner = { t: `${(skinById(skinRef.current)?.name ?? "").toUpperCase()} · ${ab.name.toUpperCase()}`, sub: ab.text, life: 3, c: "#f2e1b6" };
     }
     setSaveMsg(null);
@@ -555,6 +561,12 @@ export function PinRun({
       return w.hearts <= 0;
     };
 
+    /** Adds crowd hype (Crowd Favourite fills it 20% faster). */
+    const addHype = (w: World, n: number) => {
+      if (w.level !== 3 || w.beast > 0) return;
+      w.hype = Math.min(100, w.hype + n * (w.skin === "stone" ? 1.2 : 1));
+    };
+
     const newRound = (w: World, boss: boolean) => {
       const d = w.duel!;
       const diff = Math.min(1, w.dist / 30000);
@@ -569,7 +581,13 @@ export function PinRun({
       if (move === "press") width *= 1.3; // starts wide, then gets crushed
       if (move === "toproll" || move === "kings") width *= 1.1;
       if (bf?.sm) speed *= 1.1; // supermatch: everything a notch faster
-      d.two = !bf && !!d.rival.two;
+      d.two = !bf && !!d.rival.two && !(w.level === 3 && w.skin === "moon"); // One Hand
+      if (w.level === 3 && w.coldNext) {
+        // Cold Stare
+        w.coldNext = false;
+        speed *= 0.6;
+        w.pops.push({ x: w.dist + PX, y: w.y - 90, t: "COLD STARE", life: 1, c: "#9fe0ff" });
+      }
       d.lockA = null;
       if (d.two) width *= 1.1;
       d.t = 0;
@@ -658,7 +676,7 @@ export function PinRun({
                 c: "#f2e1b6",
               });
               if (l3) {
-                w.hype = Math.min(100, w.hype + (boss ? 40 : d.two ? 26 : 18));
+                addHype(w, boss ? 40 : d.two ? 26 : 18);
                 w.cheer = boss ? 2 : 1;
               }
               if (sm) w.banner = { t: "ARENA CHAMPION!", sub: `You beat ${boss!.b.name} in the supermatch.`, life: 2.6, c: "#f2c14e" };
@@ -743,20 +761,41 @@ export function PinRun({
         if ((w.whistle -= dt) <= 0) {
           w.whistle = rand(14, 24);
           w.frozen = 1.8;
+          if (w.skin === "crystal") w.coldNext = true;
           w.pops.push({ x: w.dist + PX + 160, y: 150, t: "WHISTLE! FREEZE", life: 1.4, c: "#efe7d6" });
           beep(2600, 0.12, "sine", 0.05);
           setTimeout(() => beep(2600, 0.25, "sine", 0.05), 160);
         }
         if (w.hype >= 100 && w.beast === 0) {
           w.hype = 0;
-          w.beast = 6;
+          w.beastMax = w.skin === "flame" ? 9 : 6; // Wildfire
+          w.beast = w.beastMax;
           w.cheer = 2;
+          if (w.skin === "thunder") {
+            // Thunderclap: every ordinary rival on screen is pinned
+            let k = 0;
+            for (const q of w.plats) {
+              const r = q.rival;
+              if (!r || r.boss || r.state !== "idle" || r.x < w.dist || r.x > w.dist + W) continue;
+              r.state = "pinned";
+              r.vx = 300;
+              r.vy = -900;
+              k++;
+              for (let i = 0; i < 14; i++) w.parts.push({ x: r.x, y: q.y - rand(0, 200), vx: rand(-60, 60), vy: rand(-80, 80), life: 0.5, c: i % 2 ? "#fff6c8" : "#f2c14e", s: rand(2, 4) });
+            }
+            if (k) {
+              w.pins += k;
+              w.score += 150 * k;
+              w.pops.push({ x: w.dist + PX + 120, y: 190, t: `THUNDERCLAP x${k}! +${150 * k}`, life: 1.4, c: "#f2c14e" });
+            }
+            w.shake = 0.4;
+          }
           w.banner = { t: "BEAST MODE!", sub: "Rivals get pinned on contact. Coins come to you.", life: 2.2, c: "#ff4a4f" };
           beep(220, 0.3, "sawtooth", 0.06);
           setTimeout(() => beep(440, 0.3, "sawtooth", 0.06), 120);
         }
       }
-      const wet = l3 && !!w.ground?.wet;
+      const wet = l3 && !!w.ground?.wet && w.skin !== "wave";
       const speed = (w.speed + Math.min(330, w.dist / 90)) * (w.boost > 0 ? 1.35 : 1) * (w.beast > 0 ? 1.25 : 1) * (wet ? 1.3 : 1);
       if (wet && Math.random() < 0.5) w.parts.push({ x: w.dist + PX - 20, y: w.y + R, vx: rand(-260, -80), vy: rand(-200, -60), life: 0.35, c: "#9fd4ff", s: 2.5 });
       w.boost = Math.max(0, w.boost - dt);
@@ -803,9 +842,14 @@ export function PinRun({
             w.land = 0.16;
             if (l3 && p.wet && w.wetSeen !== p) {
               w.wetSeen = p;
-              w.pops.push({ x: px + 30, y: p.y - 80, t: "SLIPPERY!", life: 0.9, c: "#9fd4ff" });
+              if (w.skin === "wave") {
+                // Surf's Up
+                w.score += 50;
+                addHype(w, 6);
+                w.pops.push({ x: px + 30, y: p.y - 80, t: "SURF! +50", life: 0.9, c: "#9ec4e8" });
+              } else w.pops.push({ x: px + 30, y: p.y - 80, t: "SLIPPERY!", life: 0.9, c: "#9fd4ff" });
             }
-            if (l3 && p.move && w.beast === 0) w.hype = Math.min(100, w.hype + 3);
+            if (l3 && p.move) addHype(w, 3);
             for (let i = 0; i < 6; i++) w.parts.push({ x: px, y: p.y, vx: rand(-90, 90), vy: rand(-140, -40), life: 0.35, c: "#efe7d6", s: 2.5 });
             break;
           }
@@ -852,9 +896,15 @@ export function PinRun({
       for (const c of w.clouds) {
         if (!c.got && Math.abs(c.x - px) < 46 && Math.abs(c.y - (w.y - 18)) < 52) {
           c.got = true;
-          w.chalk = 2.4;
-          w.pops.push({ x: px, y: w.y - 90, t: "CHALK!", life: 1, c: "#ffffff" });
-          beep(150, 0.2, "triangle", 0.05);
+          if (w.skin === "sakura") {
+            // Petal Veil
+            w.pops.push({ x: px, y: w.y - 90, t: "PETAL VEIL", life: 1, c: "#f3c4d2" });
+            for (let i = 0; i < 12; i++) w.parts.push({ x: c.x, y: c.y, vx: rand(-200, 200), vy: rand(-200, 60), life: 0.6, c: "#f3c4d2", s: 3 });
+          } else {
+            w.chalk = 2.4;
+            w.pops.push({ x: px, y: w.y - 90, t: "CHALK!", life: 1, c: "#ffffff" });
+            beep(150, 0.2, "triangle", 0.05);
+          }
         }
       }
 
@@ -889,7 +939,7 @@ export function PinRun({
           if (l2 && w.skin === "jade" && Math.random() < 0.5) k++;
           w.coins += k;
           w.score += 10 * w.combo * (l2 && w.skin === "jade" ? 1.25 : 1);
-          if (l3 && w.beast === 0) w.hype = Math.min(100, w.hype + 1.5);
+          if (l3) addHype(w, w.skin === "jade" ? 3 : 1.5); // Golden Crowd: double
           beep(1180, 0.05, "square", 0.035);
         }
       }
@@ -1434,7 +1484,7 @@ export function PinRun({
           ctx.fillText(`${you} – ${them}`, px2, py2 + rr + 30);
           ctx.font = "700 10px 'Chakra Petch', monospace";
           ctx.fillStyle = "#d5b67a";
-          ctx.fillText(`YOU · ${bf.b.name.split(" ")[0].toUpperCase()} · FIRST TO 2`, px2, py2 + rr + 46);
+          ctx.fillText(`YOU · ${bf.b.name.split(" ")[0].toUpperCase()} · ${bf.max === 1 ? "YOU NEED 1" : "FIRST TO 2"}`, px2, py2 + rr + 46);
         } else
           for (let i = 0; i < bf.max; i++) {
             ctx.fillStyle = i < bf.max - bf.hp ? "#f2c14e" : "#2a251d";
@@ -1747,7 +1797,7 @@ export function PinRun({
         ctx.beginPath();
         ctx.roundRect(mx - 4, 20, mw + 8, 22, 11);
         ctx.fill();
-        const f = w.beast > 0 ? w.beast / 6 : w.hype / 100;
+        const f = w.beast > 0 ? w.beast / w.beastMax : w.hype / 100;
         const hg = ctx.createLinearGradient(mx, 0, mx + mw, 0);
         hg.addColorStop(0, "#d42a2f");
         hg.addColorStop(1, w.beast > 0 ? "#ff6a3d" : "#f2c14e");
@@ -1863,6 +1913,12 @@ export function PinRun({
           {level >= 2 && ABILITIES[skin] ? (
             <p className="pinrun-best">
               {skinById(skin)?.name}: <b>{ABILITIES[skin].name}</b> · {ABILITIES[skin].text}
+              {level === 3 && ABILITIES3[skin] ? (
+                <>
+                  {" "}
+                  + <b>{ABILITIES3[skin].name}</b> · {ABILITIES3[skin].text}
+                </>
+              ) : null}
             </p>
           ) : null}
         </div>
@@ -2091,6 +2147,11 @@ function LionTemple({
                 {ABILITIES[k.id] ? (
                   <p className="temple-ability">
                     <b>Lv.2+ ability · {ABILITIES[k.id].name}</b> {ABILITIES[k.id].text}
+                  </p>
+                ) : null}
+                {ABILITIES3[k.id] ? (
+                  <p className="temple-ability">
+                    <b>Lv.3 ability · {ABILITIES3[k.id].name}</b> {ABILITIES3[k.id].text}
                   </p>
                 ) : null}
                 <div className="temple-foot">
