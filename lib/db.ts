@@ -287,6 +287,9 @@ CREATE TABLE IF NOT EXISTS pinrun_wallet (
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
 
+-- Organisers can unlock Pin Run Level 2 for an account without the 20,000 score.
+ALTER TABLE pinrun_wallet ADD COLUMN IF NOT EXISTS l2 boolean NOT NULL DEFAULT false;
+
 CREATE TABLE IF NOT EXISTS pinrun_tx (
   id          serial PRIMARY KEY,
   account_id  integer NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
@@ -334,7 +337,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v25";
+const MIGRATION_MARKER = "founders_v26";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [
@@ -488,6 +491,15 @@ async function migrate(db: Db) {
         const { awardResultsChalk } = await import("./results");
         await awardResultsChalk(tx, riserId);
         await tx.query(`INSERT INTO meta (key, value) VALUES ($1, now()::text)`, [key]);
+      }
+    }
+    // George asked for Pin Run Level 2 unlocked on his account. Once only.
+    const [l2Done] = await tx.query(`SELECT 1 FROM meta WHERE key = 'l2_unlock_george'`);
+    if (!l2Done) {
+      const [g] = await tx.query<{ id: number }>(`SELECT id FROM accounts WHERE handle = 'georgelu721'`);
+      if (g) {
+        await tx.query(`INSERT INTO pinrun_wallet (account_id, l2) VALUES ($1, true) ON CONFLICT (account_id) DO UPDATE SET l2 = true`, [g.id]);
+        await tx.query(`INSERT INTO meta (key, value) VALUES ('l2_unlock_george', now()::text)`);
       }
     }
     // The November supermatch is left arm. Once only, so a later admin edit isn't overwritten.

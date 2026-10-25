@@ -148,6 +148,8 @@ export interface AdminAccount {
   best: number | null;
   /** Previous handles, e.g. "@daddy". */
   former: string | null;
+  /** Pin Run Level 2 unlocked by an organiser. */
+  l2: boolean;
 }
 
 export async function adminAccounts() {
@@ -157,7 +159,8 @@ export async function adminAccounts() {
             coalesce((SELECT sum(amount) FROM coin_tx t WHERE t.account_id = a.id), 0)::int AS coins,
             (SELECT count(*)::int FROM predictions p WHERE p.account_id = a.id) AS picks,
             (SELECT best FROM game_scores g WHERE g.account_id = a.id) AS best,
-            (SELECT string_agg('@' || h.old_handle, ', ' ORDER BY h.changed_at) FROM handle_history h WHERE h.account_id = a.id) AS former
+            (SELECT string_agg('@' || h.old_handle, ', ' ORDER BY h.changed_at) FROM handle_history h WHERE h.account_id = a.id) AS former,
+            coalesce((SELECT w.l2 FROM pinrun_wallet w WHERE w.account_id = a.id), false) AS l2
      FROM accounts a ORDER BY a.created_at DESC`,
   );
 }

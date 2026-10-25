@@ -104,6 +104,8 @@ export interface Wallet {
   coins: number;
   skin: string;
   owned: string[];
+  /** Level 2 unlocked by an organiser (as well as by scoring 20,000). */
+  l2?: boolean;
 }
 
 /* ─────────── Levels ─────────── */

@@ -296,8 +296,12 @@ export async function submitScore(
   const db = await getDb();
   if (level === 2) {
     // Level 2 has its own leaderboard, and only counts once Level 1 has unlocked it.
-    const [l1] = await db.query<{ best: number }>(`SELECT best FROM game_scores WHERE account_id = $1`, [me.id]);
-    if ((l1?.best ?? 0) < LEVEL2_UNLOCK) return { best: null, coins: 0, message: "Level 2 isn't unlocked yet.", saved: 0, wallet: null };
+    const [l1] = await db.query<{ best: number; l2: boolean }>(
+      `SELECT (SELECT best FROM game_scores WHERE account_id = $1) AS best,
+              coalesce((SELECT l2 FROM pinrun_wallet WHERE account_id = $1), false) AS l2`,
+      [me.id],
+    );
+    if ((l1?.best ?? 0) < LEVEL2_UNLOCK && !l1?.l2) return { best: null, coins: 0, message: "Level 2 isn't unlocked yet.", saved: 0, wallet: null };
     const [row2] = await db.query<{ best: number }>(
       `INSERT INTO arcade_scores (account_id, game, level, best) VALUES ($1, 'pinrun', '2', $2)
        ON CONFLICT (account_id, game, level) DO UPDATE SET best = GREATEST(arcade_scores.best, EXCLUDED.best),

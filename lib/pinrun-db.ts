@@ -3,11 +3,11 @@ import type { Db } from "./db";
 import { getDb } from "./db";
 import { DEFAULT_SKIN, type Wallet, plausibleCoins } from "./pinrun";
 
-const EMPTY: Wallet = { coins: 0, skin: DEFAULT_SKIN, owned: [DEFAULT_SKIN] };
+const EMPTY: Wallet = { coins: 0, skin: DEFAULT_SKIN, owned: [DEFAULT_SKIN], l2: false };
 
 export async function getWallet(accountId: number, db?: Db): Promise<Wallet> {
   const d = db ?? (await getDb());
-  const [w] = await d.query<Wallet>(`SELECT coins, skin, owned FROM pinrun_wallet WHERE account_id = $1`, [accountId]);
+  const [w] = await d.query<Wallet>(`SELECT coins, skin, owned, l2 FROM pinrun_wallet WHERE account_id = $1`, [accountId]);
   return w ?? EMPTY;
 }
 

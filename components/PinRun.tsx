@@ -217,7 +217,8 @@ export function PinRun({
   const [level, setLevel] = useState<1 | 2>(1);
   const levelRef = useRef<1 | 2>(1);
   levelRef.current = level;
-  const unlocked = (best ?? 0) >= LEVEL2_UNLOCK;
+  const [wallet, setWallet] = useState<Wallet | null>(initialWallet);
+  const unlocked = (best ?? 0) >= LEVEL2_UNLOCK || !!wallet?.l2;
   const unlockedRef = useRef(unlocked);
   unlockedRef.current = unlocked;
   const bossImgs = useRef<Record<number, HTMLImageElement>>({});
@@ -229,7 +230,6 @@ export function PinRun({
   const audio = useRef<AudioContext | null>(null);
   const overAt = useRef(0);
   const imgs = useRef<{ skin?: HTMLImageElement; cloud?: HTMLImageElement; ring?: HTMLImageElement; l2bg?: HTMLImageElement }>({});
-  const [wallet, setWallet] = useState<Wallet | null>(initialWallet);
   const [temple, setTemple] = useState(false);
   const templeRef = useRef(false);
   templeRef.current = temple;
