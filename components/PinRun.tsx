@@ -813,47 +813,6 @@ export function PinRun({
       ctx.drawImage(img, cx - dw / 2, cy - rr - ih * s2 * 0.08, dw, ih * s2);
     };
 
-    /** Each boss gets their own frame shape, so every Riser boss reads differently at a glance. */
-    const BOSS_SHAPES = ["circle", "triangle", "square", "diamond", "pentagon", "hexagon", "star", "shield"] as const;
-    const bossShape = (id: number) => BOSS_SHAPES[(((id - 1) % BOSS_SHAPES.length) + BOSS_SHAPES.length) % BOSS_SHAPES.length];
-    const shapePath = (shape: (typeof BOSS_SHAPES)[number], cx: number, cy: number, r: number) => {
-      ctx.beginPath();
-      const poly = (n: number, rad: number, rot: number, dy = 0) => {
-        for (let i = 0; i < n; i++) {
-          const a = rot + (i / n) * Math.PI * 2;
-          const px = cx + Math.cos(a) * rad;
-          const py = cy + dy + Math.sin(a) * rad;
-          if (i) ctx.lineTo(px, py);
-          else ctx.moveTo(px, py);
-        }
-        ctx.closePath();
-      };
-      if (shape === "circle") ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      else if (shape === "triangle") poly(3, r * 1.45, -Math.PI / 2, r * 0.3);
-      else if (shape === "square") ctx.roundRect(cx - r * 0.95, cy - r * 0.95, r * 1.9, r * 1.9, r * 0.18);
-      else if (shape === "diamond") poly(4, r * 1.25, -Math.PI / 2);
-      else if (shape === "pentagon") poly(5, r * 1.12, -Math.PI / 2, r * 0.06);
-      else if (shape === "hexagon") poly(6, r * 1.08, 0);
-      else if (shape === "star") {
-        for (let i = 0; i < 10; i++) {
-          const a = -Math.PI / 2 + (i / 10) * Math.PI * 2;
-          const rad = i % 2 ? r * 0.82 : r * 1.3;
-          const px = cx + Math.cos(a) * rad;
-          const py = cy + r * 0.08 + Math.sin(a) * rad;
-          if (i) ctx.lineTo(px, py);
-          else ctx.moveTo(px, py);
-        }
-        ctx.closePath();
-      } else {
-        // shield: flat top, curved sides to a point
-        ctx.moveTo(cx - r, cy - r);
-        ctx.lineTo(cx + r, cy - r);
-        ctx.quadraticCurveTo(cx + r, cy + r * 0.6, cx, cy + r * 1.25);
-        ctx.quadraticCurveTo(cx - r, cy + r * 0.6, cx - r, cy - r);
-        ctx.closePath();
-      }
-    };
-
     /** A boss: a bigger rival with the Riser's portrait, name and remaining grip (hp). */
     const drawBoss = (r: Rival, p: Plat, cam: number) => {
       const bf = r.boss!;
@@ -887,15 +846,15 @@ export function PinRun({
       const hx = x;
       const hy = base - 124;
       const rr = 24;
-      const shape = bossShape(bf.b.id);
       ctx.save();
-      shapePath(shape, hx, hy, rr);
+      ctx.beginPath();
+      ctx.arc(hx, hy, rr, 0, Math.PI * 2);
       ctx.fillStyle = "#2a2230";
       ctx.fill();
       ctx.clip();
       const img = bossImgs.current[bf.b.id];
       if (img?.complete && img.naturalWidth) {
-        drawFace(img, !!bf.b.art, hx, hy, shape === "circle" ? rr : rr * 1.3);
+        drawFace(img, !!bf.b.art, hx, hy, rr);
       } else {
         ctx.fillStyle = "#efe7d6";
         ctx.font = "900 22px 'Saira Extra Condensed', Impact, sans-serif";
@@ -905,8 +864,8 @@ export function PinRun({
       ctx.restore();
       ctx.strokeStyle = "#f2c14e";
       ctx.lineWidth = 3;
-      ctx.lineJoin = "round";
-      shapePath(shape, hx, hy, rr);
+      ctx.beginPath();
+      ctx.arc(hx, hy, rr, 0, Math.PI * 2);
       ctx.stroke();
       if (r.state === "idle") {
         // name tag + grip pips
@@ -915,14 +874,14 @@ export function PinRun({
         const tw = ctx.measureText(label).width + 22;
         ctx.fillStyle = "rgba(125,18,22,.92)";
         ctx.beginPath();
-        ctx.roundRect(hx - tw / 2, hy - rr - 42, tw, 24, 6);
+        ctx.roundRect(hx - tw / 2, hy - rr - 34, tw, 24, 6);
         ctx.fill();
         ctx.fillStyle = "#fff4cf";
         ctx.textAlign = "center";
-        ctx.fillText(label, hx, hy - rr - 24);
+        ctx.fillText(label, hx, hy - rr - 16);
         ctx.font = "700 11px 'Chakra Petch', monospace";
         ctx.fillStyle = "#f2c14e";
-        ctx.fillText("BOSS", hx, hy - rr - 48);
+        ctx.fillText("BOSS", hx, hy - rr - 40);
       }
     };
 
@@ -1083,15 +1042,15 @@ export function PinRun({
         const px2 = cx - 228;
         const py2 = cy + 128;
         const rr = 46;
-        const shape = bossShape(bf.b.id);
         ctx.save();
-        shapePath(shape, px2, py2, rr);
+        ctx.beginPath();
+        ctx.arc(px2, py2, rr, 0, Math.PI * 2);
         ctx.fillStyle = "#2a2230";
         ctx.fill();
         ctx.clip();
         const img = bossImgs.current[bf.b.id];
         if (img?.complete && img.naturalWidth) {
-          drawFace(img, !!bf.b.art, px2, py2, shape === "circle" ? rr : rr * 1.3);
+          drawFace(img, !!bf.b.art, px2, py2, rr);
         } else {
           ctx.fillStyle = "#efe7d6";
           ctx.font = "900 34px 'Saira Extra Condensed', Impact, sans-serif";
@@ -1100,15 +1059,16 @@ export function PinRun({
         ctx.restore();
         ctx.strokeStyle = "#f2c14e";
         ctx.lineWidth = 3;
-        ctx.lineJoin = "round";
-        shapePath(shape, px2, py2, rr);
+        ctx.beginPath();
+        ctx.arc(px2, py2, rr, 0, Math.PI * 2);
         ctx.stroke();
         ctx.textAlign = "center";
         for (let i = 0; i < bf.max; i++) {
           ctx.fillStyle = i < bf.max - bf.hp ? "#f2c14e" : "#2a251d";
           ctx.strokeStyle = "#f2c14e";
           ctx.lineWidth = 1.5;
-          shapePath(shape, px2 - (bf.max - 1) * 13 + i * 26, py2 + rr + 28, 7);
+          ctx.beginPath();
+          ctx.arc(px2 - (bf.max - 1) * 13 + i * 26, py2 + rr + 20, 8, 0, Math.PI * 2);
           ctx.fill();
           ctx.stroke();
         }
