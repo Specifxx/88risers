@@ -6,6 +6,10 @@ import { buySkin, equipSkin, submitScore } from "@/app/(site)/account/actions";
 import { lionSays } from "@/lib/lion";
 import { ABILITIES, ANIM, type Boss, DEFAULT_SKIN, LEVEL2_UNLOCK, LEVELS, POWERS, type PowerKind, SKINS, type Wallet, skinById } from "@/lib/pinrun";
 import { drawAura, drawFx, newFx, stepFx } from "@/lib/pinrun-fx";
+import { RADIO } from "@/lib/radio";
+
+/** 88.5 Golden Hour (summer Afro house) plays while you run. */
+const GAME_STATION = RADIO.find((c) => c.id === "golden-hour") ?? RADIO[0];
 
 /**
  * PIN RUN — a one-button arm wrestling platformer.
@@ -266,7 +270,51 @@ export function PinRun({
     } catch {}
   };
 
+  // ── Radio: 88.5 Golden Hour, started by the first Start tap (browsers need a tap to play audio).
+  const radio = useRef<HTMLAudioElement | null>(null);
+  const radioTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [onAir, setOnAir] = useState(false);
+  const onAirRef = useRef(false);
+  onAirRef.current = onAir;
+  const tuneRadio = (i = 0) => {
+    const stations = GAME_STATION.stations;
+    if (i >= stations.length) return;
+    radio.current ??= new Audio();
+    const a = radio.current;
+    a.volume = 0.5;
+    if (radioTimer.current) clearTimeout(radioTimer.current);
+    // a station that hasn't started within 10s is skipped
+    radioTimer.current = setTimeout(() => a.paused && tuneRadio(i + 1), 10000);
+    a.onplaying = () => {
+      if (radioTimer.current) clearTimeout(radioTimer.current);
+      setOnAir(true);
+    };
+    a.onerror = () => tuneRadio(i + 1);
+    a.src = stations[i].url;
+    a.play().catch(() => {});
+  };
+  const startRadio = () => {
+    if (mutedRef.current) return;
+    const a = radio.current;
+    if (a && !a.paused) return;
+    if (a?.src) a.play().catch(() => tuneRadio(0));
+    else tuneRadio(0);
+  };
+  const stopRadio = () => {
+    radio.current?.pause();
+    setOnAir(false);
+  };
+  useEffect(
+    () => () => {
+      if (radioTimer.current) clearTimeout(radioTimer.current);
+      radio.current?.pause();
+      if (radio.current) radio.current.src = "";
+    },
+    [],
+  );
+
   const start = () => {
+    startRadio();
     world.current = newWorld(levelRef.current, skinRef.current);
     extend(world.current, bossesRef.current);
     if (levelRef.current === 2) {
@@ -1217,6 +1265,12 @@ export function PinRun({
         ctx.fillRect(ix + 26, 91, 24 * f, 5);
         ix += 64;
       }
+      if (onAirRef.current && !mutedRef.current) {
+        ctx.textAlign = "left";
+        ctx.font = "700 11px 'Chakra Petch', monospace";
+        ctx.fillStyle = "rgba(242,225,182,.7)";
+        ctx.fillText(`♪ ${GAME_STATION.freq} FM · ${GAME_STATION.name.toUpperCase()}`, 24, H - 18);
+      }
       for (let i = 0; i < w.maxHearts; i++) {
         ctx.fillStyle = i < w.hearts ? "#d42a2f" : "#2a251d";
         ctx.beginPath();
@@ -1348,7 +1402,19 @@ export function PinRun({
           ) : null}
         </div>
       ) : null}
-      <button type="button" className="pinrun-mute" onClick={() => setMuted((m) => !m)} aria-label={muted ? "Sound on" : "Sound off"}>
+      <button
+        type="button"
+        className="pinrun-mute"
+        onClick={() => {
+          const next = !muted;
+          setMuted(next);
+          mutedRef.current = next;
+          if (next) stopRadio();
+          else if (phase === "play") startRadio();
+        }}
+        aria-label={muted ? "Sound and radio on" : "Sound and radio off"}
+        title={muted ? "Sound and 88.5 FM on" : "Mute sound and 88.5 FM"}
+      >
         {muted ? "♪̸" : "♪"}
       </button>
       {temple ? <LionTemple wallet={wallet} loggedIn={loggedIn} onWallet={setWallet} onClose={() => setTemple(false)} /> : null}
