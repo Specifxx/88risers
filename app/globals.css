@@ -7805,3 +7805,11 @@ b.gold {
     padding: 0 46px;
   }
 }
+
+/* Fast tapping on the game shouldn't select nearby text (iOS was highlighting "High scores") */
+.play-grid,
+.play-grid * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}

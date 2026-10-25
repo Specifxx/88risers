@@ -30,6 +30,6 @@ export async function bankRunCoins(accountId: number, score: number, coins: numb
       await tx.query(`INSERT INTO pinrun_tx (account_id, amount, reason) VALUES ($1, $2, 'Pin Run coins')`, [accountId, saved]);
     }
     const w = await getWallet(accountId, tx);
-    return { saved, wallet: w, capped: saved < want };
+    return { saved, wallet: w, capped: saved < want, dayFull: today + saved >= DAY_COIN_CAP };
   });
 }

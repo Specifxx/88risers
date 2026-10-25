@@ -258,7 +258,7 @@ export async function claimDailyGameCoins(): Promise<{ coins: number }> {
 export async function submitScore(
   score: number,
   runCoins = 0,
-): Promise<{ best: number | null; coins: number; message: string; saved: number; wallet: Wallet | null }> {
+): Promise<{ best: number | null; coins: number; message: string; saved: number; wallet: Wallet | null; dayFull?: boolean }> {
   const me = await currentAccount();
   if (!me) return { best: null, coins: 0, message: "Log in to save your score and earn coins.", saved: 0, wallet: null };
   const n = Math.floor(Number(score));
@@ -276,6 +276,7 @@ export async function submitScore(
   revalidatePath("/play");
   return {
     saved: bank.saved,
+    dayFull: bank.dayFull && runCoins > bank.saved,
     wallet: bank.wallet,
     best: row.best,
     coins: got ? DAILY_GAME_COINS : 0,
