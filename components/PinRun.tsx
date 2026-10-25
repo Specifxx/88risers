@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { buySkin, equipSkin, submitScore } from "@/app/(site)/account/actions";
 import { lionSays } from "@/lib/lion";
-import { ABILITIES, ANIM, type Boss, DEFAULT_SKIN, LEVEL2_UNLOCK, LEVELS, POWERS, type PowerKind, SKINS, type Wallet, skinById } from "@/lib/pinrun";
+import { ABILITIES, ANIM, type Boss, DEFAULT_SKIN, LEVEL2_UNLOCK, LEVELS, MOVES, type MoveKind, POWERS, type PowerKind, SKINS, type Wallet, chainMove, moveOf, skinById } from "@/lib/pinrun";
 import { drawAura, drawFx, newFx, stepFx } from "@/lib/pinrun-fx";
 import { RADIO } from "@/lib/radio";
 
@@ -76,6 +76,20 @@ interface World {
     speed: number;
     result: null | "pin" | "miss" | "hit";
     rt: number;
+    /** Needle phase, direction and position (0-1). */
+    ph: number;
+    dir: number;
+    pos: number;
+    /** The boss's signature move this round, and its starting zone/width. */
+    move: MoveKind | null;
+    z0: number;
+    w0: number;
+    /** Hook: seconds until the needle snaps back. */
+    flip: number;
+    /** Fake-Out: the zone already jumped this round. */
+    used: boolean;
+    /** Shake on the boss art when a move kicks in. */
+    fx: number;
   };
   over: boolean;
   level: 1 | 2;
@@ -335,8 +349,7 @@ export function PinRun({
     }
     if (w.duel) {
       if (w.duel.result) return;
-      const needle = (Math.sin(w.duel.t * w.duel.speed) + 1) / 2;
-      const hit = Math.abs(needle - w.duel.zone) < w.duel.width / 2;
+      const hit = Math.abs(w.duel.pos - w.duel.zone) < w.duel.width / 2;
       const boss = w.duel.rival.boss;
       if (hit && boss) {
         boss.hp--;
@@ -466,12 +479,60 @@ export function PinRun({
       let speed = boss ? 5 + diff * 3 + (d.rival.boss!.max - d.rival.boss!.hp) * 0.7 : 4.2 + diff * 3.5;
       if (l2 && w.skin === "stone") width *= 1.15;
       if (l2 && w.skin === "crystal") speed *= 0.7;
+      const bf = d.rival.boss;
+      const id = bf?.b.id ?? 0;
+      const move = bf ? (moveOf(id) === "chain" ? chainMove(bf.max - bf.hp) : moveOf(id)) : null;
+      if (move === "press") width *= 1.3; // starts wide, then gets crushed
+      if (move === "toproll" || move === "kings") width *= 1.1;
       d.t = 0;
-      d.zone = rand(0.25, 0.75);
+      d.zone = move === "side" ? rand(0.55, 0.8) : rand(0.25, 0.75);
       d.width = width;
       d.speed = speed;
       d.result = null;
       d.rt = 0;
+      d.ph = 0;
+      d.dir = 1;
+      d.pos = 0.5;
+      d.move = move;
+      d.z0 = d.zone;
+      d.w0 = width;
+      d.flip = rand(0.5, 1);
+      d.used = false;
+      d.fx = move ? 0.4 : 0;
+      if (move) beep(160, 0.25, "sawtooth", 0.05);
+    };
+
+    /** Moves the needle and applies the boss's signature move. */
+    const stepNeedle = (d: NonNullable<World["duel"]>, dt: number) => {
+      d.fx = Math.max(0, d.fx - dt);
+      let mul = 1;
+      if (d.move === "hook") {
+        d.flip -= dt;
+        if (d.flip <= 0) {
+          d.dir *= -1;
+          d.flip = rand(0.45, 1);
+          d.fx = 0.2;
+          beep(240, 0.06, "square", 0.04);
+        }
+      } else if (d.move === "hydraulic") {
+        const c = d.t % 1.15;
+        mul = c < 0.8 ? 0.45 : 2.3;
+        if (c >= 0.8 && c - dt < 0.8) d.fx = 0.25;
+      }
+      d.ph += dt * d.speed * mul * d.dir;
+      const raw = (Math.sin(d.ph) + 1) / 2;
+      d.pos = d.move === "side" ? raw ** 2.2 : raw;
+      if (d.move === "toproll") {
+        const half = d.width / 2 + 0.02;
+        d.zone = Math.min(1 - half, Math.max(half, d.z0 + Math.sin(d.t * 1.7) * 0.22));
+      } else if (d.move === "press") {
+        d.width = d.w0 * Math.max(0.36, 1 - d.t * 0.32);
+      } else if (d.move === "fake" && !d.used && d.t > 0.35 && Math.abs(d.pos - d.zone) < d.width / 2 + 0.1) {
+        d.used = true;
+        d.zone = d.zone < 0.5 ? rand(0.62, 0.8) : rand(0.2, 0.38);
+        d.fx = 0.3;
+        beep(300, 0.08, "square", 0.04);
+      }
     };
 
     const step = (dt: number) => {
@@ -482,6 +543,7 @@ export function PinRun({
         const d = w.duel;
         const boss = d.rival.boss;
         d.t += dt;
+        if (!d.result) stepNeedle(d, dt);
         if (!d.result && d.t > (boss ? 3 : 2.4)) {
           d.result = "miss";
           d.rt = 0;
@@ -623,7 +685,7 @@ export function PinRun({
           continue;
         }
         if (r.state === "idle" && w.invuln === 0 && Math.abs(px - r.x) < R + (r.boss ? 22 : 14) && w.y + R > p.y - 70) {
-          w.duel = { rival: r, plat: p, t: 0, zone: 0.5, width: 0.2, speed: 4, result: null, rt: 0 };
+          w.duel = { rival: r, plat: p, t: 0, zone: 0.5, width: 0.2, speed: 4, result: null, rt: 0, ph: 0, dir: 1, pos: 0.5, move: null, z0: 0.5, w0: 0.2, flip: 1, used: false, fx: 0 };
           newRound(w, !!r.boss);
           beep(r.boss ? 220 : 330, r.boss ? 0.3 : 0.12, "triangle", 0.06);
           return;
@@ -1015,17 +1077,30 @@ export function PinRun({
       ctx.font = "900 46px 'Saira Extra Condensed', Impact, sans-serif";
       const bf = d.rival.boss;
       if (bf) {
-        const title = d.result === "pin" ? "BOSS PINNED!" : d.result === "miss" ? "SLAMMED!" : d.result === "hit" ? "GOOD GRIP!" : `BOSS: ${bf.b.name.toUpperCase()}`;
-        ctx.fillText(title, cx, cy - 40);
+        const mv = d.move ? MOVES[d.move] : null;
+        const calling = mv && !d.result && d.t < 1;
+        if (calling) {
+          // the call-out: "BHAVYA'S PRESS!"
+          const pop = 1 + Math.max(0, 0.25 - d.t) * 1.6;
+          ctx.save();
+          ctx.translate(cx, cy - 40);
+          ctx.scale(pop, pop);
+          ctx.fillStyle = mv.color;
+          ctx.fillText(`${bf.b.name.split(" ")[0].toUpperCase()}'S ${mv.name.toUpperCase()}!`, 0, 0);
+          ctx.restore();
+        } else {
+          const title = d.result === "pin" ? "BOSS PINNED!" : d.result === "miss" ? "SLAMMED!" : d.result === "hit" ? "GOOD GRIP!" : `BOSS: ${bf.b.name.toUpperCase()}`;
+          ctx.fillText(title, cx, cy - 40);
+        }
         ctx.font = "700 14px 'Chakra Petch', monospace";
-        ctx.fillStyle = "#d5b67a";
-        ctx.fillText(`RISER #${String(bf.b.id).padStart(3, "0")} · ${bf.max} GOOD GRIPS TO PIN`, cx, cy - 12);
+        ctx.fillStyle = mv ? mv.color : "#d5b67a";
+        ctx.fillText(mv ? `${moveOf(bf.b.id) === "chain" ? `${MOVES.chain.name} ${bf.max - bf.hp + 1}/${bf.max} · ` : ""}${mv.name}: ${mv.tip}`.toUpperCase() : `RISER #${String(bf.b.id).padStart(3, "0")} · ${bf.max} GOOD GRIPS TO PIN`, cx, cy - 12);
         // the full boss art on the right, like a fighting-game portrait
         const artImg = bf.b.art ? bossImgs.current[bf.b.id] : undefined;
         if (artImg?.complete && artImg.naturalWidth) {
           const aw = 160;
-          const ax = cx + 296 - aw;
-          const ay = cy + 86;
+          const ax = cx + 296 - aw + (d.fx > 0 ? rand(-1, 1) * d.fx * 30 : 0);
+          const ay = cy + 86 + (d.fx > 0 ? rand(-1, 1) * d.fx * 20 : 0);
           ctx.save();
           ctx.beginPath();
           ctx.roundRect(ax, ay, aw, aw, 14);
@@ -1085,10 +1160,31 @@ export function PinRun({
       ctx.beginPath();
       ctx.roundRect(bx, by, bw, 30, 15);
       ctx.fill();
-      ctx.fillStyle = "#d5b67a";
-      ctx.fillRect(bx + bw * (d.zone - d.width / 2), by + 3, bw * d.width, 24);
-      const needle = (Math.sin(d.t * d.speed) + 1) / 2;
-      const nx = bx + bw * needle;
+      const zx = bx + bw * (d.zone - d.width / 2);
+      const zw = bw * d.width;
+      // King's Move: the zone blinks out (a faint outline is all you get)
+      const hidden = d.move === "kings" && !d.result && d.t % 1.1 > 0.62;
+      if (hidden) {
+        ctx.strokeStyle = "rgba(213,182,122,.18)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(zx, by + 3, zw, 24);
+      } else {
+        ctx.fillStyle = d.move === "press" && !d.result ? `rgb(${213 + Math.min(42, d.t * 30)},${182 - Math.min(80, d.t * 60)},${122 - Math.min(70, d.t * 50)})` : "#d5b67a";
+        ctx.fillRect(zx, by + 3, zw, 24);
+      }
+      if (d.move === "press" && !d.result) {
+        // jaws closing in on the zone
+        ctx.fillStyle = "#ff7a3d";
+        for (const [ex, sgn] of [[zx, -1], [zx + zw, 1]] as const) {
+          ctx.beginPath();
+          ctx.moveTo(ex + sgn * 2, by + 15);
+          ctx.lineTo(ex + sgn * 14, by + 5);
+          ctx.lineTo(ex + sgn * 14, by + 25);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      const nx = bx + bw * d.pos;
       ctx.fillStyle = d.result === "pin" || d.result === "hit" ? "#f2e1b6" : d.result === "miss" ? "#ff4a4f" : "#ffffff";
       ctx.fillRect(nx - 3, by - 8, 6, 46);
       // the grip: two forearms meeting

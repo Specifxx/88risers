@@ -149,3 +149,31 @@ export interface Boss {
 
 /** Risers with cartoon boss art (square, waist-up, flexing, face in the upper middle). */
 export const BOSS_ART = new Set([1, 2, 3, 4, 5, 8]);
+
+/** Signature moves: each boss bends the grip meter in their own way. */
+export type MoveKind = "toproll" | "hook" | "hydraulic" | "press" | "side" | "kings" | "fake" | "chain";
+export const MOVES: Record<MoveKind, { name: string; tip: string; color: string }> = {
+  toproll: { name: "Toproll", tip: "the gold zone rolls along the bar", color: "#ffb347" },
+  hook: { name: "Hook", tip: "the needle snaps back without warning", color: "#ff5a5f" },
+  hydraulic: { name: "Hydraulic Press", tip: "the needle pumps slow, then surges", color: "#7fc8ff" },
+  press: { name: "Press", tip: "the gold zone gets crushed smaller", color: "#ff7a3d" },
+  side: { name: "Side Pressure", tip: "the needle drags slow, then whips through", color: "#c79bff" },
+  kings: { name: "King's Move", tip: "the gold zone flickers out of sight", color: "#f2c14e" },
+  fake: { name: "Fake-Out", tip: "the gold zone jumps when you get close", color: "#7dffb0" },
+  chain: { name: "Champion's Chain", tip: "a new move every grip", color: "#ffffff" },
+};
+/** Who uses what. Risers not listed cycle through the moves by ID. */
+export const BOSS_MOVES: Record<number, MoveKind> = {
+  1: "toproll", // Harry
+  2: "hook", // George
+  3: "hydraulic", // Phillip
+  4: "press", // Bhavya
+  5: "side", // Kelvin
+  6: "kings", // Tommy
+  7: "fake", // Luie
+  8: "chain", // Erick
+};
+const MOVE_ORDER: MoveKind[] = ["toproll", "hook", "hydraulic", "press", "side", "kings", "fake"];
+export const moveOf = (id: number): MoveKind => BOSS_MOVES[id] ?? MOVE_ORDER[(id - 1) % MOVE_ORDER.length];
+/** Champion's Chain: the move used on each grip round (0, 1, 2…). */
+export const chainMove = (round: number): MoveKind => (["toproll", "hook", "press"] as MoveKind[])[round % 3];
