@@ -287,7 +287,7 @@ CREATE TABLE IF NOT EXISTS pinrun_wallet (
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
 
--- Organisers can unlock Pin Run Level 2 for an account without the 15,000 score.
+-- Organisers can unlock Pin Run Level 2 for an account without the 12,000 score.
 ALTER TABLE pinrun_wallet ADD COLUMN IF NOT EXISTS l2 boolean NOT NULL DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS pinrun_tx (

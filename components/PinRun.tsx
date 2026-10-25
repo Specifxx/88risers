@@ -1518,7 +1518,7 @@ export function PinRun({
   );
 }
 
-/** Level select: Lion Temple, Crimson Peak (unlocks at 15,000 on Level 1) and a teaser for what's next. */
+/** Level select: Lion Temple, Crimson Peak (unlocks at 12,000 on Level 1) and a teaser for what's next. */
 function LevelPicker({
   level,
   onPick,
