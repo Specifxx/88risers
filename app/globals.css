@@ -7590,8 +7590,19 @@ b.gold {
   .temple-card {
     padding: 8px;
   }
-  .temple-card p {
+  /* phones: drop the flavour text, keep the abilities (compact) */
+  .temple-card p:not(.temple-ability) {
     display: none;
+  }
+  .temple-card .temple-ability {
+    flex: none;
+    padding: 5px 6px;
+    font-size: 11px !important;
+    line-height: 1.3;
+  }
+  .temple-card .temple-ability b {
+    font-size: 9.5px;
+    letter-spacing: 0.04em;
   }
   .temple-card h3 {
     font-size: 18px;
