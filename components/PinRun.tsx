@@ -45,10 +45,43 @@ type Plat = {
   wet?: boolean;
 };
 /** hp = grips still needed. In an Arena supermatch, `lost` counts the rounds the boss has won (first to 2). */
-type BossFight = { b: Boss; hp: number; max: number; sm?: boolean; lost?: number };
+type BossFight = { b: Boss; hp: number; max: number; sm?: boolean; lost?: number; match?: { round: number; night: number } };
 /** `two`: a double grip (lock both hands). */
 type Rival = { x: number; state: "idle" | "pinned" | "gone"; vy: number; y: number; vx: number; spin: number; boss?: BossFight; two?: boolean };
 type Cloud = { x: number; y: number; got: boolean };
+/** Something the Arena crowd threw: a water bottle (costs a heart) or a chalk bag (blinds you). */
+type Throw = { x: number; y: number; vx: number; vy: number; kind: "bottle" | "chalk"; spin: number; done: boolean };
+/** The Arena's arm-wrestle meter: tap fast to drive the boss's arm down; they push back and surge. */
+type Match = {
+  rival: Rival;
+  plat: Plat;
+  /** -1 = you're pinned, +1 = you pin them. */
+  arm: number;
+  t: number;
+  /** Seconds to the boss's next surge, the warning before it lands, and the surge itself. */
+  next: number;
+  warn: number;
+  surge: null | { kind: MoveKind; left: number; age: number };
+  /** Your taps count less (King's Move) / the boss eases off (Beast push) for a moment. */
+  tapMul: number;
+  ease: number;
+  lowest: number;
+  comeback: boolean;
+  result: null | "win" | "lose";
+  rt: number;
+  /** Little jolt on each tap (draw only). */
+  jolt: number;
+};
+const ROUNDS = ["ROUND OF 8", "QUARTER-FINAL", "SEMI-FINAL", "FINAL"];
+/** A night's bracket: three Risers, then the final (Erick, the champ, when he's on the roster). */
+function pickBracket(bosses: Boss[]): Boss[] {
+  if (!bosses.length) return [];
+  const champ = bosses.find((b) => b.id === 8) ?? bosses[Math.floor(Math.random() * bosses.length)];
+  const rest = bosses.filter((b) => b !== champ).sort(() => Math.random() - 0.5);
+  const out: Boss[] = [];
+  for (let i = 0; i < 3; i++) out.push(rest.length ? rest[i % rest.length] : champ);
+  return [...out, champ];
+}
 type Power = { x: number; y: number; kind: PowerKind; got: boolean };
 type Coin = { x: number; y: number; got: boolean };
 type Particle = { x: number; y: number; vx: number; vy: number; life: number; c: string; s: number };
@@ -140,6 +173,14 @@ interface World {
   beastMax: number;
   /** Cold Stare: the next grip needle after a whistle is slower. */
   coldNext: boolean;
+  /** The Arena: tournament night, round (0-3) and that night's bracket; whether the next table is out. */
+  tour: { night: number; round: number; bracket: Boss[]; tablePending: boolean };
+  match: Match | null;
+  throws: Throw[];
+  throwT: number;
+  /** Full hype waits for you: hold (or B) to unleash Beast Mode. */
+  beastReady: boolean;
+  holdT: number;
 }
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
@@ -157,7 +198,7 @@ function newWorld(level: Lv = 1, skin = DEFAULT_SKIN): World {
     shieldBack: 0,
     frostUsed: false,
     powers: [],
-    nextBoss: level === 3 ? 7000 : 6000,
+    nextBoss: level === 3 ? 3200 : 6000,
     bossIdx: Math.floor(Math.random() * 1000),
     waveUsed: false,
     unlockShown: false,
@@ -197,6 +238,12 @@ function newWorld(level: Lv = 1, skin = DEFAULT_SKIN): World {
     wetSeen: null,
     beastMax: 6,
     coldNext: false,
+    tour: { night: 1, round: 0, bracket: [], tablePending: false },
+    match: null,
+    throws: [],
+    throwT: 4,
+    beastReady: false,
+    holdT: 0,
   };
 }
 
@@ -217,8 +264,10 @@ function extend(w: World, bosses: Boss[] = []) {
       p = { x, w: width, y, rival: null, baseY: y, move: null };
       if (Math.random() < rivalChance && width > 200) p.rival = { x: x + width * rand(0.45, 0.7), state: "idle", vy: 0, y: 0, vx: 0, spin: 0 };
     } else if (w.level === 3) {
-      // The Arena: stage tables, some wet; floating rigs; double-grip rivals; a supermatch every ~12,000.
-      const boss = bosses.length > 0 && w.dist + W * 2 > w.nextBoss && n > 3;
+      // The Arena: a gauntlet of stage tables (some wet), floating rigs and double-grip rivals,
+      // then the match table for this round of the night's bracket.
+      if (!w.tour.bracket.length) w.tour.bracket = pickBracket(bosses);
+      const boss = w.tour.bracket.length > 0 && !w.tour.tablePending && w.dist + W * 2 > w.nextBoss && n > 3;
       const stair = !boss && n > 3 && Math.random() < 0.15;
       gap = (stair ? rand(50, 80) : rand(115, 185 + level * 130)) * (w.speed / 390);
       const width = boss ? rand(380, 440) : stair ? rand(140, 190) : rand(165, 300) - level * 55;
@@ -231,14 +280,13 @@ function extend(w: World, bosses: Boss[] = []) {
       p = { x, w: width, y: baseY, rival: null, baseY, move: mover ? { amp, spd: rand(1.3, 2.3), ph: rand(0, Math.PI * 2) } : null };
       if (!boss && !mover && n > 3 && Math.random() < 0.22) p.wet = true;
       if (boss) {
-        const b = bosses[w.bossIdx++ % bosses.length];
-        p.rival = { x: x + width * 0.62, state: "idle", vy: 0, y: 0, vx: 0, spin: 0, boss: { b, hp: w.skin === "eclipse" ? 1 : 2, max: w.skin === "eclipse" ? 1 : 2, sm: true, lost: 0 } };
-        w.nextBoss = x + 12000;
+        const b = w.tour.bracket[w.tour.round];
+        p.rival = { x: x + width * 0.62, state: "idle", vy: 0, y: 0, vx: 0, spin: 0, boss: { b, hp: 1, max: 1, match: { round: w.tour.round, night: w.tour.night } } };
+        p.wet = false;
+        w.tour.tablePending = true;
       } else if (!mover && n > 3 && width > 185 && Math.random() < 0.34 + level * 0.25) {
         p.rival = { x: x + width * rand(0.45, 0.7), state: "idle", vy: 0, y: 0, vx: 0, spin: 0, two: n > 5 && Math.random() < 0.4 };
       }
-      // a chalk cloud hanging over the gap
-      if (n > 4 && !boss && Math.random() < 0.14) w.clouds.push({ x: x - gap / 2, y: baseY - rand(90, 150), got: false });
     } else {
       // Crimson Peak: narrower ledges, steep staircases and platforms that bob up and down.
       const boss = bosses.length > 0 && w.dist + W * 2 > w.nextBoss && n > 3;
@@ -416,12 +464,61 @@ export function PinRun({
     setPhase("play");
   };
 
-  // One input does everything: start, jump, double jump, grip.
+  /** The Arena: spend full hype on Beast Mode (in a match it's a huge push). */
+  const unleash = () => {
+    const w = world.current;
+    if (w.level !== 3 || !w.beastReady || phaseRef.current !== "play" || w.over) return;
+    w.beastReady = false;
+    w.hype = 0;
+    w.beastMax = w.skin === "flame" ? 9 : 6; // Wildfire
+    w.beast = w.beastMax;
+    w.cheer = 2;
+          if (w.skin === "thunder") {
+            // Thunderclap: every ordinary rival on screen is pinned
+            let k = 0;
+            for (const q of w.plats) {
+              const r = q.rival;
+              if (!r || r.boss || r.state !== "idle" || r.x < w.dist || r.x > w.dist + W) continue;
+              r.state = "pinned";
+              r.vx = 300;
+              r.vy = -900;
+              k++;
+              for (let i = 0; i < 14; i++) w.parts.push({ x: r.x, y: q.y - rand(0, 200), vx: rand(-60, 60), vy: rand(-80, 80), life: 0.5, c: i % 2 ? "#fff6c8" : "#f2c14e", s: rand(2, 4) });
+            }
+            if (k) {
+              w.pins += k;
+              w.score += 150 * k;
+              w.pops.push({ x: w.dist + PX + 120, y: 190, t: `THUNDERCLAP x${k}! +${150 * k}`, life: 1.4, c: "#f2c14e" });
+            }
+            w.shake = 0.4;
+          }
+    if (w.match && !w.match.result) {
+      w.match.arm = Math.min(0.99, w.match.arm + 0.35);
+      w.match.ease = 1.5;
+      w.pops.push({ x: w.dist + PX, y: 120, t: "BEAST PUSH!", life: 1, c: "#ff6a4f" });
+    } else w.banner = { t: "BEAST MODE!", sub: "Rivals get pinned on contact. Bottles smash. Coins come to you.", life: 2.2, c: "#ff4a4f" };
+    w.shake = Math.max(w.shake, 0.4);
+    beep(220, 0.3, "sawtooth", 0.06);
+    setTimeout(() => beep(440, 0.3, "sawtooth", 0.06), 120);
+  };
+
+  // One input does everything: start, jump, double jump, grip, mash.
   const press = () => {
     const w = world.current;
     if (phaseRef.current === "title") return start();
     if (phaseRef.current === "over") {
       if (performance.now() - overAt.current > 900) start();
+      return;
+    }
+    w.holdT = 0;
+    if (w.match) {
+      // mash!
+      w.holding = true;
+      const m = w.match;
+      if (m.result) return;
+      m.arm += 0.06 * m.tapMul;
+      m.jolt = 1;
+      beep(380 + Math.max(0, m.arm) * 300, 0.04, "square", 0.025);
       return;
     }
     if (w.duel) {
@@ -485,6 +582,7 @@ export function PinRun({
         if (e.type === "keydown" && !e.repeat) press();
         if (e.type === "keyup") release();
       }
+      if (e.type === "keydown" && (e.code === "KeyB" || e.code === "ShiftLeft" || e.code === "ShiftRight")) unleash();
     };
     window.addEventListener("keydown", key);
     window.addEventListener("keyup", key);
@@ -641,9 +739,154 @@ export function PinRun({
       }
     };
 
+    /** The Arena match: the boss pushes, you mash; their signature move lands as a telegraphed surge. */
+    const SURGE: Record<string, number> = { toproll: 0.5, hook: 0.9, hydraulic: 1.2, press: 1, side: 1.6, kings: 1.1, fake: 0.7 };
+    /** What each surge feels like in an arm wrestle (the needle tips don't apply here). */
+    const SURGE_TIP: Record<string, string> = {
+      toproll: "ROLLING YOUR HAND BACK: TAP HARDER",
+      hook: "HOOKED IN: DOUBLE PRESSURE",
+      hydraulic: "PUMPING: SURGE, EASE, SURGE",
+      side: "HEAVY SIDE PRESSURE: HOLD ON",
+      fake: "EASING OFF... IT'S A TRAP",
+    };
+    const stepMatch = (w: World, dt: number) => {
+      const m = w.match!;
+      const bf = m.rival.boss!;
+      const info = bf.match!;
+      m.jolt = Math.max(0, m.jolt - dt * 6);
+      if (m.result) {
+        m.rt += dt;
+        if (m.rt < 0.9) return;
+        if (m.result === "lose") {
+          if (hurt(w, "PINNED!")) return endGame();
+          // rematch, straight away
+          m.result = null;
+          m.arm = w.skin === "eclipse" ? 0.25 : 0;
+          m.surge = null;
+          m.warn = 0;
+          m.next = 1.4;
+          m.lowest = m.arm;
+          m.comeback = false;
+          m.t = 0;
+          w.pops.push({ x: w.dist + PX, y: 120, t: "REMATCH!", life: 1.1, c: "#ff4a4f" });
+          return;
+        }
+        // won the round
+        const round = info.round;
+        const night = info.night;
+        const r = m.rival;
+        const gain = 1000 * (round + 1) * night;
+        w.pins++;
+        w.score += gain;
+        w.coins += 5 * (round + 1);
+        addHype(w, 30);
+        w.cheer = 2;
+        w.pops.push({ x: w.dist + PX, y: w.y - 70, t: `${ROUNDS[round]} WON! +${gain}`, life: 1.8, c: "#f2e1b6" });
+        r.state = "pinned";
+        r.vx = 520;
+        r.vy = -700;
+        w.vy = -1000;
+        w.ground = null;
+        w.jumps = 1;
+        w.boost = 1.6;
+        w.shake = 0.5;
+        for (let i = 0; i < 60; i++) w.parts.push({ x: r.x, y: m.plat.y - 30, vx: rand(-320, 320), vy: rand(-420, 60), life: rand(0.4, 0.9), c: i % 3 ? "#f2c14e" : "#ff4a4f", s: rand(2, 5) });
+        beep(880, 0.12, "square", 0.06);
+        setTimeout(() => beep(1320, 0.16, "square", 0.06), 90);
+        setTimeout(() => beep(1760, 0.2, "square", 0.06), 200);
+        w.tour.tablePending = false;
+        w.nextBoss = w.dist + 2600 + round * 400;
+        if (round >= 3) {
+          // champion of the night: the next night is harder
+          const bonus = 5000 * night;
+          w.score += bonus;
+          w.coins += 25;
+          w.hearts = Math.min(w.maxHearts, w.hearts + 1);
+          w.banner = { t: `CHAMPION · NIGHT ${night}!`, sub: `You beat ${bf.b.name} in the final. +${bonus.toLocaleString("en-AU")}, +25 coins, +1 heart.`, life: 3.2, c: "#f2c14e" };
+          w.tour = { night: night + 1, round: 0, bracket: pickBracket(bossesRef.current), tablePending: false };
+          w.speed += 25;
+        } else {
+          w.tour.round = round + 1;
+          const nb = w.tour.bracket[round + 1];
+          w.banner = { t: `${ROUNDS[round]} WON!`, sub: `Next: ${ROUNDS[round + 1].toLowerCase()} vs ${nb?.name ?? "???"}.`, life: 2.4, c: "#f2e1b6" };
+        }
+        w.match = null;
+        return;
+      }
+      m.t += dt;
+      m.ease = Math.max(0, m.ease - dt);
+      let mult = 1;
+      m.tapMul = 1;
+      if (m.surge) {
+        const sg = m.surge;
+        const first = sg.age === 0;
+        sg.age += dt;
+        sg.left -= dt;
+        if (sg.kind === "toproll") m.arm -= 0.72 * dt;
+        else if (sg.kind === "hook") mult = 2.2;
+        else if (sg.kind === "hydraulic") mult = Math.floor(sg.age / 0.25) % 2 ? 0.3 : 3;
+        else if (sg.kind === "press") {
+          if (first) m.arm -= 0.22;
+          mult = 0.3; // they're spent: counter!
+        } else if (sg.kind === "side") mult = 1.6;
+        else if (sg.kind === "kings") m.tapMul = 0.4;
+        else if (sg.kind === "fake") {
+          mult = 0;
+          if (sg.age >= 0.6 && sg.age - dt < 0.6) m.arm -= 0.24;
+        }
+        if (first) w.shake = Math.max(w.shake, 0.25);
+        if (sg.left <= 0) {
+          m.surge = null;
+          m.next = Math.max(0.9, rand(1.5, 2.5) - info.round * 0.08);
+        }
+      } else if (m.warn > 0) {
+        m.warn -= dt;
+        if (m.warn <= 0) {
+          const mv = moveOf(bf.b.id);
+          const kind = mv === "chain" ? (["toproll", "hook", "hydraulic", "press", "side", "kings", "fake"] as MoveKind[])[Math.floor(Math.random() * 7)] : mv;
+          m.surge = { kind, left: SURGE[kind] ?? 1, age: 0 };
+          beep(140, 0.25, "sawtooth", 0.06);
+        }
+      } else if ((m.next -= dt) <= 0) {
+        m.warn = 0.6;
+        beep(500, 0.08, "square", 0.04);
+      }
+      if (m.ease > 0) mult = 0;
+      // tuned for ~7 taps a second: a Round of 8 takes ~5s, the final ~9s; later nights push harder
+      const force = 0.15 + info.round * 0.035 + (info.night - 1) * 0.06 + m.t * 0.004;
+      m.arm -= force * mult * dt;
+      m.lowest = Math.min(m.lowest, m.arm);
+      if (!m.comeback && m.lowest < -0.55 && m.arm > 0.15) {
+        m.comeback = true;
+        w.cheer = 2.5;
+        w.shake = 0.4;
+        w.pops.push({ x: w.dist + PX, y: 120, t: "COMEBACK!", life: 1.4, c: "#f2c14e" });
+        beep(300, 0.4, "sawtooth", 0.05);
+        setTimeout(() => beep(600, 0.4, "sawtooth", 0.05), 150);
+      }
+      if (m.arm > 0.7) w.cheer = Math.max(w.cheer, 0.8);
+      w.cheer = Math.max(0, w.cheer - dt);
+      if (m.arm >= 1) {
+        m.arm = 1;
+        m.result = "win";
+        m.rt = 0;
+      } else if (m.arm <= -1) {
+        m.arm = -1;
+        m.result = "lose";
+        m.rt = 0;
+        beep(160, 0.4, "sawtooth", 0.06);
+      }
+    };
+
     const step = (dt: number) => {
       const w = world.current;
       w.t += dt;
+      if (w.holding) w.holdT += dt;
+      if (w.level === 3 && w.beastReady && w.holding && w.holdT >= 0.45) unleash();
+      if (w.match) {
+        stepMatch(w, dt);
+        return;
+      }
       const l2 = w.level >= 2; // lion abilities are on from Level 2
       const l3 = w.level === 3;
       if (w.duel) {
@@ -766,34 +1009,44 @@ export function PinRun({
           beep(2600, 0.12, "sine", 0.05);
           setTimeout(() => beep(2600, 0.25, "sine", 0.05), 160);
         }
-        if (w.hype >= 100 && w.beast === 0) {
-          w.hype = 0;
-          w.beastMax = w.skin === "flame" ? 9 : 6; // Wildfire
-          w.beast = w.beastMax;
-          w.cheer = 2;
-          if (w.skin === "thunder") {
-            // Thunderclap: every ordinary rival on screen is pinned
-            let k = 0;
-            for (const q of w.plats) {
-              const r = q.rival;
-              if (!r || r.boss || r.state !== "idle" || r.x < w.dist || r.x > w.dist + W) continue;
-              r.state = "pinned";
-              r.vx = 300;
-              r.vy = -900;
-              k++;
-              for (let i = 0; i < 14; i++) w.parts.push({ x: r.x, y: q.y - rand(0, 200), vx: rand(-60, 60), vy: rand(-80, 80), life: 0.5, c: i % 2 ? "#fff6c8" : "#f2c14e", s: rand(2, 4) });
-            }
-            if (k) {
-              w.pins += k;
-              w.score += 150 * k;
-              w.pops.push({ x: w.dist + PX + 120, y: 190, t: `THUNDERCLAP x${k}! +${150 * k}`, life: 1.4, c: "#f2c14e" });
-            }
-            w.shake = 0.4;
-          }
-          w.banner = { t: "BEAST MODE!", sub: "Rivals get pinned on contact. Coins come to you.", life: 2.2, c: "#ff4a4f" };
-          beep(220, 0.3, "sawtooth", 0.06);
-          setTimeout(() => beep(440, 0.3, "sawtooth", 0.06), 120);
+        if (w.hype >= 100 && w.beast === 0 && !w.beastReady) {
+          // full hype waits for the player to unleash it
+          w.beastReady = true;
+          w.banner = { t: "HYPE FULL!", sub: "Hold (or press B) to unleash Beast Mode.", life: 2.2, c: "#f2c14e" };
+          beep(660, 0.12, "square", 0.05);
+          setTimeout(() => beep(990, 0.14, "square", 0.05), 100);
         }
+        // the crowd throws things onto the run
+        if ((w.throwT -= dt) <= 0) {
+          w.throwT = rand(2.2, 4) / (1 + (w.tour.night - 1) * 0.25);
+          w.throws.push({ x: w.dist + PX + rand(420, 700), y: H + 10, vx: -rand(40, 140), vy: -rand(780, 940), kind: Math.random() < 0.35 ? "chalk" : "bottle", spin: 0, done: false });
+          beep(320, 0.12, "triangle", 0.03);
+        }
+        const tpx = w.dist + PX;
+        for (const t of w.throws) {
+          t.vy += 1300 * dt;
+          t.x += t.vx * dt;
+          t.y += t.vy * dt;
+          t.spin += dt * 9;
+          if (t.done || Math.hypot(t.x - tpx, t.y - (w.y - 20)) > 36) continue;
+          t.done = true;
+          if (w.beast > 0) {
+            w.pops.push({ x: tpx, y: w.y - 90, t: "SMASH!", life: 0.8, c: "#ff6a4f" });
+            for (let i = 0; i < 10; i++) w.parts.push({ x: t.x, y: t.y, vx: rand(-250, 250), vy: rand(-250, 50), life: 0.4, c: t.kind === "bottle" ? "#9fe0c8" : "#ffffff", s: 3 });
+          } else if (t.kind === "chalk") {
+            if (w.skin === "sakura") {
+              w.pops.push({ x: tpx, y: w.y - 90, t: "PETAL VEIL", life: 1, c: "#f3c4d2" });
+            } else {
+              w.chalk = 2.2;
+              w.pops.push({ x: tpx, y: w.y - 90, t: "CHALK!", life: 1, c: "#ffffff" });
+              beep(150, 0.2, "triangle", 0.05);
+            }
+          } else if (w.invuln === 0) {
+            if (hurt(w, "BOTTLED!")) return endGame();
+            w.invuln = 1;
+          }
+        }
+        w.throws = w.throws.filter((t) => !t.done && !(t.vy > 0 && t.y > H + 60));
       }
       const wet = l3 && !!w.ground?.wet && w.skin !== "wave";
       const speed = (w.speed + Math.min(330, w.dist / 90)) * (w.boost > 0 ? 1.35 : 1) * (w.beast > 0 ? 1.25 : 1) * (wet ? 1.3 : 1);
@@ -883,6 +1136,15 @@ export function PinRun({
           beep(880, 0.1, "square", 0.06);
           for (let i = 0; i < 20; i++) w.parts.push({ x: r.x, y: p.y - 30, vx: rand(-300, 300), vy: rand(-400, 40), life: rand(0.3, 0.7), c: i % 2 ? "#ff4a4f" : "#f2c14e", s: rand(2, 5) });
           continue;
+        }
+        if (r.state === "idle" && r.boss?.match && Math.abs(px - r.x) < R + 22 && w.y + R > p.y - 70) {
+          // the match table: arm-wrestle meter
+          const a0 = w.skin === "eclipse" ? 0.25 : 0;
+          w.match = { rival: r, plat: p, arm: a0, t: 0, next: 1.2, warn: 0, surge: null, tapMul: 1, ease: 0, lowest: a0, comeback: false, result: null, rt: 0, jolt: 0 };
+          w.holding = false;
+          w.cheer = 1;
+          beep(220, 0.3, "triangle", 0.06);
+          return;
         }
         if (r.state === "idle" && w.invuln === 0 && Math.abs(px - r.x) < R + (r.boss ? 22 : 14) && w.y + R > p.y - 70) {
           w.duel = { rival: r, plat: p, t: 0, zone: 0.5, width: 0.2, speed: 4, result: null, rt: 0, ph: 0, dir: 1, pos: 0.5, move: null, z0: 0.5, w0: 0.2, flip: 1, used: false, fx: 0, two: false, lockA: null };
@@ -1278,7 +1540,7 @@ export function PinRun({
         ctx.fillText(label, hx, hy - rr - 16);
         ctx.font = "700 11px 'Chakra Petch', monospace";
         ctx.fillStyle = "#f2c14e";
-        ctx.fillText(bf.sm ? "SUPERMATCH" : "BOSS", hx, hy - rr - 40);
+        ctx.fillText(bf.match ? ROUNDS[bf.match.round] : bf.sm ? "SUPERMATCH" : "BOSS", hx, hy - rr - 40);
       }
     };
 
@@ -1392,6 +1654,182 @@ export function PinRun({
         ctx.fill();
       }
       ctx.restore();
+    };
+
+    const drawThrow = (t: Throw, cam: number) => {
+      const x = t.x - cam;
+      if (x < -40 || x > W + 40) return;
+      ctx.save();
+      ctx.translate(x, t.y);
+      ctx.rotate(t.spin);
+      if (t.kind === "bottle") {
+        ctx.fillStyle = "rgba(150,220,200,.85)";
+        ctx.beginPath();
+        ctx.roundRect(-6, -14, 12, 24, 4);
+        ctx.fill();
+        ctx.fillRect(-3, -20, 6, 7);
+        ctx.fillStyle = "#3a8bd6";
+        ctx.fillRect(-6, -4, 12, 6);
+      } else {
+        ctx.fillStyle = "#f4f1ea";
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 11, 9, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#c9c2b4";
+        ctx.fillRect(-3, -12, 6, 5);
+      }
+      ctx.restore();
+      if (t.kind === "chalk") {
+        ctx.fillStyle = "rgba(255,255,255,.25)";
+        ctx.beginPath();
+        ctx.arc(x - t.vx * 0.03, t.y - t.vy * 0.03, 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+
+    /** The Arena match panel: two forearms on the table, a push meter, the boss's surges. */
+    const drawMatch = (w: World) => {
+      const m = w.match!;
+      const bf = m.rival.boss!;
+      const info = bf.match!;
+      const first = bf.b.name.split(" ")[0].toUpperCase();
+      ctx.fillStyle = "rgba(8,7,6,.6)";
+      ctx.fillRect(0, 0, W, H);
+      const cx = W / 2;
+      ctx.fillStyle = "rgba(14,12,16,.95)";
+      ctx.strokeStyle = m.result === "win" ? "#f2c14e" : m.result === "lose" ? "#d42a2f" : m.warn > 0 || m.surge ? "#ff6a3d" : "#f2c14e";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(cx - 320, 40, 640, 400, 22);
+      ctx.fill();
+      ctx.stroke();
+      // title: who, which round; surge call-outs
+      const mv = m.surge ? MOVES[m.surge.kind] : null;
+      const comingName = MOVES[moveOf(bf.b.id) === "chain" ? "chain" : moveOf(bf.b.id)];
+      ctx.textAlign = "center";
+      ctx.font = "700 13px 'Chakra Petch', monospace";
+      ctx.fillStyle = "#d5b67a";
+      ctx.fillText(`NIGHT ${info.night} · ${ROUNDS[info.round]}`, cx, 72);
+      ctx.font = "900 44px 'Saira Extra Condensed', Impact, sans-serif";
+      if (m.result) {
+        ctx.fillStyle = m.result === "win" ? "#f2c14e" : "#ff4a4f";
+        ctx.fillText(m.result === "win" ? (info.round >= 3 ? "CHAMPION!" : `${first} PINNED!`) : `${first} PINS YOU!`, cx, 116);
+      } else if (mv) {
+        ctx.fillStyle = mv.color;
+        ctx.fillText(`${first}'S ${mv.name.toUpperCase()}!`, cx, 116);
+      } else if (m.warn > 0) {
+        ctx.fillStyle = Math.floor(m.warn * 12) % 2 ? "#ff6a3d" : "#fff1d6";
+        ctx.fillText(`! ${first} IS LOADING UP !`, cx, 116);
+      } else {
+        ctx.fillStyle = "#efe7d6";
+        ctx.fillText(`YOU vs ${bf.b.name.toUpperCase()}`, cx, 116);
+      }
+      ctx.font = "700 13px 'Chakra Petch', monospace";
+      ctx.fillStyle = mv ? mv.color : "#d5b67a";
+      const sub = mv
+        ? mv.name === "Press"
+          ? `${first} SHOVED AND IS SPENT: COUNTER NOW!`
+          : mv.name === "King's Move"
+            ? "YOUR HAND'S LOCKED: TAPS COUNT LESS"
+            : (SURGE_TIP[m.surge!.kind] ?? mv.tip.toUpperCase())
+        : m.ease > 0
+          ? `BEAST PUSH: ${first} CAN'T HOLD YOU`
+          : `TAP AS FAST AS YOU CAN · SIGNATURE: ${comingName.name.toUpperCase()}`;
+      ctx.fillText(sub, cx, 140);
+
+      // the table and the arms
+      const tx = cx;
+      const ty = 330;
+      ctx.fillStyle = "#1f1b22";
+      ctx.beginPath();
+      ctx.roundRect(tx - 190, ty, 380, 18, 6);
+      ctx.fill();
+      ctx.fillStyle = "#f2c14e";
+      ctx.fillRect(tx - 186, ty, 372, 3);
+      // pin pads: yours (left) and theirs (right)
+      ctx.fillStyle = "#3a1416";
+      ctx.fillRect(tx - 178, ty - 14, 44, 14);
+      ctx.fillStyle = "#3b3016";
+      ctx.fillRect(tx + 134, ty - 14, 44, 14);
+      const ang = m.arm * 1.15 + (m.jolt ? Math.sin(m.t * 80) * 0.02 * m.jolt : 0) + (m.surge ? Math.sin(m.t * 60) * 0.03 : 0);
+      const L = 120;
+      const hx = tx + Math.sin(ang) * L;
+      const hy = ty - 8 - Math.cos(ang) * L;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#d5b67a"; // you (gold)
+      ctx.lineWidth = 26;
+      ctx.beginPath();
+      ctx.moveTo(tx - 74, ty - 6);
+      ctx.lineTo(hx - 6, hy + 6);
+      ctx.stroke();
+      ctx.strokeStyle = "#3a2f3d"; // the boss
+      ctx.beginPath();
+      ctx.moveTo(tx + 74, ty - 6);
+      ctx.lineTo(hx + 6, hy + 6);
+      ctx.stroke();
+      ctx.fillStyle = "#efe7d6";
+      ctx.beginPath();
+      ctx.arc(hx, hy, 19, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#b9a98a";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // you: the lion; him: the boss art
+      const lion = imgs.current.skin;
+      if (lion?.complete && lion.naturalWidth) {
+        const fw = anim.current.w;
+        const k = 0.42;
+        ctx.save();
+        ctx.translate(cx - 240, ty + 10);
+        ctx.drawImage(lion, 0, 0, fw, ANIM.h, -ANIM.ax * k, -ANIM.h * k, fw * k, ANIM.h * k);
+        ctx.restore();
+      }
+      ctx.font = "900 16px 'Saira Extra Condensed', Impact, sans-serif";
+      ctx.fillStyle = "#f2c14e";
+      ctx.fillText("YOU", cx - 240, ty + 34);
+      const artImg = bossImgs.current[bf.b.id];
+      const aw = 120;
+      const shake = m.surge ? rand(-1, 1) * 5 : 0;
+      const ax = cx + 300 - aw + shake;
+      const ay = ty - aw + 10;
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(ax, ay, aw, aw, 12);
+      ctx.clip();
+      ctx.fillStyle = "#2a2230";
+      ctx.fillRect(ax, ay, aw, aw);
+      if (artImg?.complete && artImg.naturalWidth) {
+        if (bf.b.art) ctx.drawImage(artImg, ax, ay, aw, aw);
+        else drawFace(artImg, false, ax + aw / 2, ay + aw / 2, aw / 2);
+      }
+      ctx.restore();
+      ctx.strokeStyle = mv ? mv.color : "rgba(242,193,78,.6)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(ax, ay, aw, aw, 12);
+      ctx.stroke();
+      ctx.fillStyle = "#efe7d6";
+      ctx.fillText(first, ax + aw / 2, ty + 34);
+
+      // push meter: left = you get pinned, right = you pin them
+      const bw = 420;
+      const bx = cx - bw / 2;
+      const by = 380;
+      ctx.fillStyle = "#16130f";
+      ctx.beginPath();
+      ctx.roundRect(bx, by, bw, 16, 8);
+      ctx.fill();
+      const mid = bx + bw / 2;
+      const ex = mid + (bw / 2) * Math.max(-1, Math.min(1, m.arm));
+      ctx.fillStyle = m.arm >= 0 ? "#f2c14e" : "#d42a2f";
+      ctx.fillRect(Math.min(mid, ex), by + 3, Math.abs(ex - mid), 10);
+      ctx.fillStyle = "#efe7d6";
+      ctx.fillRect(mid - 1, by - 4, 2, 24);
+      if (!m.result) {
+        ctx.font = "900 24px 'Saira Extra Condensed', Impact, sans-serif";
+        ctx.fillStyle = Math.floor(m.t * 6) % 2 ? "#ffffff" : "#f2c14e";
+        ctx.fillText(w.beastReady ? "TAP! TAP! · HOLD = BEAST PUSH" : "TAP! TAP! TAP!", cx, by + 46);
+      }
     };
 
     const drawDuel = (w: World) => {
@@ -1666,6 +2104,7 @@ export function PinRun({
 
       for (const p of w.plats) if (p.x - cam < W + 40 && p.x + p.w - cam > -40) (l3 ? drawStage(p, cam, w.t) : l2 ? drawLedge(p, cam) : drawTable(p, cam));
       for (const c of w.clouds) if (!c.got) drawCloud(c, cam, w.t);
+      for (const t of w.throws) drawThrow(t, cam);
       for (const pu of w.powers) if (!pu.got) drawPower(pu, cam, w.t);
       for (const p of w.plats) if (p.rival) drawRival(p.rival, p, cam);
       for (const c of w.coinsList) {
@@ -1808,7 +2247,27 @@ export function PinRun({
         ctx.textAlign = "center";
         ctx.font = "900 15px 'Saira Extra Condensed', Impact, sans-serif";
         ctx.fillStyle = w.beast > 0 ? "#fff1d6" : "#efe7d6";
-        ctx.fillText(w.beast > 0 ? "BEAST MODE" : w.hype >= 80 ? "HYPE · CROWD'S GOING WILD" : "HYPE", W / 2, 37);
+        ctx.fillText(w.beast > 0 ? "BEAST MODE" : w.beastReady ? (Math.floor(w.t * 4) % 2 ? "HOLD TO UNLEASH BEAST" : "HYPE FULL · PRESS B") : w.hype >= 80 ? "HYPE · CROWD'S GOING WILD" : "HYPE", W / 2, 37);
+        if (w.beastReady) {
+          ctx.strokeStyle = `rgba(255,106,61,${0.5 + Math.sin(w.t * 10) * 0.4})`;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.roundRect(mx - 6, 18, mw + 12, 26, 13);
+          ctx.stroke();
+        }
+        // tonight's bracket
+        const opp = w.tour.bracket[w.tour.round];
+        if (opp) {
+          ctx.font = "700 11px 'Chakra Petch', monospace";
+          ctx.fillStyle = "rgba(242,225,182,.85)";
+          ctx.fillText(`NIGHT ${w.tour.night} · ${ROUNDS[w.tour.round]} vs ${opp.name.split(" ")[0].toUpperCase()}`, W / 2, 60);
+          for (let i = 0; i < 4; i++) {
+            ctx.fillStyle = i < w.tour.round ? "#f2c14e" : i === w.tour.round ? "#ff6a3d" : "rgba(242,225,182,.25)";
+            ctx.beginPath();
+            ctx.arc(W / 2 - 27 + i * 18, 72, 4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
       }
       for (let i = 0; i < w.maxHearts; i++) {
         ctx.fillStyle = i < w.hearts ? "#d42a2f" : "#2a251d";
@@ -1838,6 +2297,7 @@ export function PinRun({
         ctx.globalAlpha = 1;
       }
       if (w.duel) drawDuel(w);
+      if (w.match) drawMatch(w);
     };
 
     const loop = (now: number) => {
@@ -1907,7 +2367,7 @@ export function PinRun({
           </div>
           {level === 3 ? (
             <p className="pinrun-best">
-              <b>The Arena:</b> fill the hype meter for <b>Beast Mode</b>. Supermatches are first to 2.
+              <b>The Arena:</b> tournament night. Run each gauntlet, then <b>mash</b> to win the arm wrestle. Full hype? <b>Hold</b> to unleash Beast Mode.
             </p>
           ) : null}
           {level >= 2 && ABILITIES[skin] ? (

@@ -120,7 +120,7 @@ export const LEVEL3_UNLOCK = 12000;
 export const LEVELS = [
   { n: 1, name: "Lion Temple", blurb: "The original run." },
   { n: 2, name: "Crimson Peak", blurb: "Moving platforms, power-ups, lion abilities and Riser bosses." },
-  { n: 3, name: "The Arena", blurb: "Hype meter, Beast Mode, double grips, hazards and supermatches." },
+  { n: 3, name: "The Arena", blurb: "Tournament night: gauntlets, arm-wrestle matches, Beast Mode and a crowd that throws things." },
 ] as const;
 
 /** Lion abilities: active on Levels 2 and 3. */
@@ -139,14 +139,14 @@ export const ABILITIES: Record<string, { name: string; text: string }> = {
 /** Arena abilities: extra, on top of the Level 2 ability, on Level 3 only. */
 export const ABILITIES3: Record<string, { name: string; text: string }> = {
   stone: { name: "Crowd Favourite", text: "Hype fills 20% faster." },
-  sakura: { name: "Petal Veil", text: "Chalk clouds can't blind you." },
+  sakura: { name: "Petal Veil", text: "Chalk bags from the crowd can't blind you." },
   jade: { name: "Golden Crowd", text: "Coins give double hype." },
   wave: { name: "Surf's Up", text: "Wet tables don't skid you: you surf them for +50 points and hype." },
   crystal: { name: "Cold Stare", text: "After the ref's whistle, your next grip needle is 40% slower." },
   flame: { name: "Wildfire", text: "Beast Mode lasts 50% longer." },
   thunder: { name: "Thunderclap", text: "Beast Mode starts with a lightning strike that pins every rival on screen." },
   moon: { name: "One Hand", text: "Double grips only need one hand." },
-  eclipse: { name: "Blood Moon", text: "You only need 1 round to win a supermatch (they still need 2)." },
+  eclipse: { name: "Blood Moon", text: "Every arm wrestle starts leaning your way." },
 };
 
 export type PowerKind = "shield" | "magnet" | "x2";
