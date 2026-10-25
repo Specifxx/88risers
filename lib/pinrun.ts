@@ -94,9 +94,7 @@ export const SKINS: Skin[] = [
 export const DEFAULT_SKIN = "stone";
 export const skinById = (id: string) => SKINS.find((s) => s.id === id) ?? null;
 
-/** Most coins one run can bank: generous, but stops faked scores. */
-export const RUN_COIN_CAP = 200;
-/** Real runs earn roughly one coin per 15 points; anything far above that isn't a real run. */
+/** Every coin adds at least 10 points, so a real run never has more than score/10 coins; anything above this is faked. */
 export const plausibleCoins = (score: number) => 10 + Math.floor(score / 8);
 
 export interface Wallet {
