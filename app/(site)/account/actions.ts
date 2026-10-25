@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { cleanHandle, currentAccount, endSession, hashPassword, startSession, verifyPassword } from "@/lib/auth";
+import { changePassword, cleanHandle, consumeReset, currentAccount, endSession, hashPassword, startSession, verifyPassword } from "@/lib/auth";
 import { DAILY_GAME_COINS, MAX_STAKE, WELCOME_COINS, balanceOf, grant, isRepeatable, itemById, lockAccount, newCode } from "@/lib/coins";
 import { RTP_GAME, RTP_LEVELS, RTP_MAX_SCORE, isRtpLevel } from "@/lib/arcade";
 import { CHALK, recordCheckin, sydneyToday } from "@/lib/chalk";
@@ -88,6 +88,35 @@ export async function logIn(_prev: FormState, form: FormData): Promise<FormState
     return { status: "error", message: "Something went wrong on our side. Try again." };
   }
   redirect(safeNext(s(form, "next")));
+}
+
+/** Sets a new password from a reset link an organiser sent, then logs the member in. */
+export async function resetPassword(_prev: FormState, form: FormData): Promise<FormState> {
+  const token = s(form, "token");
+  const pw = String(form.get("password") ?? "");
+  if (pw.length < 8) return { status: "error", field: "password", message: "Use at least 8 characters." };
+  if (pw !== String(form.get("confirm") ?? "")) return { status: "error", field: "confirm", message: "Those passwords don't match." };
+  let id: number | null = null;
+  try {
+    id = await consumeReset(token, pw);
+  } catch (err) {
+    console.error("resetPassword failed", err);
+    return { status: "error", message: "Something went wrong on our side. Try again." };
+  }
+  if (!id) return { status: "error", message: "This reset link has expired or was already used. Ask an organiser for a new one." };
+  await startSession(id);
+  redirect("/account?reset=1");
+}
+
+export async function updatePassword(_prev: FormState, form: FormData): Promise<FormState> {
+  const me = await currentAccount();
+  if (!me) return { status: "error", message: "Log in first." };
+  const next = String(form.get("password") ?? "");
+  if (next.length < 8) return { status: "error", field: "password", message: "Use at least 8 characters." };
+  if (next !== String(form.get("confirm") ?? "")) return { status: "error", field: "confirm", message: "Those passwords don't match." };
+  const ok = await changePassword(me.id, String(form.get("current") ?? ""), next);
+  if (!ok) return { status: "error", field: "current", message: "Your current password isn't right." };
+  return { status: "ok", message: "Password changed. Other devices have been logged out." };
 }
 
 export async function logOut() {

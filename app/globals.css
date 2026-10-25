@@ -7813,3 +7813,42 @@ b.gold {
   user-select: none;
   -webkit-touch-callout: none;
 }
+
+/* Passwords */
+.pw-card {
+  max-width: 520px;
+}
+.pw-panel summary {
+  cursor: pointer;
+  list-style: none;
+  margin: 0;
+}
+.pw-panel summary::-webkit-details-marker {
+  display: none;
+}
+.pw-panel[open] summary {
+  margin-bottom: 14px;
+}
+.pw-change {
+  display: grid;
+  gap: 4px;
+  max-width: 420px;
+}
+.pw-change .btn {
+  justify-self: start;
+  margin-top: 6px;
+}
+.reset-flash {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.reset-flash code {
+  max-width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  font-size: 13px;
+  word-break: break-all;
+  user-select: all;
+}

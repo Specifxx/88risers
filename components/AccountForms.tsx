@@ -89,7 +89,7 @@ export function AccountForms({ next, start = "signup" }: { next: string; start?:
           <button className="btn btn-primary submit" disabled={inPending}>
             {inPending ? "Logging in…" : "Log in"} {!inPending ? <Arrow /> : null}
           </button>
-          <p className="fine">Forgot your password? Message us on Instagram and an organiser will reset it.</p>
+          <p className="fine">Forgot your password? Message us on Instagram and an organiser will send you a link to set a new one.</p>
         </form>
       </div>
     </div>

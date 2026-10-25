@@ -13,7 +13,7 @@ import { CHALK, awardChalk, currentSeason, meetLabel, newMeetCode, recordCheckin
 import { liveEmbed, videoEmbed } from "@/lib/video";
 import { saveLiveSettings } from "@/lib/tv";
 import { mailConfigured, mailStatus, sendClubMail } from "@/lib/mail";
-import { hashPassword } from "@/lib/auth";
+import { createResetToken, hashPassword } from "@/lib/auth";
 import { grant, itemById } from "@/lib/coins";
 import { fmtOdds, oddsOf, payoutAt } from "@/lib/odds";
 
@@ -516,6 +516,17 @@ export async function resetAccountPassword(form: FormData) {
   await db.query(`UPDATE accounts SET pass_hash = $2 WHERE id = $1`, [id, await hashPassword(pw)]);
   await db.query(`DELETE FROM sessions WHERE account_id = $1`, [id]);
   done(key, "coins", "Password reset. Send it to the member privately and ask them to keep it safe.");
+}
+
+export async function makeResetLink(form: FormData) {
+  const key = guard(form);
+  const id = int(form, "account_id");
+  if (!id) done(key, "coins", "Pick an account.", true);
+  const token = await createResetToken(id);
+  const db = await getDb();
+  const [a] = await db.query<{ handle: string }>(`SELECT handle FROM accounts WHERE id = $1`, [id]);
+  revalidatePath("/", "layout");
+  redirect(`/admin/${encodeURIComponent(key)}?tab=coins&reset_for=${encodeURIComponent(a?.handle ?? "")}&reset=${encodeURIComponent(token)}`);
 }
 
 export async function setRedemptionUsed(form: FormData) {

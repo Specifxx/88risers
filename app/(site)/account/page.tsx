@@ -7,6 +7,7 @@ import { earnedAchievements } from "@/lib/achievements";
 import { getMember } from "@/lib/members";
 import { ChalkLift } from "@/components/ChalkLift";
 import { LionShowcase } from "@/components/LionShowcase";
+import { ChangePasswordForm } from "@/components/PasswordForms";
 import { getWallet } from "@/lib/pinrun-db";
 import { CheckInBox } from "@/components/CheckInBox";
 import { CHALK, chalkHistory, chalkOf, chalkSettings, checkedInToday, liftCompletedEver, todaysMeet } from "@/lib/chalk";
@@ -88,6 +89,11 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
           <h1 className="display">
             G&apos;day, <span className="gold-text">{me.display_name.split(" ")[0]}.</span>
           </h1>
+          {sp.reset === "1" ? (
+            <div className="form-ok" style={{ marginTop: 18, maxWidth: 520 }}>
+              New password saved. You&apos;re logged in.
+            </div>
+          ) : null}
           <div className="btn-row" style={{ marginTop: 24 }}>
             <Link className="btn btn-primary" href="/supermatch">
               Make your pick
@@ -253,6 +259,13 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
                 ))}
               </ul>
             </div>
+            <details className="panel pw-panel">
+              <summary className="panel-title">
+                Password
+                <small>Change it</small>
+              </summary>
+              <ChangePasswordForm />
+            </details>
             <div className="panel">
               <h2 className="panel-title">Your rewards &amp; codes</h2>
               {items.length ? (

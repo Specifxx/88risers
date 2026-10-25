@@ -140,6 +140,14 @@ CREATE TABLE IF NOT EXISTS handle_history (
   changed_at  timestamptz NOT NULL DEFAULT now()
 );
 
+-- One-time password reset links an organiser makes in Admin HQ and sends to the member.
+CREATE TABLE IF NOT EXISTS password_resets (
+  token_hash  text PRIMARY KEY,
+  account_id  integer NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  expires_at  timestamptz NOT NULL,
+  used_at     timestamptz
+);
+
 CREATE TABLE IF NOT EXISTS login_attempts (
   handle  text NOT NULL,
   at      timestamptz NOT NULL DEFAULT now()
@@ -326,7 +334,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v24";
+const MIGRATION_MARKER = "founders_v25";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [

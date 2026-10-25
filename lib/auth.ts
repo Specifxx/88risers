@@ -33,6 +33,61 @@ export async function verifyPassword(pw: string, stored: string) {
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
+const RESET_HOURS = 48;
+
+/** Makes a one-time reset link token for an account (older unused links stop working). */
+export async function createResetToken(accountId: number) {
+  const token = randomBytes(24).toString("base64url");
+  const db = await getDb();
+  await db.query(`DELETE FROM password_resets WHERE account_id = $1 OR expires_at < now()`, [accountId]);
+  await db.query(`INSERT INTO password_resets (token_hash, account_id, expires_at) VALUES ($1, $2, now() + make_interval(hours => $3))`, [
+    sha(token),
+    accountId,
+    RESET_HOURS,
+  ]);
+  return token;
+}
+
+/** The account a reset link belongs to, if the link is still valid. */
+export async function resetTarget(token: string) {
+  if (!token) return null;
+  const db = await getDb();
+  const [r] = await db.query<{ id: number; handle: string; display_name: string }>(
+    `SELECT a.id, a.handle, a.display_name FROM password_resets p JOIN accounts a ON a.id = p.account_id
+     WHERE p.token_hash = $1 AND p.used_at IS NULL AND p.expires_at > now()`,
+    [sha(token)],
+  );
+  return r ?? null;
+}
+
+/** Uses up a reset link: sets the new password, ends all old sessions. Returns the account id. */
+export async function consumeReset(token: string, password: string) {
+  const db = await getDb();
+  const hash = await hashPassword(password);
+  return db.transaction(async (tx) => {
+    const [r] = await tx.query<{ account_id: number }>(
+      `UPDATE password_resets SET used_at = now() WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now() RETURNING account_id`,
+      [sha(token)],
+    );
+    if (!r) return null;
+    await tx.query(`UPDATE accounts SET pass_hash = $2 WHERE id = $1`, [r.account_id, hash]);
+    await tx.query(`DELETE FROM sessions WHERE account_id = $1`, [r.account_id]);
+    await tx.query(`DELETE FROM login_attempts WHERE handle = (SELECT handle FROM accounts WHERE id = $1)`, [r.account_id]);
+    return r.account_id;
+  });
+}
+
+/** Changes a logged-in member's password after checking the current one. Other devices are logged out. */
+export async function changePassword(accountId: number, current: string, next: string) {
+  const db = await getDb();
+  const [a] = await db.query<{ pass_hash: string }>(`SELECT pass_hash FROM accounts WHERE id = $1`, [accountId]);
+  if (!a || !(await verifyPassword(current, a.pass_hash))) return false;
+  const token = (await cookies()).get(COOKIE)?.value ?? "";
+  await db.query(`UPDATE accounts SET pass_hash = $2 WHERE id = $1`, [accountId, await hashPassword(next)]);
+  await db.query(`DELETE FROM sessions WHERE account_id = $1 AND token_hash <> $2`, [accountId, sha(token)]);
+  return true;
+}
+
 /** Starts a session for the account and sets the cookie. Call from a Server Function only. */
 export async function startSession(accountId: number) {
   const token = randomBytes(32).toString("base64url");

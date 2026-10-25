@@ -26,6 +26,7 @@ import {
   drawGiveaway,
   grantCoins,
   resetAccountPassword,
+  makeResetLink,
   saveSupermatch,
   setGiveawayDate,
   openCheckin,
@@ -85,6 +86,8 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
   const tab: Tab = (TABS.find(([t]) => t === sp.tab)?.[0] ?? "registrations") as Tab;
   const msg = typeof sp.msg === "string" ? sp.msg : null;
   const err = typeof sp.err === "string" ? sp.err : null;
+  const resetFor = typeof sp.reset_for === "string" ? sp.reset_for : null;
+  const resetLink = typeof sp.reset === "string" && /^[\w-]{20,64}$/.test(sp.reset) ? `${SITE.url}/account/reset?t=${sp.reset}` : null;
   const filter = typeof sp.status === "string" ? sp.status : "active";
   const k = decodeURIComponent(key);
   const base = `/admin/${encodeURIComponent(k)}`;
@@ -156,6 +159,14 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
       <main className="wrap admin-main">
         {msg ? <div className="flash ok">{msg}</div> : null}
         {err ? <div className="flash bad">{err}</div> : null}
+        {resetLink ? (
+          <div className="flash ok reset-flash">
+            <b>Reset link for @{resetFor}</b>
+            <span>Send this to them privately. It works once and expires in 48 hours.</span>
+            <code>{resetLink}</code>
+            <CopyButton text={resetLink} label="Copy link" />
+          </div>
+        ) : null}
 
         {tab === "registrations" ? <Registrations regs={regs} k={k} base={base} filter={filter} nextId={stats.next_id} /> : null}
         {tab === "pullers" ? <Pullers pullers={pullers} accts={accts} results={results} k={k} nextId={stats.next_id} /> : null}
@@ -1181,6 +1192,12 @@ function Coins({
                 <input name="amount" type="number" placeholder="+50 or -20" style={{ width: 120 }} />
                 <input name="reason" type="text" placeholder="Reason (shown to them)" />
                 <button className="btn btn-sm">Adjust coins</button>
+              </form>
+              <form action={makeResetLink} className="btn-row" style={{ marginTop: 10 }}>
+                <input type="hidden" name="key" value={k} />
+                <input type="hidden" name="account_id" value={a.id} />
+                <button className="btn btn-sm">Make password reset link</button>
+                <span className="muted" style={{ fontSize: 13 }}>They choose their own password.</span>
               </form>
               <form action={resetAccountPassword} className="btn-row" style={{ marginTop: 10 }}>
                 <input type="hidden" name="key" value={k} />
