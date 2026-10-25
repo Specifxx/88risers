@@ -339,7 +339,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v27";
+const MIGRATION_MARKER = "founders_v28";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [
@@ -502,6 +502,20 @@ async function migrate(db: Db) {
       if (g) {
         await tx.query(`INSERT INTO pinrun_wallet (account_id, l2) VALUES ($1, true) ON CONFLICT (account_id) DO UPDATE SET l2 = true`, [g.id]);
         await tx.query(`INSERT INTO meta (key, value) VALUES ('l2_unlock_george', now()::text)`);
+      }
+    }
+    // George asked for every Pin Run lion on his account. Once only (coins and equipped lion untouched).
+    const [lionsDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'all_lions_george'`);
+    if (!lionsDone) {
+      const [g] = await tx.query<{ id: number }>(`SELECT id FROM accounts WHERE handle = 'georgelu721'`);
+      if (g) {
+        const all = ["stone", "sakura", "jade", "wave", "crystal", "flame", "thunder", "moon", "eclipse"];
+        await tx.query(
+          `INSERT INTO pinrun_wallet (account_id, owned) VALUES ($1, $2::text[])
+           ON CONFLICT (account_id) DO UPDATE SET owned = (SELECT array_agg(DISTINCT x) FROM unnest(pinrun_wallet.owned || $2::text[]) x), updated_at = now()`,
+          [g.id, all],
+        );
+        await tx.query(`INSERT INTO meta (key, value) VALUES ('all_lions_george', now()::text)`);
       }
     }
     // The November supermatch is left arm. Once only, so a later admin edit isn't overwritten.
