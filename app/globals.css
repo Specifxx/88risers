@@ -7852,3 +7852,152 @@ b.gold {
   word-break: break-all;
   user-select: all;
 }
+
+/* ─────────── Pin Run: level select ─────────── */
+.lv-pick {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: min(560px, 100%);
+}
+.lv-card {
+  position: relative;
+  display: grid;
+  align-content: end;
+  justify-items: start;
+  gap: 2px;
+  aspect-ratio: 16 / 10;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 2px solid rgba(213, 182, 122, 0.25);
+  background: #0e0c0b center / cover no-repeat;
+  color: var(--bone);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    border-color 0.2s,
+    transform 0.2s var(--ease),
+    box-shadow 0.2s;
+}
+.lv-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.82));
+}
+.lv-card:hover {
+  transform: translateY(-2px);
+}
+.lv-card.on {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold), 0 0 24px rgba(242, 193, 78, 0.35);
+}
+.lv-card.locked {
+  cursor: not-allowed;
+  filter: grayscale(0.75) brightness(0.65);
+}
+.lv-card .lv-n {
+  font: 700 10px/1 var(--f-tech);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.lv-card b {
+  font: 900 20px/1 var(--f-display);
+  text-transform: uppercase;
+}
+.lv-card small {
+  font: 700 10px/1.2 var(--f-tech);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-hi);
+}
+.lv-lock {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-style: normal;
+  font-size: 15px;
+}
+.lv-soon {
+  cursor: default;
+  background: repeating-linear-gradient(135deg, #141110 0 10px, #0d0b0a 10px 20px);
+  opacity: 0.7;
+}
+.pinrun-unlock {
+  margin: 0;
+  font: 700 12px/1.3 var(--f-tech);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--red-hi);
+}
+.temple-ability {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(213, 182, 122, 0.08);
+  font-size: 12px !important;
+  color: var(--muted);
+}
+.temple-ability b {
+  display: block;
+  color: var(--gold-hi);
+  font: 700 11px/1.3 var(--f-tech);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.board-tabs {
+  display: flex;
+  gap: 6px;
+  margin: -4px 0 12px;
+}
+.board-tabs button {
+  flex: 1;
+  padding: 8px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font: 700 11px/1.2 var(--f-tech);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.board-tabs button[aria-selected="true"] {
+  border-color: var(--gold);
+  color: var(--gold-hi);
+  background: rgba(213, 182, 122, 0.08);
+}
+@media (max-width: 560px) {
+  .lv-pick {
+    gap: 6px;
+    width: 100%;
+  }
+  .lv-card {
+    aspect-ratio: auto;
+    min-height: 44px;
+    padding: 6px 8px;
+    border-radius: 10px;
+  }
+  .lv-card b {
+    font-size: 13px;
+  }
+  .lv-card small,
+  .lv-card .lv-n {
+    display: none;
+  }
+  .lv-lock {
+    top: 4px;
+    right: 5px;
+    font-size: 11px;
+  }
+  .pinrun-levels-btn {
+    padding: 0 10px !important;
+  }
+  .pinrun-overlay .pinrun-best {
+    display: none;
+  }
+}
