@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { buySkin, equipSkin, submitScore } from "@/app/(site)/account/actions";
 import { lionSays } from "@/lib/lion";
-import { ANIM, DAY_COIN_CAP, DEFAULT_SKIN, SKINS, type Wallet, skinById } from "@/lib/pinrun";
+import { ANIM, DEFAULT_SKIN, SKINS, type Wallet, skinById } from "@/lib/pinrun";
 import { drawAura, drawFx, newFx, stepFx } from "@/lib/pinrun-fx";
 
 /**
@@ -260,8 +260,7 @@ export function PinRun({ loggedIn, best: initialBest, wallet: initialWallet }: {
             if (r.best !== null) setBest(r.best);
             if (r.wallet) setWallet(r.wallet);
             const banked = r.saved && r.wallet ? `+${r.saved} Temple coins banked (${r.wallet.coins.toLocaleString("en-AU")} total).` : "";
-            const full = r.dayFull ? `Daily Temple coin limit reached (${DAY_COIN_CAP.toLocaleString("en-AU")}). Resets at midnight.` : "";
-            setSaveMsg([r.message, banked, full].filter(Boolean).join(" "));
+            setSaveMsg([r.message, banked].filter(Boolean).join(" "));
             if (r.coins) lionSays("cheer", `+${r.coins} coins for today's run!`);
           })
           .catch(() => setSaveMsg("Couldn't save that run. Check your connection and play again."));

@@ -94,9 +94,8 @@ export const SKINS: Skin[] = [
 export const DEFAULT_SKIN = "stone";
 export const skinById = (id: string) => SKINS.find((s) => s.id === id) ?? null;
 
-/** Most coins one run can bank, and per Sydney day: generous, but stops faked scores. */
+/** Most coins one run can bank: generous, but stops faked scores. */
 export const RUN_COIN_CAP = 200;
-export const DAY_COIN_CAP = 1500;
 /** Real runs earn roughly one coin per 15 points; anything far above that isn't a real run. */
 export const plausibleCoins = (score: number) => 10 + Math.floor(score / 8);
 
