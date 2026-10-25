@@ -120,23 +120,22 @@ export const LEVELS = [
 
 /** Lion abilities: active on Level 2. */
 export const ABILITIES: Record<string, { name: string; text: string }> = {
-  stone: { name: "Steady Grip", text: "Grip-fight gold zone is 25% wider." },
+  stone: { name: "Steady Grip", text: "Grip-fight gold zone is 15% wider." },
   sakura: { name: "Petal Float", text: "Hold to glide: you fall much slower." },
-  jade: { name: "Lucky Jade", text: "Half your coins come in pairs." },
+  jade: { name: "Lucky Jade", text: "Half your coins come in pairs, and coins score 25% more." },
   wave: { name: "Wave Rider", text: "The first fall each run washes you back up, no heart lost." },
-  crystal: { name: "Frost Grip", text: "Grip-fight needle moves 25% slower." },
+  crystal: { name: "Frost Grip", text: "Grip needle 30% slower, and your first slipped grip on a rival costs no heart." },
   flame: { name: "Blaze Pin", text: "Pins score 50% more and launch you further." },
   thunder: { name: "Storm Jump", text: "Triple jump." },
-  moon: { name: "Moon Shield", text: "Start every run with a shield." },
-  eclipse: { name: "Eclipse Heart", text: "Start with 4 hearts." },
+  moon: { name: "Moon Shield", text: "Start with a shield that comes back 30 seconds after it breaks." },
+  eclipse: { name: "Eclipse Heart", text: "Start with 4 hearts, and every boss you pin gives a heart back." },
 };
 
-export type PowerKind = "shield" | "magnet" | "x2" | "slow";
+export type PowerKind = "shield" | "magnet" | "x2";
 export const POWERS: Record<PowerKind, { name: string; secs: number; color: string; icon: string }> = {
   shield: { name: "Shield", secs: 0, color: "#7fc8ff", icon: "⛨" },
   magnet: { name: "Magnet", secs: 8, color: "#ff5a5f", icon: "U" },
   x2: { name: "Coins x2", secs: 8, color: "#f2c14e", icon: "x2" },
-  slow: { name: "Slow time", secs: 5, color: "#9fe0ff", icon: "⧗" },
 };
 
 /** A real Riser who shows up as a Level 2 boss. */

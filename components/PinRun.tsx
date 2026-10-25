@@ -79,7 +79,11 @@ interface World {
   maxHearts: number;
   shield: boolean;
   /** Seconds left on timed power-ups. */
-  pw: { magnet: number; x2: number; slow: number };
+  pw: { magnet: number; x2: number };
+  /** Moonlight: seconds until a broken shield comes back. */
+  shieldBack: number;
+  /** Ice Crystal: the one free slipped grip has been used. */
+  frostUsed: boolean;
   powers: Power[];
   nextBoss: number;
   bossIdx: number;
@@ -103,7 +107,9 @@ function newWorld(level: 1 | 2 = 1, skin = DEFAULT_SKIN): World {
     skin,
     maxHearts: hearts,
     shield: l2 && skin === "moon",
-    pw: { magnet: 0, x2: 0, slow: 0 },
+    pw: { magnet: 0, x2: 0 },
+    shieldBack: 0,
+    frostUsed: false,
     powers: [],
     nextBoss: 6000,
     bossIdx: Math.floor(Math.random() * 1000),
@@ -175,7 +181,7 @@ function extend(w: World, bosses: Boss[] = []) {
         p.rival = { x: x + width * rand(0.45, 0.7), state: "idle", vy: 0, y: 0, vx: 0, spin: 0 };
       }
       if (n > 3 && !boss && Math.random() < 0.16) {
-        const kinds: PowerKind[] = ["shield", "magnet", "x2", "slow"];
+        const kinds: PowerKind[] = ["shield", "magnet", "x2"];
         w.powers.push({ x: x + width * 0.4, y: baseY - 105 - (p.move?.amp ?? 0), kind: kinds[Math.floor(Math.random() * kinds.length)], got: false });
       }
     }
@@ -393,6 +399,7 @@ export function PinRun({
       w.shake = 0.3;
       if (w.shield) {
         w.shield = false;
+        if (w.level === 2 && w.skin === "moon") w.shieldBack = 30;
         w.pops.push({ x: w.dist + PX, y: w.y - 80, t: "SHIELD!", life: 1, c: "#7fc8ff" });
         beep(600, 0.15, "triangle", 0.06);
         return false;
@@ -409,9 +416,8 @@ export function PinRun({
       const l2 = w.level === 2;
       let width = boss ? 0.2 - diff * 0.05 - (d.rival.boss!.max - d.rival.boss!.hp) * 0.02 : 0.24 - diff * 0.12;
       let speed = boss ? 5 + diff * 3 + (d.rival.boss!.max - d.rival.boss!.hp) * 0.7 : 4.2 + diff * 3.5;
-      if (l2 && w.skin === "stone") width *= 1.25;
-      if (l2 && w.skin === "crystal") speed *= 0.75;
-      if (w.pw.slow > 0) speed *= 0.6;
+      if (l2 && w.skin === "stone") width *= 1.15;
+      if (l2 && w.skin === "crystal") speed *= 0.7;
       d.t = 0;
       d.zone = rand(0.25, 0.75);
       d.width = width;
@@ -457,6 +463,10 @@ export function PinRun({
                 w.coins += k;
                 w.score += 10 * k;
                 w.pops.push({ x: w.dist + PX + 40, y: w.y - 110, t: `+${k} coins`, life: 1.6, c: "#d5b67a" });
+                if (l2 && w.skin === "eclipse" && w.hearts < w.maxHearts) {
+                  w.hearts++;
+                  w.pops.push({ x: w.dist + PX - 40, y: w.y - 140, t: "+1 HEART", life: 1.6, c: "#ff6a6f" });
+                }
               }
               w.combo = Math.min(8, w.combo + 1);
               d.rival.state = "pinned";
@@ -474,7 +484,14 @@ export function PinRun({
                 w.parts.push({ x: d.rival.x, y: d.plat.y - 30, vx: rand(-320, 320), vy: rand(-420, 60), life: rand(0.4, 0.9), c: i % 3 ? "#d5b67a" : "#ff4a4f", s: rand(2, 5) });
               w.duel = null;
             } else {
-              const dead = hurt(w, boss ? "SLAMMED!" : "SLIPPED!");
+              let dead = false;
+              if (!boss && l2 && w.skin === "crystal" && !w.frostUsed) {
+                // Frost Grip: the first slipped grip on an ordinary rival is free
+                w.frostUsed = true;
+                w.combo = 1;
+                w.pops.push({ x: w.dist + PX, y: w.y - 80, t: "FROST GRIP!", life: 1, c: "#9fe0ff" });
+                beep(600, 0.15, "triangle", 0.06);
+              } else dead = hurt(w, boss ? "SLAMMED!" : "SLIPPED!");
               if (dead) return endGame();
               if (boss) {
                 // a boss doesn't let go: next round
@@ -496,9 +513,13 @@ export function PinRun({
       // power-up timers
       w.pw.magnet = Math.max(0, w.pw.magnet - dt);
       w.pw.x2 = Math.max(0, w.pw.x2 - dt);
-      w.pw.slow = Math.max(0, w.pw.slow - dt);
+      if (w.shieldBack > 0 && (w.shieldBack -= dt) <= 0) {
+        w.shieldBack = 0;
+        w.shield = true;
+        w.pops.push({ x: w.dist + PX, y: w.y - 90, t: "MOON SHIELD", life: 1.1, c: "#b994ff" });
+      }
 
-      const speed = (w.speed + Math.min(330, w.dist / 90)) * (w.boost > 0 ? 1.35 : 1) * (w.pw.slow > 0 ? 0.65 : 1);
+      const speed = (w.speed + Math.min(330, w.dist / 90)) * (w.boost > 0 ? 1.35 : 1);
       w.boost = Math.max(0, w.boost - dt);
       w.invuln = Math.max(0, w.invuln - dt);
       w.dist += speed * dt;
@@ -591,7 +612,7 @@ export function PinRun({
           let k = w.pw.x2 > 0 ? 2 : 1;
           if (l2 && w.skin === "jade" && Math.random() < 0.5) k++;
           w.coins += k;
-          w.score += 10 * w.combo;
+          w.score += 10 * w.combo * (l2 && w.skin === "jade" ? 1.25 : 1);
           beep(1180, 0.05, "square", 0.035);
         }
       }
@@ -1183,7 +1204,7 @@ export function PinRun({
       let ix = 24;
       const active: [string, string, number][] = [];
       if (w.shield) active.push([POWERS.shield.icon, POWERS.shield.color, 1]);
-      for (const k of ["magnet", "x2", "slow"] as const) if (w.pw[k] > 0) active.push([POWERS[k].icon, POWERS[k].color, w.pw[k] / POWERS[k].secs]);
+      for (const k of ["magnet", "x2"] as const) if (w.pw[k] > 0) active.push([POWERS[k].icon, POWERS[k].color, w.pw[k] / POWERS[k].secs]);
       for (const [icon, col, f] of active) {
         ctx.fillStyle = "rgba(10,9,8,.7)";
         ctx.beginPath();
