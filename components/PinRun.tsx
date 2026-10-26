@@ -487,7 +487,7 @@ export function PinRun({
       const w = world.current;
       for (const id of go) {
         if (id === "revive") w.revives = 1;
-        else if (id === "head") w.score += 2000;
+        else if (id === "magnet") w.pw.magnet = 20;
         else if (id === "heart") {
           w.maxHearts++;
           w.hearts++;
@@ -2220,7 +2220,7 @@ export function PinRun({
       let ix = 24;
       const active: [string, string, number][] = [];
       if (w.shield) active.push([POWERS.shield.icon, POWERS.shield.color, 1]);
-      for (const k of ["magnet", "x2"] as const) if (w.pw[k] > 0) active.push([POWERS[k].icon, POWERS[k].color, w.pw[k] / POWERS[k].secs]);
+      for (const k of ["magnet", "x2"] as const) if (w.pw[k] > 0) active.push([POWERS[k].icon, POWERS[k].color, Math.min(1, w.pw[k] / POWERS[k].secs)]);
       for (const [icon, col, f] of active) {
         ctx.fillStyle = "rgba(10,9,8,.7)";
         ctx.beginPath();

@@ -118,10 +118,10 @@ export interface Wallet {
 
 /* ─────────── Coin sinks: run boosts, ability upgrades, golden lions ─────────── */
 
-export type BoostId = "revive" | "head" | "heart" | "shield" | "hype";
+export type BoostId = "revive" | "magnet" | "heart" | "shield" | "hype";
 export const BOOSTS: { id: BoostId; name: string; price: number; icon: string; text: string; l3?: boolean }[] = [
   { id: "revive", name: "Second Wind", price: 300, icon: "♥︎", text: "Out of hearts? Get back up once with 1 heart." },
-  { id: "head", name: "Head Start", price: 150, icon: "»", text: "Start the run 2,000 points up." },
+  { id: "magnet", name: "Coin Magnet", price: 150, icon: "U", text: "Pulls coins in for the first 20 seconds of the run." },
   { id: "heart", name: "Extra Heart", price: 250, icon: "+", text: "Start with one more heart." },
   { id: "shield", name: "Starting Shield", price: 250, icon: "⛨", text: "Start with a shield that soaks one hit." },
   { id: "hype", name: "Hype Drink", price: 200, icon: "🔥", text: "Level 3 only: start with full hype, ready for Beast Mode.", l3: true },

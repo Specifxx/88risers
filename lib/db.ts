@@ -360,7 +360,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v30";
+const MIGRATION_MARKER = "founders_v31";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [
@@ -538,6 +538,15 @@ async function migrate(db: Db) {
         );
         await tx.query(`INSERT INTO meta (key, value) VALUES ('all_lions_george', now()::text)`);
       }
+    }
+    // Head Start boosts became Coin Magnets: carry stock over. Once only.
+    const [magDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'boost_head_to_magnet'`);
+    if (!magDone) {
+      await tx.query(
+        `UPDATE pinrun_wallet SET boosts = (boosts - 'head') || jsonb_build_object('magnet', coalesce((boosts->>'head')::int, 0) + coalesce((boosts->>'magnet')::int, 0))
+         WHERE boosts ? 'head'`,
+      );
+      await tx.query(`INSERT INTO meta (key, value) VALUES ('boost_head_to_magnet', now()::text)`);
     }
     // The November supermatch is left arm. Once only, so a later admin edit isn't overwritten.
     const [armDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'sm_arm_v1'`);
