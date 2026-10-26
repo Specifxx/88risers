@@ -8345,3 +8345,10 @@ b.gold {
     height: 26px;
   }
 }
+/* the start screen (with the level picker) a touch tighter so it fits without clipping */
+.pinrun-overlay:has(.lv-pick) {
+  gap: 9px;
+}
+.pinrun-overlay:has(.lv-pick) ul {
+  gap: 3px;
+}

@@ -2324,19 +2324,12 @@ export function PinRun({
           </div>
           {level === 3 ? (
             <p className="pinrun-best">
-              <b>Boss Chase:</b> a random Riser chases you and throws their moves at the level. Pins push them back; drain their stamina, then finish the
-              grip. Full hype? Tap <b>BEAST</b> for Beast Mode.
+              <b>Boss chase:</b> a Riser hunts you. Pins push them back. Tap <b>BEAST</b> when hype is full.
             </p>
           ) : null}
-          {level >= 2 && ABILITIES[skin] ? (
+          {level === 2 && ABILITIES[skin] ? (
             <p className="pinrun-best">
               {skinById(skin)?.name}: <b>{ABILITIES[skin].name}</b> · {ABILITIES[skin].text}
-              {level === 3 && ABILITIES3[skin] ? (
-                <>
-                  {" "}
-                  + <b>{ABILITIES3[skin].name}</b> · {ABILITIES3[skin].text}
-                </>
-              ) : null}
             </p>
           ) : null}
         </div>
