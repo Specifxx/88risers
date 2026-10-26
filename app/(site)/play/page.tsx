@@ -7,7 +7,7 @@ import { currentAccount } from "@/lib/auth";
 import { DAILY_GAME_COINS } from "@/lib/coins";
 import { getDb } from "@/lib/db";
 import { getWallet } from "@/lib/pinrun-db";
-import { BOSS_ART, type Boss, LEVEL2_UNLOCK, LEVEL3_UNLOCK } from "@/lib/pinrun";
+import { BOSS_ART, type Boss } from "@/lib/pinrun";
 import { KatanaDraw } from "@/components/KatanaDraw";
 import { KATANA_ENTRY } from "@/lib/katana";
 import { PinRunBoards } from "@/components/PinRunBoards";
@@ -67,7 +67,7 @@ export default async function PlayPage() {
           </h1>
           <p className="lede">
             One button. Jump the tables, win the grip fights, don&apos;t fall in the chalk pit. Play any minigame here once a day and logged-in
-            Risers earn +{DAILY_GAME_COINS} coins. Every coin you grab in Pin Run is banked for new lions in the Lion Temple. Score 5,000 to unlock Level 2: Crimson Peak, with moving ledges, power-ups, lion abilities and real Risers as bosses. Score 5,000 on Level 2 to reach Level 3: The Arena, where a random Riser chases you and throws their signature moves at the level. Prefer a straight-up arm wrestle?{" "}
+            Risers earn +{DAILY_GAME_COINS} coins. Every coin you grab in Pin Run is banked for new lions in the Lion Temple. All three levels are open: Level 2, Crimson Peak, has moving ledges, power-ups, lion abilities and real Risers as bosses; Level 3, The Arena, has a random Riser chasing you and throwing their signature moves at the level. Prefer a straight-up arm wrestle?{" "}
             <a href="#race-to-the-pin">Play Race to the Pin</a>.
           </p>
         </div>
@@ -79,15 +79,8 @@ export default async function PlayPage() {
             <PinRunBoards
               boards={[
                 { label: "Lv.1 Lion Temple", rows: top, empty: "No scores yet. Claim the crown." },
-                { label: "Lv.2 Crimson Peak", rows: top2, empty: `Locked until someone scores ${LEVEL2_UNLOCK.toLocaleString("en-AU")} on Level 1.` },
-                { label: "Lv.3 The Arena", rows: top3, empty: `Locked until someone scores ${LEVEL3_UNLOCK.toLocaleString("en-AU")} on Level 2.` },
-                {
-                  label: "Richest",
-                  rows: richest,
-                  empty: "Nobody's banked any Temple coins yet.",
-                  note: "Temple coins in the bank right now: grabbed in Pin Run, spent on lions and Katana Draw.",
-                  unit: "coins",
-                },
+                { label: "Lv.2 Crimson Peak", rows: top2, empty: "No scores yet. Claim the crown." },
+                { label: "Lv.3 The Arena", rows: top3, empty: "No scores yet. Claim the crown." },
               ]}
             />
             {!me ? (
@@ -130,6 +123,25 @@ export default async function PlayPage() {
                   </li>
                 ))}
                 {katanaTop.length === 0 ? <li className="muted">No duels won yet. First blood is yours.</li> : null}
+              </ol>
+              <h2 className="panel-title" style={{ marginTop: 22 }}>
+                Richest
+              </h2>
+              <p className="board-note">Temple coins in the bank right now: grabbed in Pin Run, spent on lions and Katana Draw entries.</p>
+              <ol className="coin-leaders">
+                {richest.map((t, i) => (
+                  <li key={t.handle}>
+                    <span className="cl-rank">{i === 0 ? "♛" : i + 1}</span>
+                    <Link className="cl-name" href={`/members/${t.handle}`}>
+                      {t.display_name}
+                    </Link>
+                    <b>
+                      {t.best.toLocaleString("en-AU")}
+                      <small> coins</small>
+                    </b>
+                  </li>
+                ))}
+                {richest.length === 0 ? <li className="muted">Nobody&apos;s banked any Temple coins yet.</li> : null}
               </ol>
             </div>
           </div>

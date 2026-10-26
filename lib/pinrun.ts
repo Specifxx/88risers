@@ -104,18 +104,12 @@ export interface Wallet {
   coins: number;
   skin: string;
   owned: string[];
-  /** Level 2 unlocked by an organiser (as well as by scoring 5,000). */
+  /** (Old per-account level unlocks; every level is open now.) */
   l2?: boolean;
-  /** Level 3 unlocked by an organiser (as well as by scoring 5,000 on Level 2). */
   l3?: boolean;
 }
 
 /* ─────────── Levels ─────────── */
-
-/** Score on Level 1 that unlocks Level 2. */
-export const LEVEL2_UNLOCK = 5000;
-/** Score on Level 2 that unlocks Level 3. */
-export const LEVEL3_UNLOCK = 5000;
 
 export const LEVELS = [
   { n: 1, name: "Lion Temple", blurb: "The original run." },

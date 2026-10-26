@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { buySkin, equipSkin, submitScore } from "@/app/(site)/account/actions";
 import { lionSays } from "@/lib/lion";
-import { ABILITIES, ABILITIES3, ANIM, type Boss, DEFAULT_SKIN, LEVEL2_UNLOCK, LEVEL3_UNLOCK, LEVELS, MOVES, type MoveKind, POWERS, type PowerKind, SKINS, type Wallet, chainMove, moveOf, skinById } from "@/lib/pinrun";
+import { ABILITIES, ABILITIES3, ANIM, type Boss, DEFAULT_SKIN, LEVELS, MOVES, type MoveKind, POWERS, type PowerKind, SKINS, type Wallet, chainMove, moveOf, skinById } from "@/lib/pinrun";
 import { drawAura, drawFx, newFx, stepFx } from "@/lib/pinrun-fx";
 import { RADIO } from "@/lib/radio";
 
@@ -159,7 +159,6 @@ interface World {
   nextBoss: number;
   bossIdx: number;
   waveUsed: boolean;
-  unlockShown: boolean;
   /** A message pinned to the top of the screen (ability, unlocks). */
   banner: null | { t: string; sub: string; life: number; c: string };
   runFrame: number;
@@ -206,7 +205,6 @@ function newWorld(level: Lv = 1, skin = DEFAULT_SKIN): World {
     nextBoss: level === 3 ? 3200 : 6000,
     bossIdx: Math.floor(Math.random() * 1000),
     waveUsed: false,
-    unlockShown: false,
     banner: null,
     t: 0,
     dist: 0,
@@ -351,12 +349,6 @@ export function PinRun({
   const levelRef = useRef<Lv>(1);
   levelRef.current = level;
   const [wallet, setWallet] = useState<Wallet | null>(initialWallet);
-  const unlocked = (best ?? 0) >= LEVEL2_UNLOCK || !!wallet?.l2;
-  const unlockedRef = useRef(unlocked);
-  unlockedRef.current = unlocked;
-  const unlocked3 = (best2 ?? 0) >= LEVEL3_UNLOCK || !!wallet?.l3;
-  const unlocked3Ref = useRef(unlocked3);
-  unlocked3Ref.current = unlocked3;
   const bossImgs = useRef<Record<number, HTMLImageElement>>({});
   /** The on-screen Beast button (Level 3): hype filled (0-10) / ready / active. */
   const [beastUi, setBeastUi] = useState<{ on: boolean; fill: number; ready: boolean; active: boolean }>({ on: false, fill: 0, ready: false, active: false });
@@ -1048,16 +1040,6 @@ export function PinRun({
       w.score += speed * dt * 0.05;
       w.runFrame += dt * speed * 0.03;
       extend(w, bossesRef.current);
-      if (w.level === 1 && !w.unlockShown && w.score >= LEVEL2_UNLOCK && !unlockedRef.current) {
-        w.unlockShown = true;
-        w.banner = { t: "LEVEL 2 UNLOCKED!", sub: "Crimson Peak is waiting on the start screen.", life: 3, c: "#ff4a4f" };
-        beep(990, 0.2, "square", 0.06);
-      }
-      if (w.level === 2 && !w.unlockShown && w.score >= LEVEL3_UNLOCK && !unlocked3Ref.current) {
-        w.unlockShown = true;
-        w.banner = { t: "LEVEL 3 UNLOCKED!", sub: "The Arena is waiting on the start screen.", life: 3, c: "#f2c14e" };
-        beep(990, 0.2, "square", 0.06);
-      }
 
       // moving platforms
       // (the ref's whistle freezes them where they are)
@@ -2332,7 +2314,7 @@ export function PinRun({
             </li>
             <li>Chain pins for a combo. Don&apos;t fall in the chalk pit.</li>
           </ul>
-          <LevelPicker level={level} onPick={setLevel} unlocked={unlocked} unlocked3={unlocked3} best={best} best2={best2} best3={best3} />
+          <LevelPicker level={level} onPick={setLevel} best={best} best2={best2} best3={best3} />
           <div className="pinrun-btns">
             <button type="button" className="btn btn-primary">
               Start{level > 1 ? ` Lv.${level}` : ""}
@@ -2375,12 +2357,6 @@ export function PinRun({
               Levels
             </button>
           </div>
-          {final.level === 1 && unlocked && (best ?? 0) >= LEVEL2_UNLOCK && final.score >= LEVEL2_UNLOCK ? (
-            <p className="pinrun-unlock">Level 2 unlocked: Crimson Peak. Tap Levels.</p>
-          ) : null}
-          {final.level === 2 && unlocked3 && (best2 ?? 0) >= LEVEL3_UNLOCK && final.score >= LEVEL3_UNLOCK ? (
-            <p className="pinrun-unlock">Level 3 unlocked: The Arena. Tap Levels.</p>
-          ) : null}
           <p className="pinrun-hint">or tap / press Space</p>
           {saveMsg ? <p className="pinrun-save">{saveMsg}</p> : null}
           {!loggedIn ? (
@@ -2427,61 +2403,33 @@ export function PinRun({
   );
 }
 
-/** Level select: Lion Temple, Crimson Peak (5,000 on Level 1) and The Arena (5,000 on Level 2). */
-function LevelPicker({
-  level,
-  onPick,
-  unlocked,
-  unlocked3,
-  best,
-  best2,
-  best3,
-}: {
-  level: Lv;
-  onPick: (l: Lv) => void;
-  unlocked: boolean;
-  unlocked3: boolean;
-  best: number | null;
-  best2: number | null;
-  best3: number | null;
-}) {
+/** Level select: Lion Temple, Crimson Peak and The Arena (all open to everyone). */
+function LevelPicker({ level, onPick, best, best2, best3 }: { level: Lv; onPick: (l: Lv) => void; best: number | null; best2: number | null; best3: number | null }) {
   const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
-  const card = (n: Lv, img: string, name: string, sub: string, locked = false) => (
+  const card = (n: Lv, img: string, name: string, sub: string) => (
     <button
       type="button"
-      className={`lv-card${level === n ? " on" : ""}${locked ? " locked" : ""}`}
+      className={`lv-card${level === n ? " on" : ""}`}
       style={{ backgroundImage: `url(${img})` }}
       onPointerDown={stop}
       onClick={(e) => {
         stop(e);
-        if (!locked) onPick(n);
+        onPick(n);
       }}
       aria-pressed={level === n}
-      aria-label={`Level ${n}: ${name}${locked ? " (locked)" : ""}`}
+      aria-label={`Level ${n}: ${name}`}
     >
       <span className="lv-n">Lv.{n}</span>
       <b>{name}</b>
       <small>{sub}</small>
-      {locked ? <i className="lv-lock" aria-hidden>🔒</i> : null}
     </button>
   );
+  const sub = (b: number | null, fresh: string) => (b ? `Best ${b.toLocaleString("en-AU")}` : fresh);
   return (
     <div className="lv-pick">
-      {card(1, "/pinrun/l1-card.webp", "Lion Temple", best ? `Best ${best.toLocaleString("en-AU")}` : "Start here")}
-      {card(
-        2,
-        "/pinrun/l2-card.webp",
-        "Crimson Peak",
-        unlocked ? (best2 ? `Best ${best2.toLocaleString("en-AU")}` : "New!") : `Reach ${LEVEL2_UNLOCK.toLocaleString("en-AU")}`,
-        !unlocked,
-      )}
-      {card(
-        3,
-        "/pinrun/l3-card.webp",
-        "The Arena",
-        unlocked3 ? (best3 ? `Best ${best3.toLocaleString("en-AU")}` : "New!") : `${LEVEL3_UNLOCK.toLocaleString("en-AU")} on Lv.2`,
-        !unlocked3,
-      )}
+      {card(1, "/pinrun/l1-card.webp", "Lion Temple", sub(best, "Start here"))}
+      {card(2, "/pinrun/l2-card.webp", "Crimson Peak", sub(best2, "Harder"))}
+      {card(3, "/pinrun/l3-card.webp", "The Arena", sub(best3, "Boss chase"))}
     </div>
   );
 }

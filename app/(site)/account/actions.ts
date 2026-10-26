@@ -7,7 +7,7 @@ import { DAILY_GAME_COINS, MAX_STAKE, WELCOME_COINS, balanceOf, grant, isRepeata
 import { RTP_GAME, RTP_LEVELS, RTP_MAX_SCORE, isRtpLevel } from "@/lib/arcade";
 import { CHALK, recordCheckin, sydneyToday } from "@/lib/chalk";
 import { type Db, getDb } from "@/lib/db";
-import { LEVEL2_UNLOCK, LEVEL3_UNLOCK, type Wallet, skinById } from "@/lib/pinrun";
+import { type Wallet, skinById } from "@/lib/pinrun";
 import { KATANA_ENTRY, KATANA_PRIZES } from "@/lib/katana";
 import { bankRunCoins, getWallet } from "@/lib/pinrun-db";
 import { fmtOdds, payoutAt, quoteOdds } from "@/lib/odds";
@@ -303,16 +303,7 @@ export async function submitScore(
   if (!Number.isFinite(n) || n < 0 || n > 2_000_000) return { best: null, coins: 0, message: "Score not saved.", saved: 0, wallet: null };
   const db = await getDb();
   if (level === 2 || level === 3) {
-    // Levels 2 and 3 have their own leaderboards, and only count once the level before unlocks them.
-    const [u] = await db.query<{ best: number; best2: number; l2: boolean; l3: boolean }>(
-      `SELECT (SELECT best FROM game_scores WHERE account_id = $1) AS best,
-              (SELECT best FROM arcade_scores WHERE account_id = $1 AND game = 'pinrun' AND level = '2') AS best2,
-              coalesce((SELECT l2 FROM pinrun_wallet WHERE account_id = $1), false) AS l2,
-              coalesce((SELECT l3 FROM pinrun_wallet WHERE account_id = $1), false) AS l3`,
-      [me.id],
-    );
-    const open = level === 2 ? (u?.best ?? 0) >= LEVEL2_UNLOCK || !!u?.l2 : (u?.best2 ?? 0) >= LEVEL3_UNLOCK || !!u?.l3;
-    if (!open) return { best: null, coins: 0, message: `Level ${level} isn't unlocked yet.`, saved: 0, wallet: null };
+    // Levels 2 and 3 have their own leaderboards (open to everyone).
     const [row2] = await db.query<{ best: number }>(
       `INSERT INTO arcade_scores (account_id, game, level, best) VALUES ($1, 'pinrun', $3, $2)
        ON CONFLICT (account_id, game, level) DO UPDATE SET best = GREATEST(arcade_scores.best, EXCLUDED.best),
