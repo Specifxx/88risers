@@ -495,7 +495,7 @@ export function PinRun({
               w.chase.prox = Math.max(0, w.chase.prox - 0.3);
             }
           }
-    w.banner = { t: "BEAST MODE!", sub: "Rivals get pinned on contact. Bottles smash. Coins come to you.", life: 2.2, c: "#ff4a4f" };
+    w.banner = { t: "BEAST MODE! 2X POINTS", sub: "Rivals get pinned on contact. Bottles smash. Coins come to you.", life: 2.2, c: "#ff4a4f" };
     w.shake = Math.max(w.shake, 0.4);
     beep(220, 0.3, "sawtooth", 0.06);
     setTimeout(() => beep(440, 0.3, "sawtooth", 0.06), 120);
@@ -2178,7 +2178,7 @@ export function PinRun({
         ctx.textAlign = "center";
         ctx.font = "900 15px 'Saira Extra Condensed', Impact, sans-serif";
         ctx.fillStyle = w.beast > 0 ? "#fff1d6" : "#efe7d6";
-        ctx.fillText(w.beast > 0 ? "BEAST MODE" : w.beastReady ? (Math.floor(w.t * 4) % 2 ? "HYPE FULL" : "TAP BEAST TO UNLEASH") : w.hype >= 80 ? "HYPE · CROWD'S GOING WILD" : "HYPE", W / 2, 37);
+        ctx.fillText(w.beast > 0 ? "BEAST MODE · 2X POINTS" : w.beastReady ? (Math.floor(w.t * 4) % 2 ? "HYPE FULL" : "TAP BEAST TO UNLEASH") : w.hype >= 80 ? "HYPE · CROWD'S GOING WILD" : "HYPE", W / 2, 37);
         const c = w.chase;
         if (c) {
           // the boss's stamina (drained by pins)
@@ -2248,7 +2248,14 @@ export function PinRun({
     const loop = (now: number) => {
       const dt = Math.min(0.033, (now - lastT) / 1000);
       lastT = now;
-      if (phaseRef.current === "play" && !world.current.over) step(dt);
+      if (phaseRef.current === "play" && !world.current.over) {
+        // Beast Mode: every point earned this frame counts double
+        const w = world.current;
+        const beastOn = w.beast > 0;
+        const s0 = w.score;
+        step(dt);
+        if (beastOn && world.current === w && w.score > s0) w.score += w.score - s0;
+      }
       {
         const w = world.current;
         const moving = phaseRef.current === "play" && !w.over && !w.duel;
