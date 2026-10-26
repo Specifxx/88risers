@@ -668,6 +668,7 @@ export function PinRun({
       const move = bf ? (moveOf(id) === "chain" ? chainMove(bf.max - bf.hp) : moveOf(id)) : null;
       if (move === "press") width *= 1.3; // starts wide, then gets crushed
       if (move === "toproll" || move === "kings" || move === "hydraulic") width *= 1.1;
+      if (move === "hook") width *= 1.15;
       if (bf?.sm) speed *= 1.1; // supermatch: everything a notch faster
       d.two = !bf && !!d.rival.two && !(w.level === 3 && w.skin === "moon"); // One Hand
       d.lockA = null;
@@ -684,7 +685,7 @@ export function PinRun({
       d.move = move;
       d.z0 = d.zone;
       d.w0 = width;
-      d.flip = rand(0.5, 1);
+      d.flip = rand(0.8, 1.3);
       d.used = false;
       d.fx = move ? 0.4 : 0;
       if (move) beep(160, 0.25, "sawtooth", 0.05);
@@ -698,7 +699,7 @@ export function PinRun({
         d.flip -= dt;
         if (d.flip <= 0) {
           d.dir *= -1;
-          d.flip = rand(0.45, 1);
+          d.flip = rand(0.75, 1.3); // readable: a snap every second or so
           d.fx = 0.2;
           beep(240, 0.06, "square", 0.04);
         }
