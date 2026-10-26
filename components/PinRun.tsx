@@ -759,9 +759,8 @@ export function PinRun({
       } else if (kind === "hydraulic") {
         c.pump = MOVE_SECS;
         for (const p of w.plats) {
-          // gentle bobbing, and never the table you're standing on
-          if (!onScreen(p) || p.move || p === w.ground) continue;
-          p.move = { amp: 26, spd: 2.2, ph: rand(0, Math.PI * 2) };
+          if (!onScreen(p) || p.move) continue;
+          p.move = { amp: 45, spd: 3.2, ph: rand(0, Math.PI * 2) };
           p.pumped = true;
         }
       } else if (kind === "side") c.wind = MOVE_SECS;
