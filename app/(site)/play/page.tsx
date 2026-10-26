@@ -43,7 +43,8 @@ export default async function PlayPage() {
   ]);
   const raid = await getRaid();
   const raidTop = await raidBoard(raid.id);
-  const bossList = bosses.map((b) => ({ ...b, art: BOSS_ART.has(b.id) ? `/pinrun/bosses/${b.id}.webp` : null }));
+  // Bosses need a face: cartoon art or a photo (Risers without either sit out until they have one).
+  const bossList = bosses.map((b) => ({ ...b, art: BOSS_ART.has(b.id) ? `/pinrun/bosses/${b.id}.webp` : null })).filter((b) => b.art || b.photo);
 
   return (
     <>
