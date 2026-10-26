@@ -51,6 +51,10 @@ export default async function PlayPage() {
      GROUP BY a.id, a.display_name, a.handle ORDER BY best DESC, clears DESC, min(k.started_at) ASC LIMIT 10`,
   );
   const raidTop = await raidBoard(raid.id);
+  const richest = await db.query<{ display_name: string; handle: string; best: number }>(
+    `SELECT a.display_name, a.handle, w.coins AS best FROM pinrun_wallet w JOIN accounts a ON a.id = w.account_id
+     WHERE w.coins > 0 ORDER BY w.coins DESC, w.updated_at ASC LIMIT 10`,
+  );
   // Bosses need a face: cartoon art or a photo (Risers without either sit out until they have one).
   const bossList = bosses.map((b) => ({ ...b, art: BOSS_ART.has(b.id) ? `/pinrun/bosses/${b.id}.webp` : null })).filter((b) => b.art || b.photo);
 
@@ -80,6 +84,13 @@ export default async function PlayPage() {
                 { label: "Lv.1 Lion Temple", rows: top, empty: "No scores yet. Claim the crown." },
                 { label: "Lv.2 Crimson Peak", rows: top2, empty: `Locked until someone scores ${LEVEL2_UNLOCK.toLocaleString("en-AU")} on Level 1.` },
                 { label: "Lv.3 The Arena", rows: top3, empty: `Locked until someone scores ${LEVEL3_UNLOCK.toLocaleString("en-AU")} on Level 2.` },
+                {
+                  label: "Richest",
+                  rows: richest,
+                  empty: "Nobody's banked any Temple coins yet.",
+                  note: "Temple coins in the bank right now: grabbed in Pin Run, spent on lions and Katana Draw.",
+                  unit: "coins",
+                },
                 {
                   label: "Club Raid",
                   rows: raidTop,
