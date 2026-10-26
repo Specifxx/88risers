@@ -138,7 +138,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
               </form>
             ) : null}
             <div style={{ marginTop: 20 }}>
-              <LionShowcase skin={profile?.lion ?? "stone"} gold={profile?.lionGold} title="Your lion" mine templeCoins={wallet.coins} />
+              <LionShowcase skin={profile?.lion ?? "stone"} title="Your lion" mine templeCoins={wallet.coins} />
             </div>
           </div>
 

@@ -291,10 +291,6 @@ CREATE TABLE IF NOT EXISTS pinrun_wallet (
 ALTER TABLE pinrun_wallet ADD COLUMN IF NOT EXISTS l2 boolean NOT NULL DEFAULT false;
 -- ...and Level 3 without the 5,000 on Level 2.
 ALTER TABLE pinrun_wallet ADD COLUMN IF NOT EXISTS l3 boolean NOT NULL DEFAULT false;
--- Coin sinks: run boosts in stock, ability upgrade tiers per lion, golden lions.
-ALTER TABLE pinrun_wallet ADD COLUMN IF NOT EXISTS boosts jsonb NOT NULL DEFAULT '{}'::jsonb;
-ALTER TABLE pinrun_wallet ADD COLUMN IF NOT EXISTS ups jsonb NOT NULL DEFAULT '{}'::jsonb;
-ALTER TABLE pinrun_wallet ADD COLUMN IF NOT EXISTS gold text[] NOT NULL DEFAULT '{}';
 
 CREATE TABLE IF NOT EXISTS pinrun_tx (
   id          serial PRIMARY KEY,
@@ -360,7 +356,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v31";
+const MIGRATION_MARKER = "founders_v32";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [
@@ -539,14 +535,30 @@ async function migrate(db: Db) {
         await tx.query(`INSERT INTO meta (key, value) VALUES ('all_lions_george', now()::text)`);
       }
     }
-    // Head Start boosts became Coin Magnets: carry stock over. Once only.
-    const [magDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'boost_head_to_magnet'`);
-    if (!magDone) {
-      await tx.query(
-        `UPDATE pinrun_wallet SET boosts = (boosts - 'head') || jsonb_build_object('magnet', coalesce((boosts->>'head')::int, 0) + coalesce((boosts->>'magnet')::int, 0))
-         WHERE boosts ? 'head'`,
+    // Boosts, lion upgrades and golden lions were removed: refund every Temple coin spent on them. Once only.
+    const [refundDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'refund_coin_sinks'`);
+    if (!refundDone) {
+      const spent = await tx.query<{ account_id: number; total: number }>(
+        `SELECT account_id, (-sum(amount))::int AS total FROM pinrun_tx
+         WHERE amount < 0 AND (reason LIKE 'Boost:%' OR reason LIKE 'Upgrade:%' OR reason LIKE 'Golden lion:%')
+         GROUP BY account_id HAVING sum(amount) < 0`,
       );
-      await tx.query(`INSERT INTO meta (key, value) VALUES ('boost_head_to_magnet', now()::text)`);
+      for (const r of spent) {
+        await tx.query(`UPDATE pinrun_wallet SET coins = coins + $2, updated_at = now() WHERE account_id = $1`, [r.account_id, r.total]);
+        await tx.query(`INSERT INTO pinrun_tx (account_id, amount, reason) VALUES ($1, $2, 'Refund: boosts, upgrades and golden lions removed')`, [
+          r.account_id,
+          r.total,
+        ]);
+      }
+      // (the columns stay, unused, if they exist)
+      await tx.query(
+        `DO $$ BEGIN
+           IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'pinrun_wallet' AND column_name = 'boosts') THEN
+             UPDATE pinrun_wallet SET boosts = '{}'::jsonb, ups = '{}'::jsonb, gold = '{}';
+           END IF;
+         END $$`,
+      );
+      await tx.query(`INSERT INTO meta (key, value) VALUES ('refund_coin_sinks', now()::text)`);
     }
     // The November supermatch is left arm. Once only, so a later admin edit isn't overwritten.
     const [armDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'sm_arm_v1'`);
