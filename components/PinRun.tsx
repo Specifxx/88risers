@@ -480,7 +480,9 @@ export function PinRun({
     world.current = newWorld(levelRef.current, skinRef.current, wal?.ups?.[skinRef.current] ?? 0);
     world.current.gold = !!wal?.gold?.includes(skinRef.current);
     // armed boosts (in stock) apply straight away; the server spends them in the background
-    const go = armedRef.current.filter((id) => (wal?.boosts?.[id] ?? 0) > 0 && (id !== "hype" || levelRef.current === 3));
+    // boosts are for Levels 2 and 3 only
+    const go =
+      levelRef.current === 1 ? [] : armedRef.current.filter((id) => (wal?.boosts?.[id] ?? 0) > 0 && (id !== "hype" || levelRef.current === 3));
     if (go.length) {
       const w = world.current;
       for (const id of go) {
@@ -492,7 +494,7 @@ export function PinRun({
         } else if (id === "shield") w.shield = true;
         else if (id === "hype") w.hype = 100;
       }
-      spendBoosts(go)
+      spendBoosts(go, levelRef.current)
         .then((r) => {
           if (r.wallet) setWallet(r.wallet);
         })
@@ -2406,7 +2408,7 @@ export function PinRun({
             </button>
             <TempleButton onOpen={() => setTemple(true)} coins={wallet?.coins ?? 0} loggedIn={loggedIn} />
           </div>
-          {loggedIn && BOOSTS.some((b) => (wallet?.boosts?.[b.id] ?? 0) > 0) ? (
+          {loggedIn && level >= 2 && BOOSTS.some((b) => (wallet?.boosts?.[b.id] ?? 0) > 0) ? (
             <div className="pinrun-boosts" onPointerDown={(e) => e.stopPropagation()}>
               <span>Boosts</span>
               {BOOSTS.filter((b) => (wallet?.boosts?.[b.id] ?? 0) > 0 && (!b.l3 || level === 3)).map((b) => {
@@ -2671,7 +2673,7 @@ function LionTemple({
         ) : null}
         {msg ? <p className={`temple-msg${msg.ok ? " ok" : ""}`}>{msg.text}</p> : null}
         <h3 className="temple-section">Run boosts</h3>
-        <p className="temple-sub">Stock up here, then switch them on before a run from the start screen. Each one is used up by the run.</p>
+        <p className="temple-sub">For Levels 2 and 3. Stock up here, then switch them on before a run from the start screen. Each one is used up by the run.</p>
         <div className="temple-boosts">
           {BOOSTS.map((b) => {
             const n = wallet?.boosts?.[b.id] ?? 0;

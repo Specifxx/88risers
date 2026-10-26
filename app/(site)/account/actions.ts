@@ -534,9 +534,9 @@ export async function buyGold(skinId: string): Buy {
 }
 
 /** Uses up the boosts picked for a run; returns the ones actually in stock (and spent). */
-export async function spendBoosts(ids: string[]): Promise<{ used: string[]; wallet: Wallet | null }> {
+export async function spendBoosts(ids: string[], level = 2): Promise<{ used: string[]; wallet: Wallet | null }> {
   const me = await currentAccount();
-  if (!me) return { used: [], wallet: null };
+  if (!me || level < 2) return { used: [], wallet: null }; // boosts are for Levels 2 and 3
   const want = [...new Set(ids)].filter((id) => boostById(id));
   const db = await getDb();
   const used: string[] = [];
