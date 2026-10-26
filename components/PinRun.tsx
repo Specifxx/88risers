@@ -367,6 +367,9 @@ export function PinRun({
   const raidRef = useRef(raid);
   raidRef.current = raid;
   const [finalDmg, setFinalDmg] = useState(0);
+  /** The on-screen Beast button (Level 3): hype filled (0-10) / ready / active. */
+  const [beastUi, setBeastUi] = useState<{ on: boolean; fill: number; ready: boolean; active: boolean }>({ on: false, fill: 0, ready: false, active: false });
+  const beastUiKey = useRef("");
   const bossesRef = useRef(bosses);
   bossesRef.current = bosses;
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
@@ -1021,7 +1024,7 @@ export function PinRun({
         if (w.hype >= 100 && w.beast === 0 && !w.beastReady) {
           // full hype waits for the player to unleash it
           w.beastReady = true;
-          w.banner = { t: "HYPE FULL!", sub: "Hold (or press B) to unleash Beast Mode.", life: 2.2, c: "#f2c14e" };
+          w.banner = { t: "HYPE FULL!", sub: "Tap BEAST (or hold the screen) to unleash Beast Mode.", life: 2.2, c: "#f2c14e" };
           beep(660, 0.12, "square", 0.05);
           setTimeout(() => beep(990, 0.14, "square", 0.05), 100);
         }
@@ -2202,7 +2205,7 @@ export function PinRun({
         ctx.textAlign = "center";
         ctx.font = "900 15px 'Saira Extra Condensed', Impact, sans-serif";
         ctx.fillStyle = w.beast > 0 ? "#fff1d6" : "#efe7d6";
-        ctx.fillText(w.beast > 0 ? "BEAST MODE" : w.beastReady ? (Math.floor(w.t * 4) % 2 ? "HOLD TO UNLEASH BEAST" : "HYPE FULL · PRESS B") : w.hype >= 80 ? "HYPE · CROWD'S GOING WILD" : "HYPE", W / 2, 37);
+        ctx.fillText(w.beast > 0 ? "BEAST MODE" : w.beastReady ? (Math.floor(w.t * 4) % 2 ? "HYPE FULL" : "TAP BEAST TO UNLEASH") : w.hype >= 80 ? "HYPE · CROWD'S GOING WILD" : "HYPE", W / 2, 37);
         const c = w.chase;
         if (c) {
           // the raid boss: stamina (drained by pins), and the club's raid HP
@@ -2284,6 +2287,18 @@ export function PinRun({
         const moving = phaseRef.current === "play" && !w.over && !w.duel;
         // the run-cycle video already carries each lion's effects; the live particles trail behind it
         stepFx(fx.current, skinRef.current, w.dist + PX, w.y + R, dt, moving, 0.6);
+        // keep the Beast button in step (only re-render when it visibly changes)
+        const ui = {
+          on: phaseRef.current === "play" && w.level === 3 && !w.over,
+          fill: Math.floor(w.hype / 10),
+          ready: w.beastReady,
+          active: w.beast > 0,
+        };
+        const key = `${ui.on}${ui.fill}${ui.ready}${ui.active}`;
+        if (key !== beastUiKey.current) {
+          beastUiKey.current = key;
+          setBeastUi(ui);
+        }
       }
       draw();
       raf = requestAnimationFrame(loop);
@@ -2344,7 +2359,7 @@ export function PinRun({
             <p className="pinrun-best">
               <b>Boss Chase:</b> a random Riser chases you and throws their moves at the level. Pins push them back; drain their stamina, then finish the
               grip. Every hit counts toward the club&apos;s <b>Riser Boss</b>
-              {raid ? ` (${raid.hp.toLocaleString("en-AU")} / ${raid.hpMax.toLocaleString("en-AU")} HP)` : ""}. Full hype? <b>Hold</b> for Beast Mode.
+              {raid ? ` (${raid.hp.toLocaleString("en-AU")} / ${raid.hpMax.toLocaleString("en-AU")} HP)` : ""}. Full hype? Tap <b>BEAST</b> for Beast Mode.
             </p>
           ) : null}
           {level >= 2 && ABILITIES[skin] ? (
@@ -2392,6 +2407,23 @@ export function PinRun({
             </p>
           ) : null}
         </div>
+      ) : null}
+      {beastUi.on ? (
+        <button
+          type="button"
+          className={`pinrun-beast${beastUi.ready ? " ready" : ""}${beastUi.active ? " active" : ""}`}
+          style={{ "--fill": `${beastUi.active ? 100 : beastUi.fill * 10}%` } as React.CSSProperties}
+          disabled={!beastUi.ready}
+          // its own tap: don't let it count as a jump
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            unleash();
+          }}
+          aria-label={beastUi.ready ? "Unleash Beast Mode" : "Beast Mode (fill the hype meter)"}
+        >
+          <span aria-hidden>🔥</span> {beastUi.active ? "BEAST!" : "BEAST"}
+        </button>
       ) : null}
       <button
         type="button"
