@@ -667,7 +667,8 @@ export function PinRun({
       const id = bf?.b.id ?? 0;
       const move = bf ? (moveOf(id) === "chain" ? chainMove(bf.max - bf.hp) : moveOf(id)) : null;
       if (move === "press") width *= 1.3; // starts wide, then gets crushed
-      if (move === "toproll" || move === "kings" || move === "hydraulic") width *= 1.1;
+      if (move === "toproll" || move === "kings") width *= 1.1;
+      if (move === "hydraulic") width *= 1.25;
       if (move === "hook") width *= 1.15;
       if (bf?.sm) speed *= 1.1; // supermatch: everything a notch faster
       d.two = !bf && !!d.rival.two && !(w.level === 3 && w.skin === "moon"); // One Hand
@@ -706,8 +707,8 @@ export function PinRun({
       } else if (d.move === "hydraulic") {
         // pumps slow, then surges (averages out to normal speed, so it's readable)
         const c = d.t % 1.0;
-        mul = c < 0.7 ? 0.6 : 1.8;
-        if (c >= 0.7 && c - dt < 0.7) d.fx = 0.25;
+        mul = c < 0.75 ? 0.8 : 1.45;
+        if (c >= 0.75 && c - dt < 0.75) d.fx = 0.25;
       }
       d.ph += dt * d.speed * mul * d.dir;
       const raw = (Math.sin(d.ph) + 1) / 2;
@@ -758,8 +759,9 @@ export function PinRun({
       } else if (kind === "hydraulic") {
         c.pump = MOVE_SECS;
         for (const p of w.plats) {
-          if (!onScreen(p) || p.move) continue;
-          p.move = { amp: 45, spd: 3.2, ph: rand(0, Math.PI * 2) };
+          // gentle bobbing, and never the table you're standing on
+          if (!onScreen(p) || p.move || p === w.ground) continue;
+          p.move = { amp: 26, spd: 2.2, ph: rand(0, Math.PI * 2) };
           p.pumped = true;
         }
       } else if (kind === "side") c.wind = MOVE_SECS;
