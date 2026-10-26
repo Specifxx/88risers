@@ -138,15 +138,15 @@ export const ABILITIES: Record<string, { name: string; text: string }> = {
 
 /** Arena abilities: extra, on top of the Level 2 ability, on Level 3 only. */
 export const ABILITIES3: Record<string, { name: string; text: string }> = {
-  stone: { name: "Crowd Favourite", text: "Hype fills 20% faster." },
-  sakura: { name: "Petal Veil", text: "Chalk bags from the crowd can't blind you." },
-  jade: { name: "Golden Crowd", text: "Coins give double hype." },
-  wave: { name: "Surf's Up", text: "Wet tables don't skid you: you surf them for +50 points and hype." },
-  crystal: { name: "Cold Stare", text: "After the ref's whistle, your next grip needle is 40% slower." },
-  flame: { name: "Wildfire", text: "Beast Mode lasts 50% longer." },
-  thunder: { name: "Thunderclap", text: "Beast Mode starts with a lightning strike that pins every rival on screen." },
-  moon: { name: "One Hand", text: "Double grips only need one hand." },
-  eclipse: { name: "Blood Moon", text: "The raid boss chases you 25% slower." },
+  stone: { name: "Rooted", text: "The boss's Press can't slam your table, and their Hook can't drag you back." },
+  sakura: { name: "Petal Veil", text: "King's Move lights-out is half as dark, and thrown chalk can't blind you." },
+  jade: { name: "Jade Fortune", text: "Coins push the boss back twice as far and do double raid damage." },
+  wave: { name: "Undertow", text: "No skidding on wet tables: each one you land on washes the boss back." },
+  crystal: { name: "Cold Stare", text: "The boss freezes for 2.5 seconds after every move they throw." },
+  flame: { name: "Wildfire", text: "Beast Mode lasts 50% longer and does double raid damage." },
+  thunder: { name: "Thunderclap", text: "Unleashing Beast Mode pins every rival on screen and blasts the boss back." },
+  moon: { name: "One Hand", text: "Double grips need one hand, and finishing grips need 2 good grips, not 3." },
+  eclipse: { name: "Blood Moon", text: "The boss chases 25% slower, and your staggers do 50% more raid damage." },
 };
 
 export type PowerKind = "shield" | "magnet" | "x2";

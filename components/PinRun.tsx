@@ -68,6 +68,8 @@ type Chase = {
   drag: number;
   wind: number;
   pump: number;
+  /** Ice Crystal (Cold Stare): frozen in place for a moment after each move. */
+  chill: number;
   /** A finishing grip is waiting on a table ahead. */
   finisher: boolean;
 };
@@ -177,8 +179,6 @@ interface World {
   wetSeen: Plat | null;
   /** Beast Mode length this time (Wildfire makes it longer). */
   beastMax: number;
-  /** Cold Stare: the next grip needle after a whistle is slower. */
-  coldNext: boolean;
   throws: Throw[];
   throwT: number;
   /** Full hype waits for you: hold (or B) to unleash Beast Mode. */
@@ -243,7 +243,6 @@ function newWorld(level: Lv = 1, skin = DEFAULT_SKIN): World {
     cheer: 0,
     wetSeen: null,
     beastMax: 6,
-    coldNext: false,
     throws: [],
     throwT: 4,
     beastReady: false,
@@ -462,7 +461,7 @@ export function PinRun({
     if (levelRef.current === 3) {
       const b = raidRef.current?.boss ?? bossesRef.current[0];
       if (b)
-        world.current.chase = { b, prox: 0.25, stamina: 100, staggers: 0, next: 5, warn: 0, coming: null, shown: null, queue: [], tilt: 0, dark: 0, drag: 0, wind: 0, pump: 0, finisher: false };
+        world.current.chase = { b, prox: 0.25, stamina: 100, staggers: 0, next: 5, warn: 0, coming: null, shown: null, queue: [], tilt: 0, dark: 0, drag: 0, wind: 0, pump: 0, chill: 0, finisher: false };
     }
     extend(world.current, bossesRef.current);
     if (levelRef.current >= 2) {
@@ -505,6 +504,10 @@ export function PinRun({
               w.pops.push({ x: w.dist + PX + 120, y: 190, t: `THUNDERCLAP x${k}! +${150 * k}`, life: 1.4, c: "#f2c14e" });
             }
             w.shake = 0.4;
+            if (w.chase) {
+              w.chase.prox = Math.max(0, w.chase.prox - 0.3);
+              w.dmg += 300;
+            }
           }
     w.banner = { t: "BEAST MODE!", sub: "Rivals get pinned on contact. Bottles smash. Coins come to you.", life: 2.2, c: "#ff4a4f" };
     w.shake = Math.max(w.shake, 0.4);
@@ -693,12 +696,6 @@ export function PinRun({
       if (move === "toproll" || move === "kings") width *= 1.1;
       if (bf?.sm) speed *= 1.1; // supermatch: everything a notch faster
       d.two = !bf && !!d.rival.two && !(w.level === 3 && w.skin === "moon"); // One Hand
-      if (w.level === 3 && w.coldNext) {
-        // Cold Stare
-        w.coldNext = false;
-        speed *= 0.6;
-        w.pops.push({ x: w.dist + PX, y: w.y - 90, t: "COLD STARE", life: 1, c: "#9fe0ff" });
-      }
       d.lockA = null;
       if (d.two) width *= 1.1;
       d.t = 0;
@@ -768,6 +765,7 @@ export function PinRun({
       if (kind === "press") {
         for (const p of w.plats) {
           if (!onScreen(p)) continue;
+          if (w.skin === "stone" && p === w.ground) continue; // Rooted
           const amp = p.move?.amp ?? 0;
           p.baseY = Math.min(470 - amp, p.baseY + 70);
           if (!p.move) p.y = p.baseY;
@@ -776,8 +774,11 @@ export function PinRun({
         w.shake = 0.6;
       } else if (kind === "toproll") c.tilt = MOVE_SECS;
       else if (kind === "hook") {
-        c.drag = 1.3;
-        c.prox = Math.min(0.95, c.prox + 0.12);
+        if (w.skin === "stone") w.pops.push({ x: w.dist + PX, y: w.y - 90, t: "ROOTED!", life: 1, c: "#d5b67a" });
+        else {
+          c.drag = 1.3;
+          c.prox = Math.min(0.95, c.prox + 0.12);
+        }
       } else if (kind === "hydraulic") {
         c.pump = MOVE_SECS;
         for (const p of w.plats) {
@@ -789,12 +790,17 @@ export function PinRun({
       else if (kind === "kings") c.dark = MOVE_SECS;
       w.pops.push({ x: w.dist + PX + 460, y: 200, t: `${name}'S ${MOVES[kind].name.toUpperCase()}!`, life: 1.2, c: MOVES[kind].color });
       beep(110, 0.35, "sawtooth", 0.06);
+      if (w.skin === "crystal") {
+        // Cold Stare: they freeze after showing their hand
+        c.chill = 2.5;
+        w.pops.push({ x: w.dist + PX, y: w.y - 110, t: "COLD STARE", life: 1, c: "#9fe0ff" });
+      }
     };
 
     /** The Arena chase, each frame. Returns true if the run is over. */
     const stepChase = (w: World, dt: number) => {
       const c = w.chase!;
-      for (const k of ["tilt", "dark", "drag", "wind"] as const) c[k] = Math.max(0, c[k] - dt);
+      for (const k of ["tilt", "dark", "drag", "wind", "chill"] as const) c[k] = Math.max(0, c[k] - dt);
       if (c.pump > 0 && (c.pump -= dt) <= 0) {
         for (const p of w.plats)
           if (p.pumped) {
@@ -807,8 +813,8 @@ export function PinRun({
       // Clean running out-paces them (landings, coins, pins all push back); falls, slips and their
       // moves are what let them catch you. They get a little quicker every time you stagger them.
       const rate = (0.028 + c.staggers * 0.008 + Math.min(0.015, w.dist / 500000)) * (w.skin === "eclipse" ? 0.75 : 1);
-      if (w.beast > 0) pushBoss(w, 0.3 * dt, 9 * dt, 60 * dt);
-      else c.prox += rate * dt * (c.drag > 0 ? 3 : 1);
+      if (w.beast > 0) pushBoss(w, 0.3 * dt, 9 * dt, (w.skin === "flame" ? 120 : 60) * dt); // Wildfire: double raid damage
+      else if (c.chill <= 0) c.prox += rate * dt * (c.drag > 0 ? 3 : 1);
       if (c.prox >= 1) {
         c.prox = 0.4;
         w.shake = 0.5;
@@ -863,7 +869,7 @@ export function PinRun({
         if (t) {
           c.finisher = true;
           t.wet = false;
-          t.rival = { x: t.x + t.w * 0.55, state: "idle", vy: 0, y: 0, vx: 0, spin: 0, boss: { b: c.b, hp: 3, max: 3, raid: true } };
+          t.rival = { x: t.x + t.w * 0.55, state: "idle", vy: 0, y: 0, vx: 0, spin: 0, boss: { b: c.b, hp: w.skin === "moon" ? 2 : 3, max: w.skin === "moon" ? 2 : 3, raid: true } };
           w.banner = { t: `${c.b.name.split(" ")[0].toUpperCase()} IS GASSED!`, sub: "Reach the table ahead and finish the grip.", life: 2.2, c: "#f2c14e" };
           beep(880, 0.15, "square", 0.05);
         }
@@ -914,7 +920,7 @@ export function PinRun({
               if (boss?.raid && w.chase) {
                 // the finishing grip: big raid damage, and they come back angrier
                 const c = w.chase;
-                const hitDmg = 1500 * (c.staggers + 1);
+                const hitDmg = Math.round(1500 * (c.staggers + 1) * (w.skin === "eclipse" ? 1.5 : 1)); // Blood Moon
                 w.dmg += hitDmg;
                 c.staggers++;
                 c.stamina = 100;
@@ -1005,7 +1011,6 @@ export function PinRun({
         if ((w.whistle -= dt) <= 0) {
           w.whistle = rand(14, 24);
           w.frozen = 1.8;
-          if (w.skin === "crystal") w.coldNext = true;
           w.pops.push({ x: w.dist + PX + 160, y: 150, t: "WHISTLE! FREEZE", life: 1.4, c: "#efe7d6" });
           beep(2600, 0.12, "sine", 0.05);
           setTimeout(() => beep(2600, 0.25, "sine", 0.05), 160);
@@ -1100,10 +1105,11 @@ export function PinRun({
             if (l3 && p.wet && w.wetSeen !== p) {
               w.wetSeen = p;
               if (w.skin === "wave") {
-                // Surf's Up
+                // Undertow: wet tables wash the boss back
                 w.score += 50;
                 addHype(w, 6);
-                w.pops.push({ x: px + 30, y: p.y - 80, t: "SURF! +50", life: 0.9, c: "#9ec4e8" });
+                pushBoss(w, 0.08, 6, 80);
+                w.pops.push({ x: px + 30, y: p.y - 80, t: "UNDERTOW!", life: 0.9, c: "#9ec4e8" });
               } else w.pops.push({ x: px + 30, y: p.y - 80, t: "SLIPPERY!", life: 0.9, c: "#9fd4ff" });
             }
             if (l3 && p.move) addHype(w, 3);
@@ -1198,7 +1204,8 @@ export function PinRun({
           w.coins += k;
           w.score += 10 * w.combo * (l2 && w.skin === "jade" ? 1.25 : 1);
           if (l3) addHype(w, w.skin === "jade" ? 3 : 1.5); // Golden Crowd: double
-          pushBoss(w, 0.012, 0.6, 4);
+          if (w.skin === "jade") pushBoss(w, 0.024, 1.2, 8); // Jade Fortune
+          else pushBoss(w, 0.012, 0.6, 4);
           beep(1180, 0.05, "square", 0.035);
         }
       }
@@ -2121,7 +2128,7 @@ export function PinRun({
         const c = w.chase;
         if (c && c.dark > 0) {
           // King's Move: lights out, a small pool of light around the lion
-          const k = Math.min(1, c.dark * 2, (MOVE_SECS - c.dark) * 4);
+          const k = Math.min(1, c.dark * 2, (MOVE_SECS - c.dark) * 4) * (w.skin === "sakura" ? 0.5 : 1); // Petal Veil
           const dg = ctx.createRadialGradient(PX + 60, w.y - 10, 70, PX + 60, w.y - 10, 260);
           dg.addColorStop(0, "rgba(0,0,0,0)");
           dg.addColorStop(1, `rgba(0,0,0,${0.95 * k})`);
