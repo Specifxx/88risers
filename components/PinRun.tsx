@@ -698,7 +698,7 @@ export function PinRun({
       const id = bf?.b.id ?? 0;
       const move = bf ? (moveOf(id) === "chain" ? chainMove(bf.max - bf.hp) : moveOf(id)) : null;
       if (move === "press") width *= 1.3; // starts wide, then gets crushed
-      if (move === "toproll" || move === "kings") width *= 1.1;
+      if (move === "toproll" || move === "kings" || move === "hydraulic") width *= 1.1;
       if (bf?.sm) speed *= 1.1; // supermatch: everything a notch faster
       d.two = !bf && !!d.rival.two && !(w.level === 3 && w.skin === "moon"); // One Hand
       d.lockA = null;
@@ -734,9 +734,10 @@ export function PinRun({
           beep(240, 0.06, "square", 0.04);
         }
       } else if (d.move === "hydraulic") {
-        const c = d.t % 1.15;
-        mul = c < 0.8 ? 0.45 : 2.3;
-        if (c >= 0.8 && c - dt < 0.8) d.fx = 0.25;
+        // pumps slow, then surges (averages out to normal speed, so it's readable)
+        const c = d.t % 1.0;
+        mul = c < 0.7 ? 0.6 : 1.8;
+        if (c >= 0.7 && c - dt < 0.7) d.fx = 0.25;
       }
       d.ph += dt * d.speed * mul * d.dir;
       const raw = (Math.sin(d.ph) + 1) / 2;
