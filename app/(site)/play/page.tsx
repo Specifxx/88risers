@@ -7,8 +7,7 @@ import { currentAccount } from "@/lib/auth";
 import { DAILY_GAME_COINS } from "@/lib/coins";
 import { getDb } from "@/lib/db";
 import { getWallet } from "@/lib/pinrun-db";
-import { BOSS_ART, type Boss, LEVEL2_UNLOCK, LEVEL3_UNLOCK, RAID_REWARD, RAID_TOP_BONUS } from "@/lib/pinrun";
-import { getRaid, raidBoard } from "@/lib/raid";
+import { BOSS_ART, type Boss, LEVEL2_UNLOCK, LEVEL3_UNLOCK } from "@/lib/pinrun";
 import { KatanaDraw } from "@/components/KatanaDraw";
 import { KATANA_ENTRY } from "@/lib/katana";
 import { PinRunBoards } from "@/components/PinRunBoards";
@@ -43,14 +42,12 @@ export default async function PlayPage() {
     ),
     me ? db.query<{ best: number }>(`SELECT best FROM arcade_scores WHERE account_id = $1 AND game = 'pinrun' AND level = '3'`, [me.id]) : Promise.resolve([]),
   ]);
-  const raid = await getRaid();
   const katanaTop = await db.query<{ display_name: string; handle: string; best: number; clears: number }>(
     `SELECT a.display_name, a.handle, max(k.wins)::int AS best, count(*) FILTER (WHERE k.wins >= 6)::int AS clears
      FROM katana_runs k JOIN accounts a ON a.id = k.account_id
      WHERE k.ended_at IS NOT NULL AND k.wins > 0
      GROUP BY a.id, a.display_name, a.handle ORDER BY best DESC, clears DESC, min(k.started_at) ASC LIMIT 10`,
   );
-  const raidTop = await raidBoard(raid.id);
   const richest = await db.query<{ display_name: string; handle: string; best: number }>(
     `SELECT a.display_name, a.handle, w.coins AS best FROM pinrun_wallet w JOIN accounts a ON a.id = w.account_id
      WHERE w.coins > 0 ORDER BY w.coins DESC, w.updated_at ASC LIMIT 10`,
@@ -70,14 +67,14 @@ export default async function PlayPage() {
           </h1>
           <p className="lede">
             One button. Jump the tables, win the grip fights, don&apos;t fall in the chalk pit. Play any minigame here once a day and logged-in
-            Risers earn +{DAILY_GAME_COINS} coins. Every coin you grab in Pin Run is banked for new lions in the Lion Temple. Score 5,000 to unlock Level 2: Crimson Peak, with moving ledges, power-ups, lion abilities and real Risers as bosses. Score 5,000 on Level 2 to reach Level 3: The Arena, where a random Riser chases you and every run chips at the club&apos;s shared Riser Boss. Prefer a straight-up arm wrestle?{" "}
+            Risers earn +{DAILY_GAME_COINS} coins. Every coin you grab in Pin Run is banked for new lions in the Lion Temple. Score 5,000 to unlock Level 2: Crimson Peak, with moving ledges, power-ups, lion abilities and real Risers as bosses. Score 5,000 on Level 2 to reach Level 3: The Arena, where a random Riser chases you and throws their signature moves at the level. Prefer a straight-up arm wrestle?{" "}
             <a href="#race-to-the-pin">Play Race to the Pin</a>.
           </p>
         </div>
       </section>
       <section className="section" style={{ paddingTop: 16 }}>
         <div className="wrap play-grid">
-          <PinRun loggedIn={!!me} best={mine[0]?.best ?? null} best2={mine2[0]?.best ?? null} best3={mine3[0]?.best ?? null} raid={raid} wallet={wallet} bosses={bossList} />
+          <PinRun loggedIn={!!me} best={mine[0]?.best ?? null} best2={mine2[0]?.best ?? null} best3={mine3[0]?.best ?? null} wallet={wallet} bosses={bossList} />
           <div className="panel">
             <PinRunBoards
               boards={[
@@ -90,13 +87,6 @@ export default async function PlayPage() {
                   empty: "Nobody's banked any Temple coins yet.",
                   note: "Temple coins in the bank right now: grabbed in Pin Run, spent on lions and Katana Draw.",
                   unit: "coins",
-                },
-                {
-                  label: "Club Raid",
-                  rows: raidTop,
-                  empty: "No hits yet. Every Level 3 run chips at the Riser Boss.",
-                  note: `Riser Boss: ${raid.hp.toLocaleString("en-AU")} / ${raid.hpMax.toLocaleString("en-AU")} HP left. Every Level 3 run hits it, whichever Riser is chasing you. When the club takes it down, everyone who landed a hit gets ${RAID_REWARD} Temple coins (top damage +${RAID_TOP_BONUS}).`,
-                  unit: "dmg",
                 },
               ]}
             />

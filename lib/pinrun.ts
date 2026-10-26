@@ -140,13 +140,13 @@ export const ABILITIES: Record<string, { name: string; text: string }> = {
 export const ABILITIES3: Record<string, { name: string; text: string }> = {
   stone: { name: "Rooted", text: "The boss's Press can't slam your table, and their Hook can't drag you back." },
   sakura: { name: "Petal Veil", text: "King's Move lights-out is half as dark, and thrown chalk can't blind you." },
-  jade: { name: "Jade Fortune", text: "Coins push the boss back twice as far and do double raid damage." },
+  jade: { name: "Jade Fortune", text: "Coins push the boss back twice as far." },
   wave: { name: "Undertow", text: "No skidding on wet tables: each one you land on washes the boss back." },
   crystal: { name: "Cold Stare", text: "The boss freezes for 2.5 seconds after every move they throw." },
-  flame: { name: "Wildfire", text: "Beast Mode lasts 50% longer and does double raid damage." },
+  flame: { name: "Wildfire", text: "Beast Mode lasts 50% longer." },
   thunder: { name: "Thunderclap", text: "Unleashing Beast Mode pins every rival on screen and blasts the boss back." },
   moon: { name: "One Hand", text: "Double grips need one hand, and finishing grips need 2 good grips, not 3." },
-  eclipse: { name: "Blood Moon", text: "The boss chases 25% slower, and your staggers do 50% more raid damage." },
+  eclipse: { name: "Blood Moon", text: "The boss chases 25% slower, and your staggers score 50% more." },
 };
 
 export type PowerKind = "shield" | "magnet" | "x2";
@@ -195,21 +195,3 @@ const MOVE_ORDER: MoveKind[] = ["toproll", "hook", "hydraulic", "press", "side",
 export const moveOf = (id: number): MoveKind => BOSS_MOVES[id] ?? MOVE_ORDER[(id - 1) % MOVE_ORDER.length];
 /** Champion's Chain: the move used on each grip round (0, 1, 2…). */
 export const chainMove = (round: number): MoveKind => (["toproll", "hook", "press"] as MoveKind[])[round % 3];
-
-/* ─────────── Club Raid (Level 3) ─────────── */
-
-/** Health of each Riser Boss; the whole club's Level 3 runs chip at it. */
-export const RAID_HP = 40000;
-/** Temple coins for everyone who hit a raid boss when it falls, and a bonus for the top hitter. */
-export const RAID_REWARD = 250;
-export const RAID_TOP_BONUS = 250;
-
-/** The Riser Boss: one health pool the whole club chips at on Level 3. */
-export interface Raid {
-  id: number;
-  hp: number;
-  hpMax: number;
-}
-
-/** Raid damage can't run far ahead of a run's score (it's earned the same way). */
-export const plausibleDamage = (score: number) => 200 + Math.floor(score * 0.8);

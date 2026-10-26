@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { buySkin, equipSkin, submitScore } from "@/app/(site)/account/actions";
 import { lionSays } from "@/lib/lion";
-import { ABILITIES, ABILITIES3, ANIM, type Boss, type Raid, DEFAULT_SKIN, LEVEL2_UNLOCK, LEVEL3_UNLOCK, LEVELS, MOVES, type MoveKind, POWERS, type PowerKind, SKINS, type Wallet, chainMove, moveOf, skinById } from "@/lib/pinrun";
+import { ABILITIES, ABILITIES3, ANIM, type Boss, DEFAULT_SKIN, LEVEL2_UNLOCK, LEVEL3_UNLOCK, LEVELS, MOVES, type MoveKind, POWERS, type PowerKind, SKINS, type Wallet, chainMove, moveOf, skinById } from "@/lib/pinrun";
 import { drawAura, drawFx, newFx, stepFx } from "@/lib/pinrun-fx";
 import { RADIO } from "@/lib/radio";
 
@@ -47,9 +47,9 @@ type Plat = {
   pumped?: boolean;
 };
 /** hp = grips still needed. In an Arena supermatch, `lost` counts the rounds the boss has won (first to 2). */
-/** `raid`: the finishing grip on the Club Raid boss after you've drained their stamina. */
-type BossFight = { b: Boss; hp: number; max: number; sm?: boolean; lost?: number; raid?: boolean };
-/** The Arena: the Club Raid boss chasing you, and the move they're about to throw at the level. */
+/** `finish`: the finishing grip on the chasing boss after you've drained their stamina. */
+type BossFight = { b: Boss; hp: number; max: number; sm?: boolean; lost?: number; finish?: boolean };
+/** The Arena: the Riser chasing you, and the move they're about to throw at the level. */
 type Chase = {
   b: Boss;
   /** 0 = way back, 1 = they've caught you. */
@@ -184,9 +184,8 @@ interface World {
   /** Full hype waits for you: hold (or B) to unleash Beast Mode. */
   beastReady: boolean;
   holdT: number;
-  /** The Arena: the chasing raid boss, and the raid damage this run has done. */
+  /** The Arena: the Riser chasing you. */
   chase: Chase | null;
-  dmg: number;
 }
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
@@ -248,7 +247,6 @@ function newWorld(level: Lv = 1, skin = DEFAULT_SKIN): World {
     beastReady: false,
     holdT: 0,
     chase: null,
-    dmg: 0,
   };
 }
 
@@ -269,7 +267,7 @@ function extend(w: World, bosses: Boss[] = []) {
       p = { x, w: width, y, rival: null, baseY: y, move: null };
       if (Math.random() < rivalChance && width > 200) p.rival = { x: x + width * rand(0.45, 0.7), state: "idle", vy: 0, y: 0, vx: 0, spin: 0 };
     } else if (w.level === 3) {
-      // The Arena: stage tables (some wet), floating rigs and double-grip rivals, with the raid boss on your tail.
+      // The Arena: stage tables (some wet), floating rigs and double-grip rivals, with a Riser on your tail.
       const stair = n > 3 && Math.random() < 0.15;
       gap = (stair ? rand(50, 80) : rand(115, 185 + level * 130)) * (w.speed / 390);
       const width = stair ? rand(140, 190) : rand(165, 300) - level * 55;
@@ -329,7 +327,6 @@ export function PinRun({
   best: initialBest,
   best2: initialBest2 = null,
   best3: initialBest3 = null,
-  raid: initialRaid = null,
   wallet: initialWallet,
   bosses = [],
 }: {
@@ -337,8 +334,6 @@ export function PinRun({
   best: number | null;
   best2?: number | null;
   best3?: number | null;
-  /** The Club Raid boss (Level 3) and their health. */
-  raid?: Raid | null;
   wallet: Wallet | null;
   bosses?: Boss[];
 }) {
@@ -363,10 +358,6 @@ export function PinRun({
   const unlocked3Ref = useRef(unlocked3);
   unlocked3Ref.current = unlocked3;
   const bossImgs = useRef<Record<number, HTMLImageElement>>({});
-  const [raid, setRaid] = useState<Raid | null>(initialRaid);
-  const raidRef = useRef(raid);
-  raidRef.current = raid;
-  const [finalDmg, setFinalDmg] = useState(0);
   /** The on-screen Beast button (Level 3): hype filled (0-10) / ready / active. */
   const [beastUi, setBeastUi] = useState<{ on: boolean; fill: number; ready: boolean; active: boolean }>({ on: false, fill: 0, ready: false, active: false });
   const beastUiKey = useRef("");
@@ -504,14 +495,12 @@ export function PinRun({
               if (w.chase) {
                 w.chase.prox = Math.max(0, w.chase.prox - 0.1 * k);
                 if (!w.chase.finisher) w.chase.stamina = Math.max(0, w.chase.stamina - 10 * k);
-                w.dmg += 100 * k;
               }
               w.pops.push({ x: w.dist + PX + 120, y: 190, t: `THUNDERCLAP x${k}! +${150 * k}`, life: 1.4, c: "#f2c14e" });
             }
             w.shake = 0.4;
             if (w.chase) {
               w.chase.prox = Math.max(0, w.chase.prox - 0.3);
-              w.dmg += 300;
             }
           }
     w.banner = { t: "BEAST MODE!", sub: "Rivals get pinned on contact. Bottles smash. Coins come to you.", life: 2.2, c: "#ff4a4f" };
@@ -632,29 +621,17 @@ export function PinRun({
       w.over = true;
       const score = Math.floor(w.score);
       setFinal({ score, pins: w.pins, coins: w.coins, level: w.level });
-      setFinalDmg(w.level === 3 ? Math.floor(w.dmg) : 0);
       setPhase("over");
       overAt.current = performance.now();
       beep(160, 0.5, "sawtooth", 0.06);
       if (loggedIn) {
         const lv = w.level;
-        submitScore(score, w.coins, lv, Math.floor(w.dmg))
+        submitScore(score, w.coins, lv)
           .then((r) => {
-            if (r.raid) {
-              if (r.raid.now) setRaid(r.raid.now);
-              if (r.raid.killed) lionSays("roar", `ROAR! The club took down the Riser Boss! +${r.raid.killed.reward} Temple coins each.`);
-            }
             if (r.best !== null) setBestOf(lv)(r.best);
             if (r.wallet) setWallet(r.wallet);
             const banked = r.saved && r.wallet ? `+${r.saved} Temple coins banked (${r.wallet.coins.toLocaleString("en-AU")} total).` : "";
-            const raidMsg = r.raid
-              ? r.raid.killed
-                ? `You landed the final blow: the Riser Boss is down! Everyone who hit it gets ${r.raid.killed.reward} Temple coins.`
-                : r.raid.dealt > 0
-                  ? `${r.raid.dealt.toLocaleString("en-AU")} raid damage landed.`
-                  : ""
-              : "";
-            setSaveMsg([r.message, raidMsg, banked].filter(Boolean).join(" "));
+            setSaveMsg([r.message, banked].filter(Boolean).join(" "));
             if (r.coins) lionSays("cheer", `+${r.coins} coins for today's run!`);
           })
           .catch(() => setSaveMsg("Couldn't save that run. Check your connection and play again."));
@@ -755,14 +732,13 @@ export function PinRun({
       }
     };
 
-    /** Pushes the raid boss back (and drains their stamina): pins, coins, Beast Mode. */
-    const pushBoss = (w: World, back: number, drain: number, dmg: number) => {
+    /** Pushes the chasing boss back (and drains their stamina): pins, coins, Beast Mode. */
+    const pushBoss = (w: World, back: number, drain: number) => {
       const c = w.chase;
       if (!c) return;
       // they never drop fully out of sight (a stagger is the only thing that sends them all the way back)
       c.prox = Math.max(0.15, c.prox - back);
       if (!c.finisher) c.stamina = Math.max(0, c.stamina - drain);
-      w.dmg += dmg;
     };
 
     /** A signature move lands on the level. */
@@ -820,7 +796,7 @@ export function PinRun({
       // Clean running out-paces them (landings, coins, pins all push back); falls, slips and their
       // moves are what let them catch you. They get a little quicker every time you stagger them.
       const rate = (0.024 + c.staggers * 0.008 + Math.min(0.015, w.dist / 500000)) * (w.skin === "eclipse" ? 0.75 : 1);
-      if (w.beast > 0) pushBoss(w, 0.3 * dt, 9 * dt, (w.skin === "flame" ? 120 : 60) * dt); // Wildfire: double raid damage
+      if (w.beast > 0) pushBoss(w, 0.3 * dt, 9 * dt);
       else if (c.chill <= 0) c.prox += rate * dt * (c.drag > 0 ? 3 : 1);
       if (c.prox >= 1) {
         c.prox = 0.4;
@@ -868,7 +844,7 @@ export function PinRun({
         beep(520, 0.1, "square", 0.04);
       }
       // missed the finishing table (fell past it)? they'll set up another
-      if (c.finisher && !w.plats.some((p) => p.rival?.boss?.raid && p.rival.state === "idle" && p.rival.x > w.dist)) c.finisher = false;
+      if (c.finisher && !w.plats.some((p) => p.rival?.boss?.finish && p.rival.state === "idle" && p.rival.x > w.dist)) c.finisher = false;
       // stamina gone: a finishing grip on a table just ahead
       if (c.stamina <= 0 && !c.finisher) {
         const px = w.dist + PX;
@@ -876,7 +852,7 @@ export function PinRun({
         if (t) {
           c.finisher = true;
           t.wet = false;
-          t.rival = { x: t.x + t.w * 0.55, state: "idle", vy: 0, y: 0, vx: 0, spin: 0, boss: { b: c.b, hp: w.skin === "moon" ? 2 : 3, max: w.skin === "moon" ? 2 : 3, raid: true } };
+          t.rival = { x: t.x + t.w * 0.55, state: "idle", vy: 0, y: 0, vx: 0, spin: 0, boss: { b: c.b, hp: w.skin === "moon" ? 2 : 3, max: w.skin === "moon" ? 2 : 3, finish: true } };
           w.banner = { t: `${c.b.name.split(" ")[0].toUpperCase()} IS GASSED!`, sub: "Reach the table ahead and finish the grip.", life: 2.2, c: "#f2c14e" };
           beep(880, 0.15, "square", 0.05);
         }
@@ -924,18 +900,18 @@ export function PinRun({
                 addHype(w, boss ? 40 : d.two ? 26 : 18);
                 w.cheer = boss ? 2 : 1;
               }
-              if (boss?.raid && w.chase) {
-                // the finishing grip: big raid damage, and they come back angrier
+              if (boss?.finish && w.chase) {
+                // the finishing grip: a big score bonus, and they come back angrier
                 const c = w.chase;
-                const hitDmg = Math.round(1500 * (c.staggers + 1) * (w.skin === "eclipse" ? 1.5 : 1)); // Blood Moon
-                w.dmg += hitDmg;
+                const hitDmg = Math.round(1500 * (c.staggers + 1) * (w.skin === "eclipse" ? 1.5 : 1)); // Blood Moon: bigger staggers
+                w.score += hitDmg;
                 c.staggers++;
                 c.stamina = 100;
                 c.prox = 0;
                 c.finisher = false;
-                w.pops.push({ x: w.dist + PX + 60, y: w.y - 130, t: `-${hitDmg.toLocaleString("en-AU")} RAID HP`, life: 1.8, c: "#ff6a4f" });
+                w.pops.push({ x: w.dist + PX + 60, y: w.y - 130, t: `STAGGER +${hitDmg.toLocaleString("en-AU")}`, life: 1.8, c: "#ff6a4f" });
                 w.banner = { t: "STAGGERED!", sub: `${c.b.name} is back up, and angrier. Keep running.`, life: 2.4, c: "#f2c14e" };
-              } else if (!boss) pushBoss(w, d.two ? 0.24 : 0.16, d.two ? 20 : 14, d.two ? 200 : 120);
+              } else if (!boss) pushBoss(w, d.two ? 0.24 : 0.16, d.two ? 20 : 14);
               if (sm) w.banner = { t: "ARENA CHAMPION!", sub: `You beat ${boss!.b.name} in the supermatch.`, life: 2.6, c: "#f2c14e" };
               if (boss) {
                 // a shower of coins (each worth score, like any coin)
@@ -1108,14 +1084,14 @@ export function PinRun({
             w.ground = p;
             w.jumps = 0;
             w.land = 0.16;
-            pushBoss(w, 0.006, 0, 0); // every clean landing gains you a little
+            pushBoss(w, 0.006, 0); // every clean landing gains you a little
             if (l3 && p.wet && w.wetSeen !== p) {
               w.wetSeen = p;
               if (w.skin === "wave") {
                 // Undertow: wet tables wash the boss back
                 w.score += 50;
                 addHype(w, 6);
-                pushBoss(w, 0.08, 6, 80);
+                pushBoss(w, 0.08, 6);
                 w.pops.push({ x: px + 30, y: p.y - 80, t: "UNDERTOW!", life: 0.9, c: "#9ec4e8" });
               } else w.pops.push({ x: px + 30, y: p.y - 80, t: "SLIPPERY!", life: 0.9, c: "#9fd4ff" });
             }
@@ -1150,12 +1126,13 @@ export function PinRun({
           w.cheer = 1;
           w.shake = 0.2;
           w.pops.push({ x: px, y: w.y - 70, t: `BEAST PIN! +${gain}`, life: 1, c: "#ff6a4f" });
-          pushBoss(w, 0.13, 10, 100);
+          pushBoss(w, 0.13, 10);
           beep(880, 0.1, "square", 0.06);
           for (let i = 0; i < 20; i++) w.parts.push({ x: r.x, y: p.y - 30, vx: rand(-300, 300), vy: rand(-400, 40), life: rand(0.3, 0.7), c: i % 2 ? "#ff4a4f" : "#f2c14e", s: rand(2, 5) });
           continue;
         }
-        if (r.state === "idle" && w.invuln === 0 && Math.abs(px - r.x) < R + (r.boss ? 22 : 14) && w.y + R > p.y - 70) {
+        // (a finishing grip always engages, even straight after a respawn)
+        if (r.state === "idle" && (w.invuln === 0 || r.boss?.finish) && Math.abs(px - r.x) < R + (r.boss ? 22 : 14) && w.y + R > p.y - 70) {
           w.duel = { rival: r, plat: p, t: 0, zone: 0.5, width: 0.2, speed: 4, result: null, rt: 0, ph: 0, dir: 1, pos: 0.5, move: null, z0: 0.5, w0: 0.2, flip: 1, used: false, fx: 0, two: false, lockA: null };
           newRound(w, !!r.boss);
           beep(r.boss ? 220 : 330, r.boss ? 0.3 : 0.12, "triangle", 0.06);
@@ -1211,8 +1188,8 @@ export function PinRun({
           w.coins += k;
           w.score += 10 * w.combo * (l2 && w.skin === "jade" ? 1.25 : 1);
           if (l3) addHype(w, 1.5);
-          if (w.skin === "jade") pushBoss(w, 0.006, 1.2, 8); // Jade Fortune
-          else pushBoss(w, 0.003, 0.6, 4);
+          if (w.skin === "jade") pushBoss(w, 0.006, 1.2); // Jade Fortune
+          else pushBoss(w, 0.003, 0.6);
           beep(1180, 0.05, "square", 0.035);
         }
       }
@@ -1729,7 +1706,7 @@ export function PinRun({
       return cv2;
     };
 
-    /** The raid boss, huge, closing in from the left (just peeking in when far back). */
+    /** The chasing Riser, huge, closing in from the left (just peeking in when far back). */
     const drawChaser = (w: World) => {
       const c = w.chase!;
       const size = 290;
@@ -2221,7 +2198,7 @@ export function PinRun({
         ctx.fillText(w.beast > 0 ? "BEAST MODE" : w.beastReady ? (Math.floor(w.t * 4) % 2 ? "HYPE FULL" : "TAP BEAST TO UNLEASH") : w.hype >= 80 ? "HYPE · CROWD'S GOING WILD" : "HYPE", W / 2, 37);
         const c = w.chase;
         if (c) {
-          // the raid boss: stamina (drained by pins), and the club's raid HP
+          // the boss's stamina (drained by pins)
           ctx.fillStyle = "rgba(10,9,8,.75)";
           ctx.beginPath();
           ctx.roundRect(mx - 4, 48, mw + 8, 14, 7);
@@ -2235,12 +2212,6 @@ export function PinRun({
             W / 2,
             76,
           );
-          const rd = raidRef.current;
-          if (rd) {
-            const left = Math.max(0, rd.hp - Math.floor(w.dmg));
-            ctx.fillStyle = "rgba(255,138,74,.9)";
-            ctx.fillText(`RISER BOSS ${left.toLocaleString("en-AU")} / ${rd.hpMax.toLocaleString("en-AU")} HP · YOUR HITS ${Math.floor(w.dmg).toLocaleString("en-AU")}`, W / 2, 92);
-          }
           if (c.warn > 0 && c.shown) {
             // the tell
             const mvd = MOVES[c.shown];
@@ -2371,8 +2342,7 @@ export function PinRun({
           {level === 3 ? (
             <p className="pinrun-best">
               <b>Boss Chase:</b> a random Riser chases you and throws their moves at the level. Pins push them back; drain their stamina, then finish the
-              grip. Every hit counts toward the club&apos;s <b>Riser Boss</b>
-              {raid ? ` (${raid.hp.toLocaleString("en-AU")} / ${raid.hpMax.toLocaleString("en-AU")} HP)` : ""}. Full hype? Tap <b>BEAST</b> for Beast Mode.
+              grip. Full hype? Tap <b>BEAST</b> for Beast Mode.
             </p>
           ) : null}
           {level >= 2 && ABILITIES[skin] ? (
@@ -2395,7 +2365,6 @@ export function PinRun({
           <p className="pinrun-stats">
             {final.pins} pins · {final.coins} {final.coins === 1 ? "coin" : "coins"} grabbed
             {bestOf(final.level) ? ` · best ${bestOf(final.level)!.toLocaleString("en-AU")}` : ""}
-            {final.level === 3 && finalDmg > 0 ? ` · ${finalDmg.toLocaleString("en-AU")} raid damage` : ""}
           </p>
           <div className="pinrun-btns">
             <button type="button" className="btn btn-primary pinrun-again" onClick={start}>
