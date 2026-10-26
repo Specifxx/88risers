@@ -669,7 +669,7 @@ export function PinRun({
       if (move === "press") width *= 1.3; // starts wide, then gets crushed
       if (move === "toproll" || move === "kings") width *= 1.1;
       if (move === "hydraulic") width *= 1.25;
-      if (move === "hook") width *= 1.15;
+      if (move === "hook") width *= 1.3;
       if (bf?.sm) speed *= 1.1; // supermatch: everything a notch faster
       d.two = !bf && !!d.rival.two && !(w.level === 3 && w.skin === "moon"); // One Hand
       d.lockA = null;
@@ -686,7 +686,7 @@ export function PinRun({
       d.move = move;
       d.z0 = d.zone;
       d.w0 = width;
-      d.flip = rand(0.8, 1.3);
+      d.flip = rand(1.0, 1.5);
       d.used = false;
       d.fx = move ? 0.4 : 0;
       if (move) beep(160, 0.25, "sawtooth", 0.05);
@@ -700,7 +700,7 @@ export function PinRun({
         d.flip -= dt;
         if (d.flip <= 0) {
           d.dir *= -1;
-          d.flip = rand(0.75, 1.3); // readable: a snap every second or so
+          d.flip = rand(1.0, 1.6); // readable: a snap every second or so, with a tell first
           d.fx = 0.2;
           beep(240, 0.06, "square", 0.04);
         }
@@ -1882,7 +1882,9 @@ export function PinRun({
         ctx.fillText("✓", bx + bw * d.lockA, by - 12);
       }
       const nx = bx + bw * d.pos;
-      ctx.fillStyle = d.result === "pin" || d.result === "hit" ? "#f2e1b6" : d.result === "miss" ? "#ff4a4f" : "#ffffff";
+      // Hook: the needle flashes orange just before it snaps back (the tell)
+      const hookTell = d.move === "hook" && !d.result && d.flip < 0.22 && Math.floor(d.t * 30) % 2 === 0;
+      ctx.fillStyle = d.result === "pin" || d.result === "hit" ? "#f2e1b6" : d.result === "miss" ? "#ff4a4f" : hookTell ? "#ff8a3d" : "#ffffff";
       ctx.fillRect(nx - 3, by - 8, 6, 46);
       // the grip: two forearms meeting
       const tilt =
