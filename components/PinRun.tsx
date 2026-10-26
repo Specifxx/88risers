@@ -2446,7 +2446,7 @@ export function PinRun({
   );
 }
 
-/** Level select: Lion Temple, Crimson Peak (12,000 on Level 1) and The Arena (12,000 on Level 2). */
+/** Level select: Lion Temple, Crimson Peak (8,000 on Level 1) and The Arena (8,000 on Level 2). */
 function LevelPicker({
   level,
   onPick,
