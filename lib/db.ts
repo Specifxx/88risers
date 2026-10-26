@@ -301,6 +301,18 @@ CREATE TABLE IF NOT EXISTS pinrun_tx (
 );
 CREATE INDEX IF NOT EXISTS pinrun_tx_account ON pinrun_tx (account_id, created_at);
 
+-- Katana Draw: one row per ladder attempt (entry paid, duels won, coins cashed out).
+CREATE TABLE IF NOT EXISTS katana_runs (
+  id          serial PRIMARY KEY,
+  account_id  integer NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  entry       integer NOT NULL,
+  wins        integer NOT NULL DEFAULT 0,
+  cashed      integer NOT NULL DEFAULT 0,
+  started_at  timestamptz NOT NULL DEFAULT now(),
+  ended_at    timestamptz
+);
+CREATE INDEX IF NOT EXISTS katana_runs_account ON katana_runs (account_id, started_at);
+
 -- Pin Run Club Raid: one Riser boss at a time with a health pool the whole club chips at on Level 3.
 CREATE TABLE IF NOT EXISTS pinrun_raids (
   id           serial PRIMARY KEY,
@@ -356,7 +368,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v32";
+const MIGRATION_MARKER = "founders_v33";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [

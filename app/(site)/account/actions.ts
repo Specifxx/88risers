@@ -9,6 +9,7 @@ import { CHALK, recordCheckin, sydneyToday } from "@/lib/chalk";
 import { type Db, getDb } from "@/lib/db";
 import { LEVEL2_UNLOCK, LEVEL3_UNLOCK, type Raid, type Wallet, plausibleDamage, skinById } from "@/lib/pinrun";
 import { hitRaid } from "@/lib/raid";
+import { KATANA_ENTRY, KATANA_PRIZES } from "@/lib/katana";
 import { bankRunCoins, getWallet } from "@/lib/pinrun-db";
 import { fmtOdds, payoutAt, quoteOdds } from "@/lib/odds";
 import { SITE } from "@/lib/site";
@@ -455,4 +456,51 @@ export async function equipSkin(id: string): Promise<{ ok: boolean; wallet: Wall
   const db = await getDb();
   await db.query(`UPDATE pinrun_wallet SET skin = $2, updated_at = now() WHERE account_id = $1 AND $2 = ANY(owned)`, [me.id, id]);
   return { ok: true, wallet: await getWallet(me.id) };
+}
+
+/* ─────────── Katana Draw ─────────── */
+
+/** Pays the entry and opens a ladder run (any run left open is forfeited). */
+export async function katanaStart(): Promise<{ ok: boolean; message: string; runId: number | null; coins: number | null }> {
+  const me = await currentAccount();
+  if (!me) return { ok: false, message: "Log in to duel for Temple coins.", runId: null, coins: null };
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    await tx.query(`UPDATE katana_runs SET ended_at = now() WHERE account_id = $1 AND ended_at IS NULL`, [me.id]);
+    await tx.query(`INSERT INTO pinrun_wallet (account_id) VALUES ($1) ON CONFLICT DO NOTHING`, [me.id]);
+    const [w] = await tx.query<{ coins: number }>(`SELECT coins FROM pinrun_wallet WHERE account_id = $1 FOR UPDATE`, [me.id]);
+    if (w.coins < KATANA_ENTRY) return { ok: false, message: `You need ${KATANA_ENTRY - w.coins} more Temple coins to enter.`, runId: null, coins: w.coins };
+    await tx.query(`UPDATE pinrun_wallet SET coins = coins - $2, updated_at = now() WHERE account_id = $1`, [me.id, KATANA_ENTRY]);
+    await tx.query(`INSERT INTO pinrun_tx (account_id, amount, reason) VALUES ($1, $2, 'Katana Draw entry')`, [me.id, -KATANA_ENTRY]);
+    const [r] = await tx.query<{ id: number }>(`INSERT INTO katana_runs (account_id, entry) VALUES ($1, $2) RETURNING id`, [me.id, KATANA_ENTRY]);
+    return { ok: true, message: "", runId: r.id, coins: w.coins - KATANA_ENTRY };
+  });
+}
+
+/** Ends a ladder run: cash out the prize for the duels won, or record the loss. */
+export async function katanaEnd(runId: number, wins: number, cashOut: boolean): Promise<{ ok: boolean; message: string; paid: number; coins: number | null }> {
+  const me = await currentAccount();
+  if (!me) return { ok: false, message: "Log in first.", paid: 0, coins: null };
+  const n = Math.max(0, Math.min(KATANA_PRIZES.length - 1, Math.floor(Number(wins)) || 0));
+  const db = await getDb();
+  const res = await db.transaction(async (tx) => {
+    const [r] = await tx.query<{ id: number; secs: number }>(
+      `SELECT id, extract(epoch FROM now() - started_at)::float AS secs FROM katana_runs
+       WHERE id = $1 AND account_id = $2 AND ended_at IS NULL FOR UPDATE`,
+      [runId, me.id],
+    );
+    if (!r) return { ok: false, message: "That duel run already ended.", paid: 0 };
+    // each duel takes a few seconds; a claim faster than that isn't real
+    const wonFairly = r.secs >= n * 2;
+    const paid = cashOut && wonFairly ? KATANA_PRIZES[n] : 0;
+    await tx.query(`UPDATE katana_runs SET wins = $2, cashed = $3, ended_at = now() WHERE id = $1`, [r.id, wonFairly ? n : 0, paid]);
+    if (paid > 0) {
+      await tx.query(`UPDATE pinrun_wallet SET coins = coins + $2, updated_at = now() WHERE account_id = $1`, [me.id, paid]);
+      await tx.query(`INSERT INTO pinrun_tx (account_id, amount, reason) VALUES ($1, $2, $3)`, [me.id, paid, `Katana Draw: cashed out after ${n} win${n === 1 ? "" : "s"}`]);
+    }
+    return { ok: true, message: paid ? `+${paid} Temple coins.` : "", paid };
+  });
+  const [w] = await db.query<{ coins: number }>(`SELECT coins FROM pinrun_wallet WHERE account_id = $1`, [me.id]);
+  if (res.paid) revalidatePath("/play");
+  return { ...res, coins: w?.coins ?? null };
 }

@@ -9,6 +9,8 @@ import { getDb } from "@/lib/db";
 import { getWallet } from "@/lib/pinrun-db";
 import { BOSS_ART, type Boss, LEVEL2_UNLOCK, LEVEL3_UNLOCK, RAID_REWARD, RAID_TOP_BONUS } from "@/lib/pinrun";
 import { getRaid, raidBoard } from "@/lib/raid";
+import { KatanaDraw } from "@/components/KatanaDraw";
+import { KATANA_ENTRY } from "@/lib/katana";
 import { PinRunBoards } from "@/components/PinRunBoards";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +44,12 @@ export default async function PlayPage() {
     me ? db.query<{ best: number }>(`SELECT best FROM arcade_scores WHERE account_id = $1 AND game = 'pinrun' AND level = '3'`, [me.id]) : Promise.resolve([]),
   ]);
   const raid = await getRaid();
+  const katanaTop = await db.query<{ display_name: string; handle: string; best: number; clears: number }>(
+    `SELECT a.display_name, a.handle, max(k.wins)::int AS best, count(*) FILTER (WHERE k.wins >= 6)::int AS clears
+     FROM katana_runs k JOIN accounts a ON a.id = k.account_id
+     WHERE k.ended_at IS NOT NULL AND k.wins > 0
+     GROUP BY a.id, a.display_name, a.handle ORDER BY best DESC, clears DESC, min(k.started_at) ASC LIMIT 10`,
+  );
   const raidTop = await raidBoard(raid.id);
   // Bosses need a face: cartoon art or a photo (Risers without either sit out until they have one).
   const bossList = bosses.map((b) => ({ ...b, art: BOSS_ART.has(b.id) ? `/pinrun/bosses/${b.id}.webp` : null })).filter((b) => b.art || b.photo);
@@ -86,6 +94,43 @@ export default async function PlayPage() {
                 Log in to post a score <span>→</span>
               </Link>
             ) : null}
+          </div>
+        </div>
+      </section>
+
+      <section className="section" id="katana-draw" style={{ paddingTop: 24 }}>
+        <div className="wrap">
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">88 Risers Arcade</p>
+              <h2 className="display">
+                Katana <span className="gold-text">Draw.</span>
+              </h2>
+            </div>
+            <p className="lede">
+              A quick-draw ladder for the 88 Risers katana. Spend {KATANA_ENTRY} Temple coins to step up, then out-draw six Risers in a row. Cash out
+              after any win, or risk the pot for more.
+            </p>
+          </div>
+          <div className="play-grid">
+            <KatanaDraw loggedIn={!!me} coins={wallet?.coins ?? null} bosses={bossList} skin={wallet?.skin} />
+            <div className="panel">
+              <h2 className="panel-title">Katana Masters</h2>
+              <ol className="coin-leaders">
+                {katanaTop.map((t, i) => (
+                  <li key={t.handle}>
+                    <span className="cl-rank">{i === 0 ? "♛" : i + 1}</span>
+                    <Link className="cl-name" href={`/members/${t.handle}`}>
+                      {t.display_name}
+                    </Link>
+                    <b>
+                      {t.best >= 6 ? `Master${t.clears > 1 ? ` ×${t.clears}` : ""}` : `${t.best} cut${t.best === 1 ? "" : "s"}`}
+                    </b>
+                  </li>
+                ))}
+                {katanaTop.length === 0 ? <li className="muted">No duels won yet. First blood is yours.</li> : null}
+              </ol>
+            </div>
           </div>
         </div>
       </section>

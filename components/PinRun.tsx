@@ -1217,21 +1217,33 @@ export function PinRun({
         }
       }
 
-      // fell into the pit
+      // fell into the pit: back on your feet on a safe table (still, room to run, no rival)
       if (w.y > H + 80) {
-        const next = w.plats.find((p) => p.x + p.w > px + 40) ?? w.plats[w.plats.length - 1];
         if (l2 && w.skin === "wave" && !w.waveUsed) {
           w.waveUsed = true;
           w.combo = 1;
           w.pops.push({ x: px, y: H - 140, t: "WAVE RIDER!", life: 1.2, c: "#9ec4e8" });
           beep(500, 0.2, "triangle", 0.06);
         } else if (hurt(w, "FELL!")) return endGame();
-        w.dist = Math.max(w.dist, next.x - PX + 20);
-        if (next.rival && next.rival.state === "idle" && !next.rival.boss) next.rival.state = "gone";
-        w.y = next.y - R - 120;
+        const room = (p: Plat) => p.x + p.w - Math.max(px, p.x + 40);
+        const ok = (p: Plat) => room(p) >= 140 && !p.rival?.boss;
+        const safe =
+          w.plats.find((p) => ok(p) && !p.move && !p.wet) ??
+          w.plats.find((p) => ok(p) && !p.move) ??
+          w.plats.find((p) => ok(p)) ??
+          w.plats.find((p) => p.x + p.w > px + 40) ??
+          w.plats[w.plats.length - 1];
+        if (safe.rival && safe.rival.state === "idle" && !safe.rival.boss) safe.rival.state = "gone";
+        const standX = Math.max(px, safe.x + 40);
+        w.dist = standX - PX;
+        w.y = safe.y - R;
         w.vy = 0;
-        w.ground = null;
-        w.invuln = 1.2;
+        w.ground = safe;
+        w.jumps = 0;
+        w.coyote = 0;
+        w.holding = false;
+        w.invuln = 1.6;
+        for (let i = 0; i < 14; i++) w.parts.push({ x: standX, y: safe.y - rand(0, 60), vx: rand(-120, 120), vy: rand(-220, -40), life: 0.5, c: "#f2e1b6", s: 3 });
       }
 
       for (const p of w.parts) {
