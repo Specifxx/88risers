@@ -804,11 +804,13 @@ export function PinRun({
           }
       }
       // they close in; Beast Mode drives them back
-      const rate = (0.05 + c.staggers * 0.012 + Math.min(0.02, w.dist / 400000)) * (w.skin === "eclipse" ? 0.75 : 1);
+      // Clean running out-paces them (landings, coins, pins all push back); falls, slips and their
+      // moves are what let them catch you. They get a little quicker every time you stagger them.
+      const rate = (0.028 + c.staggers * 0.008 + Math.min(0.015, w.dist / 500000)) * (w.skin === "eclipse" ? 0.75 : 1);
       if (w.beast > 0) pushBoss(w, 0.3 * dt, 9 * dt, 60 * dt);
       else c.prox += rate * dt * (c.drag > 0 ? 3 : 1);
       if (c.prox >= 1) {
-        c.prox = 0.5;
+        c.prox = 0.4;
         w.shake = 0.5;
         if (w.invuln === 0) {
           w.invuln = 1.2;
@@ -920,7 +922,7 @@ export function PinRun({
                 c.finisher = false;
                 w.pops.push({ x: w.dist + PX + 60, y: w.y - 130, t: `-${hitDmg.toLocaleString("en-AU")} RAID HP`, life: 1.8, c: "#ff6a4f" });
                 w.banner = { t: "STAGGERED!", sub: `${c.b.name} is back up, and angrier. Keep running.`, life: 2.4, c: "#f2c14e" };
-              } else if (!boss) pushBoss(w, d.two ? 0.18 : 0.12, d.two ? 20 : 14, d.two ? 200 : 120);
+              } else if (!boss) pushBoss(w, d.two ? 0.24 : 0.16, d.two ? 20 : 14, d.two ? 200 : 120);
               if (sm) w.banner = { t: "ARENA CHAMPION!", sub: `You beat ${boss!.b.name} in the supermatch.`, life: 2.6, c: "#f2c14e" };
               if (boss) {
                 // a shower of coins (each worth score, like any coin)
@@ -1094,6 +1096,7 @@ export function PinRun({
             w.ground = p;
             w.jumps = 0;
             w.land = 0.16;
+            pushBoss(w, 0.015, 0, 0); // every clean landing gains you a step
             if (l3 && p.wet && w.wetSeen !== p) {
               w.wetSeen = p;
               if (w.skin === "wave") {
@@ -1134,7 +1137,7 @@ export function PinRun({
           w.cheer = 1;
           w.shake = 0.2;
           w.pops.push({ x: px, y: w.y - 70, t: `BEAST PIN! +${gain}`, life: 1, c: "#ff6a4f" });
-          pushBoss(w, 0.1, 10, 100);
+          pushBoss(w, 0.13, 10, 100);
           beep(880, 0.1, "square", 0.06);
           for (let i = 0; i < 20; i++) w.parts.push({ x: r.x, y: p.y - 30, vx: rand(-300, 300), vy: rand(-400, 40), life: rand(0.3, 0.7), c: i % 2 ? "#ff4a4f" : "#f2c14e", s: rand(2, 5) });
           continue;
@@ -1195,7 +1198,7 @@ export function PinRun({
           w.coins += k;
           w.score += 10 * w.combo * (l2 && w.skin === "jade" ? 1.25 : 1);
           if (l3) addHype(w, w.skin === "jade" ? 3 : 1.5); // Golden Crowd: double
-          pushBoss(w, 0.008, 0.6, 4);
+          pushBoss(w, 0.012, 0.6, 4);
           beep(1180, 0.05, "square", 0.035);
         }
       }
