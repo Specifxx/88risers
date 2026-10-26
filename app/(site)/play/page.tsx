@@ -42,7 +42,7 @@ export default async function PlayPage() {
     me ? db.query<{ best: number }>(`SELECT best FROM arcade_scores WHERE account_id = $1 AND game = 'pinrun' AND level = '3'`, [me.id]) : Promise.resolve([]),
   ]);
   const raid = await getRaid();
-  const raidTop = raid ? await raidBoard(raid.id) : [];
+  const raidTop = await raidBoard(raid.id);
   const bossList = bosses.map((b) => ({ ...b, art: BOSS_ART.has(b.id) ? `/pinrun/bosses/${b.id}.webp` : null }));
 
   return (
@@ -57,7 +57,7 @@ export default async function PlayPage() {
           </h1>
           <p className="lede">
             One button. Jump the tables, win the grip fights, don&apos;t fall in the chalk pit. Play any minigame here once a day and logged-in
-            Risers earn +{DAILY_GAME_COINS} coins. Every coin you grab in Pin Run is banked for new lions in the Lion Temple. Score 12,000 to unlock Level 2: Crimson Peak, with moving ledges, power-ups, lion abilities and real Risers as bosses. Score 12,000 on Level 2 to reach Level 3: The Arena, where the club&apos;s raid boss chases you and every run chips at their health. Prefer a straight-up arm wrestle?{" "}
+            Risers earn +{DAILY_GAME_COINS} coins. Every coin you grab in Pin Run is banked for new lions in the Lion Temple. Score 12,000 to unlock Level 2: Crimson Peak, with moving ledges, power-ups, lion abilities and real Risers as bosses. Score 12,000 on Level 2 to reach Level 3: The Arena, where a random Riser chases you and every run chips at the club&apos;s shared Riser Boss. Prefer a straight-up arm wrestle?{" "}
             <a href="#race-to-the-pin">Play Race to the Pin</a>.
           </p>
         </div>
@@ -74,10 +74,8 @@ export default async function PlayPage() {
                 {
                   label: "Club Raid",
                   rows: raidTop,
-                  empty: "No hits yet. Level 3 runs chip at the raid boss.",
-                  note: raid
-                    ? `${raid.boss.name}: ${raid.hp.toLocaleString("en-AU")} / ${raid.hpMax.toLocaleString("en-AU")} HP left. When the club takes them down, everyone who landed a hit gets ${RAID_REWARD} Temple coins (top damage +${RAID_TOP_BONUS}).`
-                    : undefined,
+                  empty: "No hits yet. Every Level 3 run chips at the Riser Boss.",
+                  note: `Riser Boss: ${raid.hp.toLocaleString("en-AU")} / ${raid.hpMax.toLocaleString("en-AU")} HP left. Every Level 3 run hits it, whichever Riser is chasing you. When the club takes it down, everyone who landed a hit gets ${RAID_REWARD} Temple coins (top damage +${RAID_TOP_BONUS}).`,
                   unit: "dmg",
                 },
               ]}

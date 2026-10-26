@@ -298,7 +298,7 @@ export async function submitScore(
   wallet: Wallet | null;
   l1Best?: number;
   /** Level 3: damage landed on the Club Raid, the raid now, and whether this run finished the boss. */
-  raid?: { dealt: number; now: Raid | null; killed: null | { name: string; reward: number } };
+  raid?: { dealt: number; now: Raid | null; killed: null | { reward: number } };
 }> {
   const me = await currentAccount();
   if (!me) return { best: null, coins: 0, message: "Log in to save your score and earn coins.", saved: 0, wallet: null };
