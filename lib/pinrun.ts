@@ -104,18 +104,87 @@ export interface Wallet {
   coins: number;
   skin: string;
   owned: string[];
-  /** Level 2 unlocked by an organiser (as well as by scoring 8,000). */
+  /** Level 2 unlocked by an organiser (as well as by scoring 5,000). */
   l2?: boolean;
-  /** Level 3 unlocked by an organiser (as well as by scoring 8,000 on Level 2). */
+  /** Level 3 unlocked by an organiser (as well as by scoring 5,000 on Level 2). */
   l3?: boolean;
+  /** Run boosts in stock, by id. */
+  boosts?: Record<string, number>;
+  /** Ability upgrade tier (0-3) per lion. */
+  ups?: Record<string, number>;
+  /** Lions gilded gold. */
+  gold?: string[];
+}
+
+/* ─────────── Coin sinks: run boosts, ability upgrades, golden lions ─────────── */
+
+export type BoostId = "revive" | "head" | "heart" | "shield" | "hype";
+export const BOOSTS: { id: BoostId; name: string; price: number; icon: string; text: string; l3?: boolean }[] = [
+  { id: "revive", name: "Second Wind", price: 300, icon: "♥︎", text: "Out of hearts? Get back up once with 1 heart." },
+  { id: "head", name: "Head Start", price: 150, icon: "»", text: "Start the run 2,000 points up." },
+  { id: "heart", name: "Extra Heart", price: 250, icon: "+", text: "Start with one more heart." },
+  { id: "shield", name: "Starting Shield", price: 250, icon: "⛨", text: "Start with a shield that soaks one hit." },
+  { id: "hype", name: "Hype Drink", price: 200, icon: "🔥", text: "Level 3 only: start with full hype, ready for Beast Mode.", l3: true },
+];
+export const BOOST_MAX = 20;
+export const boostById = (id: string) => BOOSTS.find((b) => b.id === id) ?? null;
+
+/** Cost of ability upgrade tiers 1, 2 and 3 (each lion upgrades both its Lv.2 and Lv.3 ability). */
+export const UPGRADE_COSTS = [1000, 2500, 5000];
+export const GOLD_PRICE = 10000;
+
+/**
+ * The numbers each ability uses at upgrade tiers 0-3. Abilities that are on/off (Triple Jump,
+ * Rooted...) upgrade the lion's other ability.
+ */
+export const TIER = {
+  stoneZone: [1.15, 1.2, 1.25, 1.3],
+  sakuraFall: [230, 200, 170, 140],
+  jadeScore: [1.25, 1.35, 1.45, 1.55],
+  jadePair: [0.5, 0.55, 0.6, 0.65],
+  waveSaves: [1, 2, 2, 3],
+  crystalNeedle: [0.7, 0.65, 0.6, 0.55],
+  crystalStare: [2.5, 3, 3.5, 4],
+  flamePin: [1.5, 1.65, 1.8, 2],
+  flameBeast: [9, 10, 11, 12],
+  thunderPush: [0.3, 0.38, 0.46, 0.55],
+  moonRegen: [30, 25, 20, 15],
+  eclipseSlow: [0.75, 0.7, 0.65, 0.6],
+};
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+/** What an upgrade tier gives, in words (for the Temple). */
+export function upgradeText(skin: string, tier: number): string {
+  const t = Math.max(0, Math.min(3, tier));
+  switch (skin) {
+    case "stone":
+      return `Gold zone ${pct(TIER.stoneZone[t] - 1)} wider`;
+    case "sakura":
+      return t ? `Glide ${pct(1 - TIER.sakuraFall[t] / TIER.sakuraFall[0])} floatier` : "Standard glide";
+    case "jade":
+      return `Coins score +${pct(TIER.jadeScore[t] - 1)}, pairs ${pct(TIER.jadePair[t])} of the time`;
+    case "wave":
+      return `${TIER.waveSaves[t]} free fall${TIER.waveSaves[t] > 1 ? "s" : ""} per run`;
+    case "crystal":
+      return `Needle ${pct(1 - TIER.crystalNeedle[t])} slower, Cold Stare ${TIER.crystalStare[t]}s`;
+    case "flame":
+      return `Pins +${pct(TIER.flamePin[t] - 1)}, Beast Mode ${TIER.flameBeast[t]}s`;
+    case "thunder":
+      return `Thunderclap pushes the boss back ${pct(TIER.thunderPush[t])}`;
+    case "moon":
+      return `Shield returns after ${TIER.moonRegen[t]}s`;
+    case "eclipse":
+      return `Boss chases ${pct(1 - TIER.eclipseSlow[t])} slower`;
+    default:
+      return "";
+  }
 }
 
 /* ─────────── Levels ─────────── */
 
 /** Score on Level 1 that unlocks Level 2. */
-export const LEVEL2_UNLOCK = 8000;
+export const LEVEL2_UNLOCK = 5000;
 /** Score on Level 2 that unlocks Level 3. */
-export const LEVEL3_UNLOCK = 8000;
+export const LEVEL3_UNLOCK = 5000;
 
 export const LEVELS = [
   { n: 1, name: "Lion Temple", blurb: "The original run." },

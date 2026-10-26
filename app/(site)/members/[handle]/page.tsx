@@ -149,7 +149,7 @@ export default async function MemberPage({ params }: PageProps<"/members/[handle
               <ChalkLift chalk={chalk} target={settings.target} compact />
             </div>
             <div style={{ marginTop: 20 }}>
-              <LionShowcase skin={m.lion} title={`${first}'s lion`} mine={isMe} />
+              <LionShowcase skin={m.lion} gold={m.lionGold} title={`${first}'s lion`} mine={isMe} />
             </div>
           </div>
           <div className="account-cols">

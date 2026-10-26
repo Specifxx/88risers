@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { buySkin, equipSkin, submitScore } from "@/app/(site)/account/actions";
+import { buyBoost, buyGold, buySkin, buyUpgrade, equipSkin, submitScore, spendBoosts } from "@/app/(site)/account/actions";
 import { lionSays } from "@/lib/lion";
-import { ABILITIES, ABILITIES3, ANIM, type Boss, type Raid, DEFAULT_SKIN, LEVEL2_UNLOCK, LEVEL3_UNLOCK, LEVELS, MOVES, type MoveKind, POWERS, type PowerKind, SKINS, type Wallet, chainMove, moveOf, skinById } from "@/lib/pinrun";
+import { ABILITIES, ABILITIES3, ANIM, BOOST_MAX, BOOSTS, type Boss, GOLD_PRICE, type Raid, TIER, UPGRADE_COSTS, upgradeText, DEFAULT_SKIN, LEVEL2_UNLOCK, LEVEL3_UNLOCK, LEVELS, MOVES, type MoveKind, POWERS, type PowerKind, SKINS, type Wallet, chainMove, moveOf, skinById } from "@/lib/pinrun";
 import { drawAura, drawFx, newFx, stepFx } from "@/lib/pinrun-fx";
 import { RADIO } from "@/lib/radio";
 
@@ -14,6 +14,8 @@ const ARENA_STATION = RADIO.find((c) => c.id === "phonk") ?? GAME_STATION;
 const stationFor = (level: number) => (level === 3 ? ARENA_STATION : GAME_STATION);
 
 type Lv = 1 | 2 | 3;
+/** Golden lions: the lion's own art, gilded. */
+const GOLD_FILTER = "sepia(1) saturate(2.6) hue-rotate(-8deg) brightness(1.12) contrast(1.05)";
 
 /**
  * PIN RUN — a one-button arm wrestling platformer.
@@ -158,7 +160,12 @@ interface World {
   powers: Power[];
   nextBoss: number;
   bossIdx: number;
-  waveUsed: boolean;
+  /** Wave Rider: free falls left this run. */
+  waveSaves: number;
+  /** The equipped lion's ability upgrade tier (0-3), Second Wind revives left, and a golden lion. */
+  tier: number;
+  revives: number;
+  gold: boolean;
   unlockShown: boolean;
   /** A message pinned to the top of the screen (ability, unlocks). */
   banner: null | { t: string; sub: string; life: number; c: string };
@@ -191,7 +198,7 @@ interface World {
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 
-function newWorld(level: Lv = 1, skin = DEFAULT_SKIN): World {
+function newWorld(level: Lv = 1, skin = DEFAULT_SKIN, tier = 0): World {
   const first: Plat = { x: -200, w: 900, y: 400, rival: null, baseY: 400, move: null };
   const adv = level >= 2;
   const hearts = adv && skin === "eclipse" ? 4 : 3;
@@ -206,7 +213,10 @@ function newWorld(level: Lv = 1, skin = DEFAULT_SKIN): World {
     powers: [],
     nextBoss: level === 3 ? 3200 : 6000,
     bossIdx: Math.floor(Math.random() * 1000),
-    waveUsed: false,
+    waveSaves: TIER.waveSaves[tier],
+    tier,
+    revives: 0,
+    gold: false,
     unlockShown: false,
     banner: null,
     t: 0,
@@ -356,6 +366,8 @@ export function PinRun({
   const levelRef = useRef<Lv>(1);
   levelRef.current = level;
   const [wallet, setWallet] = useState<Wallet | null>(initialWallet);
+  const walletRef = useRef(wallet);
+  walletRef.current = wallet;
   const unlocked = (best ?? 0) >= LEVEL2_UNLOCK || !!wallet?.l2;
   const unlockedRef = useRef(unlocked);
   unlockedRef.current = unlocked;
@@ -367,6 +379,10 @@ export function PinRun({
   const raidRef = useRef(raid);
   raidRef.current = raid;
   const [finalDmg, setFinalDmg] = useState(0);
+  /** Boosts armed for the next run (spent when it starts). */
+  const [armed, setArmed] = useState<string[]>([]);
+  const armedRef = useRef(armed);
+  armedRef.current = armed;
   /** The on-screen Beast button (Level 3): hype filled (0-10) / ready / active. */
   const [beastUi, setBeastUi] = useState<{ on: boolean; fill: number; ready: boolean; active: boolean }>({ on: false, fill: 0, ready: false, active: false });
   const beastUiKey = useRef("");
@@ -460,7 +476,28 @@ export function PinRun({
       setOnAir(false);
       if (!mutedRef.current) tuneRadio(0);
     } else startRadio();
-    world.current = newWorld(levelRef.current, skinRef.current);
+    const wal = walletRef.current;
+    world.current = newWorld(levelRef.current, skinRef.current, wal?.ups?.[skinRef.current] ?? 0);
+    world.current.gold = !!wal?.gold?.includes(skinRef.current);
+    // armed boosts (in stock) apply straight away; the server spends them in the background
+    const go = armedRef.current.filter((id) => (wal?.boosts?.[id] ?? 0) > 0 && (id !== "hype" || levelRef.current === 3));
+    if (go.length) {
+      const w = world.current;
+      for (const id of go) {
+        if (id === "revive") w.revives = 1;
+        else if (id === "head") w.score += 2000;
+        else if (id === "heart") {
+          w.maxHearts++;
+          w.hearts++;
+        } else if (id === "shield") w.shield = true;
+        else if (id === "hype") w.hype = 100;
+      }
+      spendBoosts(go)
+        .then((r) => {
+          if (r.wallet) setWallet(r.wallet);
+        })
+        .catch(() => {});
+    }
     if (levelRef.current === 3) {
       // a random Riser chases you each run
       const pool = bossesRef.current;
@@ -483,7 +520,7 @@ export function PinRun({
     if (w.level !== 3 || !w.beastReady || phaseRef.current !== "play" || w.over) return;
     w.beastReady = false;
     w.hype = 0;
-    w.beastMax = w.skin === "flame" ? 9 : 6; // Wildfire
+    w.beastMax = w.skin === "flame" ? TIER.flameBeast[w.tier] : 6; // Wildfire
     w.beast = w.beastMax;
     w.cheer = 2;
           if (w.skin === "thunder") {
@@ -510,7 +547,7 @@ export function PinRun({
             }
             w.shake = 0.4;
             if (w.chase) {
-              w.chase.prox = Math.max(0, w.chase.prox - 0.3);
+              w.chase.prox = Math.max(0, w.chase.prox - TIER.thunderPush[w.tier]);
               w.dmg += 300;
             }
           }
@@ -667,7 +704,7 @@ export function PinRun({
       w.shake = 0.3;
       if (w.shield) {
         w.shield = false;
-        if (w.level >= 2 && w.skin === "moon") w.shieldBack = 30;
+        if (w.level >= 2 && w.skin === "moon") w.shieldBack = TIER.moonRegen[w.tier];
         w.pops.push({ x: w.dist + PX, y: w.y - 80, t: "SHIELD!", life: 1, c: "#7fc8ff" });
         beep(600, 0.15, "triangle", 0.06);
         return false;
@@ -677,13 +714,23 @@ export function PinRun({
       if (w.chase) w.chase.prox = Math.max(w.chase.prox, Math.min(0.9, w.chase.prox + 0.06));
       w.pops.push({ x: w.dist + PX, y: w.y - 70, t: label, life: 1, c: "#ff4a4f" });
       beep(200, 0.25, "sawtooth", 0.06);
+      if (w.hearts <= 0 && w.revives > 0) {
+        // Second Wind
+        w.revives--;
+        w.hearts = 1;
+        w.invuln = 2;
+        w.banner = { t: "SECOND WIND!", sub: "Back up with 1 heart.", life: 2, c: "#ff6a6f" };
+        beep(660, 0.2, "triangle", 0.06);
+        setTimeout(() => beep(990, 0.25, "triangle", 0.06), 120);
+        return false;
+      }
       return w.hearts <= 0;
     };
 
-    /** Adds crowd hype (Crowd Favourite fills it 20% faster). */
+    /** Adds crowd hype. */
     const addHype = (w: World, n: number) => {
       if (w.level !== 3 || w.beast > 0) return;
-      w.hype = Math.min(100, w.hype + n * (w.skin === "stone" ? 1.2 : 1));
+      w.hype = Math.min(100, w.hype + n);
     };
 
     const newRound = (w: World, boss: boolean) => {
@@ -692,8 +739,8 @@ export function PinRun({
       const l2 = w.level >= 2;
       let width = boss ? 0.2 - diff * 0.05 - (d.rival.boss!.max - d.rival.boss!.hp) * 0.02 : 0.24 - diff * 0.12;
       let speed = boss ? 5 + diff * 3 + (d.rival.boss!.max - d.rival.boss!.hp) * 0.7 : 4.2 + diff * 3.5;
-      if (l2 && w.skin === "stone") width *= 1.15;
-      if (l2 && w.skin === "crystal") speed *= 0.7;
+      if (l2 && w.skin === "stone") width *= TIER.stoneZone[w.tier];
+      if (l2 && w.skin === "crystal") speed *= TIER.crystalNeedle[w.tier];
       const bf = d.rival.boss;
       const id = bf?.b.id ?? 0;
       const move = bf ? (moveOf(id) === "chain" ? chainMove(bf.max - bf.hp) : moveOf(id)) : null;
@@ -799,7 +846,7 @@ export function PinRun({
       beep(110, 0.35, "sawtooth", 0.06);
       if (w.skin === "crystal") {
         // Cold Stare: they freeze after showing their hand
-        c.chill = 2.5;
+        c.chill = TIER.crystalStare[w.tier];
         w.pops.push({ x: w.dist + PX, y: w.y - 110, t: "COLD STARE", life: 1, c: "#9fe0ff" });
       }
     };
@@ -819,7 +866,7 @@ export function PinRun({
       // they close in; Beast Mode drives them back
       // Clean running out-paces them (landings, coins, pins all push back); falls, slips and their
       // moves are what let them catch you. They get a little quicker every time you stagger them.
-      const rate = (0.024 + c.staggers * 0.008 + Math.min(0.015, w.dist / 500000)) * (w.skin === "eclipse" ? 0.75 : 1);
+      const rate = (0.024 + c.staggers * 0.008 + Math.min(0.015, w.dist / 500000)) * (w.skin === "eclipse" ? TIER.eclipseSlow[w.tier] : 1);
       if (w.beast > 0) pushBoss(w, 0.3 * dt, 9 * dt, (w.skin === "flame" ? 120 : 60) * dt); // Wildfire: double raid damage
       else if (c.chill <= 0) c.prox += rate * dt * (c.drag > 0 ? 3 : 1);
       if (c.prox >= 1) {
@@ -911,7 +958,7 @@ export function PinRun({
               w.pins++;
               const blaze = l2 && w.skin === "flame";
               const sm = !!boss?.sm;
-              const gain = Math.round((sm ? 3000 : boss ? 1500 : 100 * w.combo * (d.two ? 2 : 1)) * (blaze ? 1.5 : 1));
+              const gain = Math.round((sm ? 3000 : boss ? 1500 : 100 * w.combo * (d.two ? 2 : 1)) * (blaze ? TIER.flamePin[w.tier] : 1));
               w.score += gain;
               w.pops.push({
                 x: w.dist + PX,
@@ -1091,7 +1138,7 @@ export function PinRun({
       const prevBottom = w.y + R;
       const glide = l2 && w.skin === "sakura" && w.holding && w.vy > 0;
       w.vy += G * dt * (!w.holding && w.vy < 0 ? 1.9 : glide ? 0.3 : 1) * (w.chase && w.chase.wind > 0 ? 1.3 : 1);
-      if (glide) w.vy = Math.min(w.vy, 230);
+      if (glide) w.vy = Math.min(w.vy, TIER.sakuraFall[w.tier]);
       w.y += w.vy * dt;
       const px = w.dist + PX;
       if (w.ground && (px > w.ground.x + w.ground.w + 8 || px < w.ground.x - 8)) {
@@ -1207,10 +1254,10 @@ export function PinRun({
         if (Math.abs(c.x - px) < 32 && c.y > w.y + R - 78 && c.y < w.y + R + 8) {
           c.got = true;
           let k = w.pw.x2 > 0 ? 2 : 1;
-          if (l2 && w.skin === "jade" && Math.random() < 0.5) k++;
+          if (l2 && w.skin === "jade" && Math.random() < TIER.jadePair[w.tier]) k++;
           w.coins += k;
-          w.score += 10 * w.combo * (l2 && w.skin === "jade" ? 1.25 : 1);
-          if (l3) addHype(w, w.skin === "jade" ? 3 : 1.5); // Golden Crowd: double
+          w.score += 10 * w.combo * (l2 && w.skin === "jade" ? TIER.jadeScore[w.tier] : 1);
+          if (l3) addHype(w, 1.5);
           if (w.skin === "jade") pushBoss(w, 0.006, 1.2, 8); // Jade Fortune
           else pushBoss(w, 0.003, 0.6, 4);
           beep(1180, 0.05, "square", 0.035);
@@ -1220,8 +1267,8 @@ export function PinRun({
       // fell into the pit
       if (w.y > H + 80) {
         const next = w.plats.find((p) => p.x + p.w > px + 40) ?? w.plats[w.plats.length - 1];
-        if (l2 && w.skin === "wave" && !w.waveUsed) {
-          w.waveUsed = true;
+        if (l2 && w.skin === "wave" && w.waveSaves > 0) {
+          w.waveSaves--;
           w.combo = 1;
           w.pops.push({ x: px, y: H - 140, t: "WAVE RIDER!", life: 1.2, c: "#9ec4e8" });
           beep(500, 0.2, "triangle", 0.06);
@@ -1621,6 +1668,7 @@ export function PinRun({
     /** The lion: its AI-animated run cycle, played at a rate that follows the run speed. */
     let frameAt = 0;
     const drawPlayer = (w: World) => {
+      if (w.gold && Math.random() < 0.6) w.parts.push({ x: w.dist + PX - rand(10, 50), y: w.y + R - rand(10, 70), vx: rand(-160, -60), vy: rand(-60, 20), life: 0.5, c: Math.random() < 0.5 ? "#f2c14e" : "#fff1b0", s: rand(2, 3.5) });
       if (w.invuln > 0 && Math.floor(w.t * 14) % 2 === 0) return;
       const x = PX;
       const feet = w.y + R;
@@ -1657,7 +1705,9 @@ export function PinRun({
       ctx.scale(sx, sy);
       if (img?.complete && img.naturalWidth) {
         const k = ANIM.scale;
+        if (w.gold) ctx.filter = GOLD_FILTER;
         ctx.drawImage(img, frameAt * fw, 0, fw, ANIM.h, -ANIM.ax * k, -ANIM.h * k, fw * k, ANIM.h * k);
+        ctx.filter = "none";
       } else {
         ctx.fillStyle = "#d5b67a";
         ctx.beginPath();
@@ -2356,6 +2406,29 @@ export function PinRun({
             </button>
             <TempleButton onOpen={() => setTemple(true)} coins={wallet?.coins ?? 0} loggedIn={loggedIn} />
           </div>
+          {loggedIn && BOOSTS.some((b) => (wallet?.boosts?.[b.id] ?? 0) > 0) ? (
+            <div className="pinrun-boosts" onPointerDown={(e) => e.stopPropagation()}>
+              <span>Boosts</span>
+              {BOOSTS.filter((b) => (wallet?.boosts?.[b.id] ?? 0) > 0 && (!b.l3 || level === 3)).map((b) => {
+                const on = armed.includes(b.id);
+                return (
+                  <button
+                    key={b.id}
+                    type="button"
+                    className={on ? "on" : undefined}
+                    aria-pressed={on}
+                    title={b.text}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setArmed((a) => (on ? a.filter((x) => x !== b.id) : [...a, b.id]));
+                    }}
+                  >
+                    {b.icon} {b.name} <small>×{wallet?.boosts?.[b.id]}</small>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
           {level === 3 ? (
             <p className="pinrun-best">
               <b>Boss Chase:</b> a random Riser chases you and throws their moves at the level. Pins push them back; drain their stamina, then finish the
@@ -2446,7 +2519,7 @@ export function PinRun({
   );
 }
 
-/** Level select: Lion Temple, Crimson Peak (8,000 on Level 1) and The Arena (8,000 on Level 2). */
+/** Level select: Lion Temple, Crimson Peak (5,000 on Level 1) and The Arena (5,000 on Level 2). */
 function LevelPicker({
   level,
   onPick,
@@ -2548,11 +2621,16 @@ function LionTemple({
     };
   }, []);
 
-  const act = async (id: string, kind: "buy" | "equip") => {
-    setBusy(id);
+  const act = async (id: string, kind: "buy" | "equip" | "boost" | "up" | "gold") => {
+    setBusy(`${kind}:${id}`);
     setMsg(null);
     try {
-      if (kind === "buy") {
+      if (kind === "boost" || kind === "up" || kind === "gold") {
+        const r = await (kind === "boost" ? buyBoost : kind === "up" ? buyUpgrade : buyGold)(id);
+        if (r.wallet) onWallet(r.wallet);
+        setMsg({ text: r.message, ok: r.ok });
+        if (r.ok && kind === "gold") lionSays("roar", `ROAR! ${r.message}`);
+      } else if (kind === "buy") {
         const r = await buySkin(id);
         if (r.wallet) onWallet(r.wallet);
         setMsg({ text: r.message, ok: r.ok });
@@ -2592,12 +2670,46 @@ function LionTemple({
           </p>
         ) : null}
         {msg ? <p className={`temple-msg${msg.ok ? " ok" : ""}`}>{msg.text}</p> : null}
+        <h3 className="temple-section">Run boosts</h3>
+        <p className="temple-sub">Stock up here, then switch them on before a run from the start screen. Each one is used up by the run.</p>
+        <div className="temple-boosts">
+          {BOOSTS.map((b) => {
+            const n = wallet?.boosts?.[b.id] ?? 0;
+            return (
+              <article key={b.id} className="temple-boost">
+                <span className="tb-icon" aria-hidden>
+                  {b.icon}
+                </span>
+                <div>
+                  <b>{b.name}</b>
+                  <small>{b.text}</small>
+                </div>
+                <span className="tb-stock">×{n}</span>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary"
+                  disabled={!loggedIn || busy !== null || coins < b.price || n >= BOOST_MAX}
+                  onClick={() => act(b.id, "boost")}
+                >
+                  {busy === `boost:${b.id}` ? "…" : (
+                    <>
+                      <span className="coin" aria-hidden /> {b.price}
+                    </>
+                  )}
+                </button>
+              </article>
+            );
+          })}
+        </div>
+        <h3 className="temple-section">Lions</h3>
         <div className="temple-grid">
           {SKINS.map((k) => {
             const has = owned.has(k.id);
             const on = current === k.id;
+            const tier = wallet?.ups?.[k.id] ?? 0;
+            const golden = (wallet?.gold ?? []).includes(k.id);
             return (
-              <article key={k.id} className={`temple-card${on ? " on" : ""}${has ? " owned" : ""}`}>
+              <article key={k.id} className={`temple-card${on ? " on" : ""}${has ? " owned" : ""}${golden ? " golden" : ""}`}>
                 <div className="temple-art">
                   {/* the lion's run cycle: a frame strip stepped through with CSS */}
                   <div
@@ -2625,13 +2737,51 @@ function LionTemple({
                     <b>Lv.3 ability · {ABILITIES3[k.id].name}</b> {ABILITIES3[k.id].text}
                   </p>
                 ) : null}
+                {has ? (
+                  <div className="temple-upgrade">
+                    <p>
+                      <b>
+                        Upgrade {"★".repeat(tier)}
+                        {"☆".repeat(3 - tier)}
+                      </b>{" "}
+                      {upgradeText(k.id, tier)}
+                      {tier < 3 ? <em> → {upgradeText(k.id, tier + 1)}</em> : null}
+                    </p>
+                    <div className="temple-up-btns">
+                      {tier < 3 ? (
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          disabled={!loggedIn || busy !== null || coins < UPGRADE_COSTS[tier]}
+                          onClick={() => act(k.id, "up")}
+                        >
+                          {busy === `up:${k.id}` ? "…" : `★ ${UPGRADE_COSTS[tier].toLocaleString("en-AU")}`}
+                        </button>
+                      ) : (
+                        <span className="pill">Maxed</span>
+                      )}
+                      {golden ? (
+                        <span className="pill pill-gold">Golden</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-gold"
+                          disabled={!loggedIn || busy !== null || coins < GOLD_PRICE}
+                          onClick={() => act(k.id, "gold")}
+                        >
+                          {busy === `gold:${k.id}` ? "…" : `Gild ${GOLD_PRICE.toLocaleString("en-AU")}`}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="temple-foot">
                   {has ? (
                     on ? (
                       <span className="pill">Running</span>
                     ) : (
                       <button type="button" className="btn btn-sm" disabled={!loggedIn || busy !== null} onClick={() => act(k.id, "equip")}>
-                        {busy === k.id ? "…" : "Equip"}
+                        {busy === `equip:${k.id}` ? "…" : "Equip"}
                       </button>
                     )
                   ) : (
@@ -2645,7 +2795,7 @@ function LionTemple({
                         disabled={!loggedIn || busy !== null || coins < k.price}
                         onClick={() => act(k.id, "buy")}
                       >
-                        {busy === k.id ? "…" : loggedIn ? "Unlock" : "Log in"}
+                        {busy === `buy:${k.id}` ? "…" : loggedIn ? "Unlock" : "Log in"}
                       </button>
                     </>
                   )}

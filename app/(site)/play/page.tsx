@@ -23,20 +23,20 @@ export default async function PlayPage() {
   const db = await getDb();
   const [top, mine, rtpTop, rtpBest, wallet, top2, mine2, bosses, top3, mine3] = await Promise.all([
     db.query<{ display_name: string; handle: string; best: number }>(
-      `SELECT a.display_name, a.handle, g.best FROM game_scores g JOIN accounts a ON a.id = g.account_id ORDER BY g.best DESC, g.updated_at ASC LIMIT 10`,
+      `SELECT a.display_name, a.handle, g.best, coalesce((SELECT cardinality(w.gold) > 0 FROM pinrun_wallet w WHERE w.account_id = a.id), false) AS gold FROM game_scores g JOIN accounts a ON a.id = g.account_id ORDER BY g.best DESC, g.updated_at ASC LIMIT 10`,
     ),
     me ? db.query<{ best: number }>(`SELECT best FROM game_scores WHERE account_id = $1`, [me.id]) : Promise.resolve([]),
     rtpLeaders(5),
     me ? rtpMine(me.id) : Promise.resolve({} as Awaited<ReturnType<typeof rtpMine>>),
     me ? getWallet(me.id) : Promise.resolve(null),
     db.query<{ display_name: string; handle: string; best: number }>(
-      `SELECT a.display_name, a.handle, s.best FROM arcade_scores s JOIN accounts a ON a.id = s.account_id
+      `SELECT a.display_name, a.handle, s.best, coalesce((SELECT cardinality(w.gold) > 0 FROM pinrun_wallet w WHERE w.account_id = a.id), false) AS gold FROM arcade_scores s JOIN accounts a ON a.id = s.account_id
        WHERE s.game = 'pinrun' AND s.level = '2' ORDER BY s.best DESC, s.updated_at ASC LIMIT 10`,
     ),
     me ? db.query<{ best: number }>(`SELECT best FROM arcade_scores WHERE account_id = $1 AND game = 'pinrun' AND level = '2'`, [me.id]) : Promise.resolve([]),
     db.query<Boss>(`SELECT id, name, coalesce(photo_url, card_url) AS photo FROM pullers WHERE NOT hidden ORDER BY id`),
     db.query<{ display_name: string; handle: string; best: number }>(
-      `SELECT a.display_name, a.handle, s.best FROM arcade_scores s JOIN accounts a ON a.id = s.account_id
+      `SELECT a.display_name, a.handle, s.best, coalesce((SELECT cardinality(w.gold) > 0 FROM pinrun_wallet w WHERE w.account_id = a.id), false) AS gold FROM arcade_scores s JOIN accounts a ON a.id = s.account_id
        WHERE s.game = 'pinrun' AND s.level = '3' ORDER BY s.best DESC, s.updated_at ASC LIMIT 10`,
     ),
     me ? db.query<{ best: number }>(`SELECT best FROM arcade_scores WHERE account_id = $1 AND game = 'pinrun' AND level = '3'`, [me.id]) : Promise.resolve([]),
@@ -58,7 +58,7 @@ export default async function PlayPage() {
           </h1>
           <p className="lede">
             One button. Jump the tables, win the grip fights, don&apos;t fall in the chalk pit. Play any minigame here once a day and logged-in
-            Risers earn +{DAILY_GAME_COINS} coins. Every coin you grab in Pin Run is banked for new lions in the Lion Temple. Score 8,000 to unlock Level 2: Crimson Peak, with moving ledges, power-ups, lion abilities and real Risers as bosses. Score 8,000 on Level 2 to reach Level 3: The Arena, where a random Riser chases you and every run chips at the club&apos;s shared Riser Boss. Prefer a straight-up arm wrestle?{" "}
+            Risers earn +{DAILY_GAME_COINS} coins. Every coin you grab in Pin Run is banked for new lions in the Lion Temple. Score 5,000 to unlock Level 2: Crimson Peak, with moving ledges, power-ups, lion abilities and real Risers as bosses. Score 5,000 on Level 2 to reach Level 3: The Arena, where a random Riser chases you and every run chips at the club&apos;s shared Riser Boss. Prefer a straight-up arm wrestle?{" "}
             <a href="#race-to-the-pin">Play Race to the Pin</a>.
           </p>
         </div>

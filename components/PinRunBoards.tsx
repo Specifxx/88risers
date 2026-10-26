@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
-type Row = { display_name: string; handle: string; best: number };
+type Row = { display_name: string; handle: string; best: number; gold?: boolean };
 
 /** Pin Run high scores, one tab per level. */
 export function PinRunBoards({ boards }: { boards: { label: string; rows: Row[]; empty: string; note?: string; unit?: string }[] }) {
@@ -26,6 +26,11 @@ export function PinRunBoards({ boards }: { boards: { label: string; rows: Row[];
             <span className="cl-rank">{i === 0 ? "♛" : i + 1}</span>
             <Link className="cl-name" href={`/members/${t.handle}`}>
               {t.display_name}
+              {t.gold ? (
+                <span className="gold-mark" title="Has a golden lion">
+                  ✦
+                </span>
+              ) : null}
             </Link>
             <b>
               {t.best.toLocaleString("en-AU")}

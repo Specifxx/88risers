@@ -25,8 +25,8 @@ export async function getRaid(db?: Db): Promise<Raid> {
 /** Top damage on the current raid. */
 export async function raidBoard(raidId: number, limit = 10) {
   const db = await getDb();
-  return db.query<{ display_name: string; handle: string; best: number }>(
-    `SELECT a.display_name, a.handle, h.damage AS best FROM pinrun_raid_hits h JOIN accounts a ON a.id = h.account_id
+  return db.query<{ display_name: string; handle: string; best: number; gold: boolean }>(
+    `SELECT a.display_name, a.handle, h.damage AS best, coalesce((SELECT cardinality(w.gold) > 0 FROM pinrun_wallet w WHERE w.account_id = a.id), false) AS gold FROM pinrun_raid_hits h JOIN accounts a ON a.id = h.account_id
      WHERE h.raid_id = $1 AND h.damage > 0 ORDER BY h.damage DESC, h.updated_at ASC LIMIT $2`,
     [raidId, limit],
   );

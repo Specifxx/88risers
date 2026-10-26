@@ -2,10 +2,23 @@ import Link from "next/link";
 import { ANIM, DEFAULT_SKIN, skinById } from "@/lib/pinrun";
 
 /** A member's equipped Pin Run lion, running with its effects (the same loop as the game). */
-export function LionShowcase({ skin, title, mine = false, templeCoins }: { skin: string; title: string; mine?: boolean; templeCoins?: number }) {
+export function LionShowcase({
+  skin,
+  title,
+  mine = false,
+  templeCoins,
+  gold = false,
+}: {
+  skin: string;
+  title: string;
+  mine?: boolean;
+  templeCoins?: number;
+  /** A golden (gilded) lion. */
+  gold?: boolean;
+}) {
   const k = skinById(skin) ?? skinById(DEFAULT_SKIN)!;
   return (
-    <div className="panel lion-show">
+    <div className={`panel lion-show${gold ? " golden" : ""}`}>
       <h2 className="panel-title">
         {title}
         <small>
@@ -27,7 +40,7 @@ export function LionShowcase({ skin, title, mine = false, templeCoins }: { skin:
         />
       </div>
       <p className="lion-show-name">
-        <b>{k.name}</b>
+        <b>{gold ? `Golden ${k.name}` : k.name}</b>
         <span>{k.blurb}</span>
       </p>
       {templeCoins !== undefined ? (

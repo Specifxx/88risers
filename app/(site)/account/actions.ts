@@ -7,7 +7,7 @@ import { DAILY_GAME_COINS, MAX_STAKE, WELCOME_COINS, balanceOf, grant, isRepeata
 import { RTP_GAME, RTP_LEVELS, RTP_MAX_SCORE, isRtpLevel } from "@/lib/arcade";
 import { CHALK, recordCheckin, sydneyToday } from "@/lib/chalk";
 import { type Db, getDb } from "@/lib/db";
-import { LEVEL2_UNLOCK, LEVEL3_UNLOCK, type Raid, type Wallet, plausibleDamage, skinById } from "@/lib/pinrun";
+import { BOOST_MAX, GOLD_PRICE, LEVEL2_UNLOCK, LEVEL3_UNLOCK, type Raid, UPGRADE_COSTS, type Wallet, boostById, plausibleDamage, skinById } from "@/lib/pinrun";
 import { hitRaid } from "@/lib/raid";
 import { bankRunCoins, getWallet } from "@/lib/pinrun-db";
 import { fmtOdds, payoutAt, quoteOdds } from "@/lib/odds";
@@ -455,4 +455,99 @@ export async function equipSkin(id: string): Promise<{ ok: boolean; wallet: Wall
   const db = await getDb();
   await db.query(`UPDATE pinrun_wallet SET skin = $2, updated_at = now() WHERE account_id = $1 AND $2 = ANY(owned)`, [me.id, id]);
   return { ok: true, wallet: await getWallet(me.id) };
+}
+
+type Buy = Promise<{ ok: boolean; message: string; wallet: Wallet | null }>;
+
+/** Shared: lock the wallet, check the price, run the change, log the spend. */
+async function spendTemple(accountId: number, price: number, reason: string, check: (w: Wallet) => string | null, sql: string, args: unknown[]) {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    await tx.query(`INSERT INTO pinrun_wallet (account_id) VALUES ($1) ON CONFLICT DO NOTHING`, [accountId]);
+    const [w] = await tx.query<Wallet>(`SELECT coins, skin, owned, boosts, ups, gold FROM pinrun_wallet WHERE account_id = $1 FOR UPDATE`, [accountId]);
+    const why = check(w);
+    if (why) return why;
+    if (w.coins < price) return `You need ${(price - w.coins).toLocaleString("en-AU")} more Temple coins.`;
+    await tx.query(`UPDATE pinrun_wallet SET coins = coins - $2, updated_at = now() WHERE account_id = $1`, [accountId, price]);
+    await tx.query(sql, [accountId, ...args]);
+    await tx.query(`INSERT INTO pinrun_tx (account_id, amount, reason) VALUES ($1, $2, $3)`, [accountId, -price, reason]);
+    return null;
+  });
+}
+
+/** Buy one run boost (kept in stock until used). */
+export async function buyBoost(id: string): Buy {
+  const me = await currentAccount();
+  if (!me) return { ok: false, message: "Log in to buy boosts.", wallet: null };
+  const b = boostById(id);
+  if (!b) return { ok: false, message: "That boost isn't in the temple.", wallet: null };
+  const res = await spendTemple(
+    me.id,
+    b.price,
+    `Boost: ${b.name}`,
+    (w) => ((w.boosts?.[b.id] ?? 0) >= BOOST_MAX ? `You can hold up to ${BOOST_MAX} of each boost.` : null),
+    `UPDATE pinrun_wallet SET boosts = jsonb_set(boosts, ARRAY[$2::text], to_jsonb(coalesce((boosts->>$2)::int, 0) + 1)) WHERE account_id = $1`,
+    [b.id],
+  );
+  const wallet = await getWallet(me.id);
+  return res ? { ok: false, message: res, wallet } : { ok: true, message: `${b.name} added (${wallet.boosts?.[b.id] ?? 0} in stock).`, wallet };
+}
+
+/** Upgrade a lion's abilities one tier (up to 3). */
+export async function buyUpgrade(skinId: string): Buy {
+  const me = await currentAccount();
+  if (!me) return { ok: false, message: "Log in to upgrade lions.", wallet: null };
+  const skin = skinById(skinId);
+  if (!skin) return { ok: false, message: "That lion isn't in the temple.", wallet: null };
+  const before = await getWallet(me.id);
+  const tier = before.ups?.[skin.id] ?? 0;
+  if (tier >= UPGRADE_COSTS.length) return { ok: false, message: `${skin.name} is fully upgraded.`, wallet: before };
+  const price = UPGRADE_COSTS[tier];
+  const res = await spendTemple(
+    me.id,
+    price,
+    `Upgrade: ${skin.name} tier ${tier + 1}`,
+    (w) => (!w.owned.includes(skin.id) ? "Unlock this lion first." : (w.ups?.[skin.id] ?? 0) !== tier ? "Already upgraded. Refresh and try again." : null),
+    `UPDATE pinrun_wallet SET ups = jsonb_set(ups, ARRAY[$2::text], to_jsonb($3::int)) WHERE account_id = $1`,
+    [skin.id, tier + 1],
+  );
+  const wallet = await getWallet(me.id);
+  return res ? { ok: false, message: res, wallet } : { ok: true, message: `${skin.name} upgraded to tier ${tier + 1}.`, wallet };
+}
+
+/** Gild a lion gold (cosmetic: gold look, gold trail, and a gold mark on the boards). */
+export async function buyGold(skinId: string): Buy {
+  const me = await currentAccount();
+  if (!me) return { ok: false, message: "Log in to gild lions.", wallet: null };
+  const skin = skinById(skinId);
+  if (!skin) return { ok: false, message: "That lion isn't in the temple.", wallet: null };
+  const res = await spendTemple(
+    me.id,
+    GOLD_PRICE,
+    `Golden lion: ${skin.name}`,
+    (w) => (!w.owned.includes(skin.id) ? "Unlock this lion first." : (w.gold ?? []).includes(skin.id) ? "Already golden." : null),
+    `UPDATE pinrun_wallet SET gold = array_append(gold, $2) WHERE account_id = $1`,
+    [skin.id],
+  );
+  const wallet = await getWallet(me.id);
+  return res ? { ok: false, message: res, wallet } : { ok: true, message: `Golden ${skin.name}!`, wallet };
+}
+
+/** Uses up the boosts picked for a run; returns the ones actually in stock (and spent). */
+export async function spendBoosts(ids: string[]): Promise<{ used: string[]; wallet: Wallet | null }> {
+  const me = await currentAccount();
+  if (!me) return { used: [], wallet: null };
+  const want = [...new Set(ids)].filter((id) => boostById(id));
+  const db = await getDb();
+  const used: string[] = [];
+  await db.transaction(async (tx) => {
+    const [w] = await tx.query<Wallet>(`SELECT boosts FROM pinrun_wallet WHERE account_id = $1 FOR UPDATE`, [me.id]);
+    if (!w) return;
+    for (const id of want) {
+      if ((w.boosts?.[id] ?? 0) < 1) continue;
+      await tx.query(`UPDATE pinrun_wallet SET boosts = jsonb_set(boosts, ARRAY[$2::text], to_jsonb((boosts->>$2)::int - 1)) WHERE account_id = $1`, [me.id, id]);
+      used.push(id);
+    }
+  });
+  return { used, wallet: await getWallet(me.id) };
 }

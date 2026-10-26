@@ -287,10 +287,14 @@ CREATE TABLE IF NOT EXISTS pinrun_wallet (
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
 
--- Organisers can unlock Pin Run Level 2 for an account without the 8,000 score.
+-- Organisers can unlock Pin Run Level 2 for an account without the 5,000 score.
 ALTER TABLE pinrun_wallet ADD COLUMN IF NOT EXISTS l2 boolean NOT NULL DEFAULT false;
--- ...and Level 3 without the 8,000 on Level 2.
+-- ...and Level 3 without the 5,000 on Level 2.
 ALTER TABLE pinrun_wallet ADD COLUMN IF NOT EXISTS l3 boolean NOT NULL DEFAULT false;
+-- Coin sinks: run boosts in stock, ability upgrade tiers per lion, golden lions.
+ALTER TABLE pinrun_wallet ADD COLUMN IF NOT EXISTS boosts jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE pinrun_wallet ADD COLUMN IF NOT EXISTS ups jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE pinrun_wallet ADD COLUMN IF NOT EXISTS gold text[] NOT NULL DEFAULT '{}';
 
 CREATE TABLE IF NOT EXISTS pinrun_tx (
   id          serial PRIMARY KEY,
@@ -356,7 +360,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v29";
+const MIGRATION_MARKER = "founders_v30";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [
