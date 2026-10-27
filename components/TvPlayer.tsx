@@ -25,7 +25,7 @@ export function TvPlayer({ reels, handle }: { reels: Reel[]; handle: string }) {
 
   return (
     <>
-      <div className="tv-stage" ref={stage}>
+      <div className={`tv-stage${embed && !embed.tall ? " wide" : ""}`} ref={stage}>
         <div className="tv-monitor">
           <div className="tv-bezel">
             <div className="tv-screen">
@@ -63,7 +63,7 @@ export function TvPlayer({ reels, handle }: { reels: Reel[]; handle: string }) {
           <p className="tv-meta">
             {fmt(cur.posted_on) ? <span>{fmt(cur.posted_on)}</span> : null}
             <a href={cur.url} target="_blank" rel="noreferrer">
-              Watch on Instagram ↗
+              Watch on {sourceName(cur.url)} ↗
             </a>
           </p>
 
@@ -127,4 +127,16 @@ export function TvPlayer({ reels, handle }: { reels: Reel[]; handle: string }) {
       ) : null}
     </>
   );
+}
+
+/** Where a video link lives, for the "Watch on …" link. */
+function sourceName(url: string) {
+  try {
+    const h = new URL(url).hostname.replace(/^www\.|^m\./, "");
+    if (h === "youtu.be" || h.endsWith("youtube.com")) return "YouTube";
+    if (h.endsWith("instagram.com")) return "Instagram";
+    if (h.endsWith("tiktok.com")) return "TikTok";
+    if (h === "drive.google.com") return "Google Drive";
+  } catch {}
+  return "the original";
 }
