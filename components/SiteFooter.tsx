@@ -23,6 +23,8 @@ export function SiteFooter() {
               <li><Link href="/#faq">FAQ</Link></li>
               <li><Link href="/conduct">Code of Conduct</Link></li>
               <li><Link href="/support">Donate</Link></li>
+              <li><Link href="/app">Get the app</Link></li>
+              <li><Link href="/log">Training log</Link></li>
               <li><Link href="/support#sponsor">Become a sponsor</Link></li>
             </ul>
           </div>

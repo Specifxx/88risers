@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Chakra_Petch, Inter, Saira_Extra_Condensed } from "next/font/google";
+import { AppShell } from "@/components/AppShell";
 import { SiteAnalytics } from "@/components/SiteAnalytics";
 import { SITE } from "@/lib/site";
 import "./globals.css";
@@ -28,6 +29,10 @@ export const metadata: Metadata = {
     siteName: "88 Risers",
   },
   twitter: { card: "summary_large_image" },
+  applicationName: "88 Risers",
+  // installed to an iPhone home screen, it opens full screen like an app
+  appleWebApp: { capable: true, title: "88 Risers", statusBarStyle: "black" },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
@@ -41,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <SiteAnalytics />
+        <AppShell />
       </body>
     </html>
   );

@@ -25,6 +25,8 @@ const MENU = [
   ...NAV.slice(3),
   { href: "/rewards", label: "Rewards" },
   { href: "/account", label: "Account" },
+  { href: "/log", label: "Training log" },
+  { href: "/app", label: "Get the app" },
 ];
 
 export function SiteHeader() {

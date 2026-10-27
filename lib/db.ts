@@ -301,6 +301,17 @@ CREATE TABLE IF NOT EXISTS pinrun_tx (
 );
 CREATE INDEX IF NOT EXISTS pinrun_tx_account ON pinrun_tx (account_id, created_at);
 
+-- Training log: a member's private training notes (one row per entry).
+CREATE TABLE IF NOT EXISTS training_log (
+  id          serial PRIMARY KEY,
+  account_id  integer NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  logged_on   date NOT NULL DEFAULT CURRENT_DATE,
+  body        text NOT NULL,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS training_log_account ON training_log (account_id, logged_on DESC, id DESC);
+
 -- Katana Draw: one row per ladder attempt (entry paid, duels won, coins cashed out).
 CREATE TABLE IF NOT EXISTS katana_runs (
   id          serial PRIMARY KEY,
@@ -368,7 +379,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v33";
+const MIGRATION_MARKER = "founders_v34";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [

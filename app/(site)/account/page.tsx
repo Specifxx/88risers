@@ -137,6 +137,10 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
                 <button className="btn btn-sm">Equip</button>
               </form>
             ) : null}
+            <Link href="/log" className="panel log-promo" style={{ marginTop: 20 }}>
+              <b>Training log →</b>
+              <span>Private notes on every session. Three months of them shows you what actually works.</span>
+            </Link>
             <div style={{ marginTop: 20 }}>
               <LionShowcase skin={profile?.lion ?? "stone"} title="Your lion" mine templeCoins={wallet.coins} />
             </div>
