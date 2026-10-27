@@ -314,7 +314,7 @@ export async function saveReel(form: FormData) {
   const id = int(form, "reel_id");
   const url = str(form, "url");
   const title = str(form, "title");
-  if (!url || !videoEmbed(url)) done(key, "tv", "Paste an Instagram reel link (or YouTube Short / TikTok).", true);
+  if (!url || !videoEmbed(url)) done(key, "tv", "Paste a video link: YouTube, Instagram reel, TikTok, Google Drive (shared with anyone with the link) or a direct .mp4.", true);
   if (!title) done(key, "tv", "Give the reel a title.", true);
   const posted = str(form, "posted_on");
   const vals = [url, title, str(form, "caption"), posted && /^\d{4}-\d{2}-\d{2}$/.test(posted) ? posted : null, int(form, "sort_order") ?? 0, bool(form, "hidden")];
