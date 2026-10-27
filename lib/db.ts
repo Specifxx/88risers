@@ -379,7 +379,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v35";
+const MIGRATION_MARKER = "founders_v36";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [
@@ -590,6 +590,19 @@ async function migrate(db: Db) {
         `UPDATE tv_reels SET hidden = true WHERE url LIKE '%/reel/DdbKrJFB7cB%' OR url LIKE '%/reel/Dd0Nzb6h_SC%'`,
       );
       await tx.query(`INSERT INTO meta (key, value) VALUES ('tv_hide_ep1_2', now()::text)`);
+    }
+    // ...and the rest renumbered (03→01, 04→02, 05→03); the hidden two become "Old Episode". Once only.
+    const [renDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'tv_renumber_eps'`);
+    if (!renDone) {
+      const ren: [string, string][] = [
+        ["DdbKrJFB7cB", "Old Episode 01"],
+        ["Dd0Nzb6h_SC", "Old Episode 02"],
+        ["DeA5EcEBkFc", "Episode 01"],
+        ["DeLgi4JThHG", "Episode 02"],
+        ["DeXuPBfvS9-", "Episode 03"],
+      ];
+      for (const [code, title] of ren) await tx.query(`UPDATE tv_reels SET title = $2 WHERE url LIKE $1`, [`%/reel/${code}%`, title]);
+      await tx.query(`INSERT INTO meta (key, value) VALUES ('tv_renumber_eps', now()::text)`);
     }
     // The November supermatch is left arm. Once only, so a later admin edit isn't overwritten.
     const [armDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'sm_arm_v1'`);
