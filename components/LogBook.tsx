@@ -94,7 +94,7 @@ export function LogBook({ entries, today }: { entries: LogEntry[]; today: string
           aria-label="New log entry"
         />
         <div className="log-compose-foot">
-          <small>Only you can see your log. Your draft is kept on this device until you save it.</small>
+          <small>Part of the pioneer study: club organisers can read logs. Your draft is kept on this device until you save it.</small>
           <button type="button" className="btn btn-primary" disabled={pending || !body.trim()} onClick={save}>
             {pending ? "Saving…" : "Save entry"}
           </button>

@@ -43,6 +43,14 @@ export default async function LogPage() {
             Write down every session: what you trained, the numbers, how it felt. Three months of honest notes shows patterns you won&apos;t
             notice day to day. Download it any time to look back over it, or to paste into an AI and ask what stands out.
           </p>
+          <div className="study-note">
+            <b>The 88 Risers pioneer arm wrestling study</b>
+            <p>
+              Your log is part of the club&apos;s first training study. Club organisers can read every log, and after three months we&apos;ll
+              combine them to look for what actually works in arm wrestling. Anything we share publicly will be anonymised: no names. You can
+              edit or delete your entries any time, and deleted entries aren&apos;t included.
+            </p>
+          </div>
           <div className="log-stats">
             <div>
               <b>{dayN ? `Day ${Math.min(dayN, 999)}` : "Day 0"}</b>

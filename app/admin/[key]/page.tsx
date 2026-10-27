@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
+import { logAuthors, logRows } from "@/lib/trainlog";
 import { isAdminKey } from "@/lib/admin";
 import { getClubStats, listEvents, listPullers, listRecentMatches, listReels, listRegistrations, listShopInterest, type ClubEvent, type MatchView, type Puller, type Reel, type ShopInterest } from "@/lib/data";
 import { prettyPhone } from "@/lib/phone";
@@ -73,6 +74,7 @@ const TABS = [
   ["shop", "Shop"],
   ["coins", "Coins"],
   ["chalk", "Chalk"],
+  ["logs", "Training logs"],
 ] as const;
 type Tab = (typeof TABS)[number][0];
 
@@ -175,6 +177,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
         {tab === "tv" ? <Tv reels={reels} live={live} k={k} /> : null}
         {tab === "shop" ? <Shop interest={interest} k={k} /> : null}
         {tab === "chalk" ? <ChalkTab accts={accts} k={k} /> : null}
+        {tab === "logs" ? <TrainingLogs base={base} who={typeof sp.who === "string" ? sp.who : null} /> : null}
         {tab === "coins" ? <Coins sms={sms} accts={accts} redeems={redeems} pullers={pullers} backers={backers} giveaway={giveaway} k={k} /> : null}
 
         <p className="fine" style={{ marginTop: 60 }}>
@@ -1416,5 +1419,87 @@ async function ChalkTab({ accts, k }: { accts: AdminAccount[]; k: string }) {
         </form>
       </div>
     </>
+  );
+}
+
+/** The pioneer study: every member's training log, with combined downloads (named or anonymised). */
+async function TrainingLogs({ base, who }: { base: string; who: string | null }) {
+  const [authors, rows] = await Promise.all([logAuthors(), who ? logRows(who) : Promise.resolve([])]);
+  const total = authors.reduce((n, a) => n + a.entries, 0);
+  const fmt = (d: string) => new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${d}T00:00:00Z`));
+  return (
+    <section className="panel">
+      <h2>Training logs · pioneer study</h2>
+      <p className="muted">
+        {authors.length} {authors.length === 1 ? "member" : "members"} logging, {total} entries. Members are told organisers can read their logs for
+        the study and that anything shared publicly is anonymised.
+      </p>
+      <div className="btn-row" style={{ margin: "12px 0 18px" }}>
+        <a className="btn btn-sm" href={`${base}/logs-export?format=txt`}>
+          All logs (.txt)
+        </a>
+        <a className="btn btn-sm" href={`${base}/logs-export?format=csv`}>
+          All logs (.csv)
+        </a>
+        <a className="btn btn-sm btn-ghost" href={`${base}/logs-export?format=txt&anon=1`}>
+          Anonymised (.txt)
+        </a>
+        <a className="btn btn-sm btn-ghost" href={`${base}/logs-export?format=csv&anon=1`}>
+          Anonymised (.csv)
+        </a>
+      </div>
+      {authors.length === 0 ? (
+        <p className="muted">No one has logged yet.</p>
+      ) : (
+        <table className="sm-backers">
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>Entries</th>
+              <th>Days</th>
+              <th>From</th>
+              <th>To</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {authors.map((a) => (
+              <tr key={a.account_id} aria-current={who === a.handle ? "true" : undefined}>
+                <td>
+                  <b>{a.display_name}</b> <span className="muted">@{a.handle}</span>
+                </td>
+                <td>{a.entries}</td>
+                <td>{a.days}</td>
+                <td>{fmt(a.first)}</td>
+                <td>{fmt(a.last)}</td>
+                <td>
+                  <Link href={`${base}?tab=logs&who=${encodeURIComponent(a.handle)}`}>Read →</Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {who ? (
+        <div style={{ marginTop: 22 }}>
+          <h3>
+            @{who} · {rows.length} entries{" "}
+            <Link className="muted" href={`${base}?tab=logs`}>
+              (close)
+            </Link>
+          </h3>
+          <ol className="log-list" style={{ marginTop: 10 }}>
+            {rows.map((r, i) => (
+              <li key={i} className="panel log-entry">
+                <header>
+                  <b>{fmt(r.day)}</b>
+                </header>
+                <p className="log-body">{r.body}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
+    </section>
   );
 }
