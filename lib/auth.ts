@@ -7,6 +7,8 @@ import { getDb } from "./db";
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number) => Promise<Buffer>;
 
 const COOKIE = "88r_session";
+/** A readable "logged in" hint (no secret in it) so static pages can label the account button. */
+export const HINT_COOKIE = "88r_in";
 const SESSION_DAYS = 60;
 
 export interface Account {
@@ -101,6 +103,7 @@ export async function startSession(accountId: number) {
     path: "/",
     expires,
   });
+  (await cookies()).set(HINT_COOKIE, "1", { sameSite: "lax", path: "/", expires, secure: process.env.NODE_ENV === "production" });
 }
 
 export async function endSession() {
@@ -111,6 +114,7 @@ export async function endSession() {
     await db.query(`DELETE FROM sessions WHERE token_hash = $1`, [sha(token)]);
   }
   store.delete(COOKIE);
+  store.delete(HINT_COOKIE);
 }
 
 /** The signed-in account, or null. Reading cookies makes the calling page dynamic. */

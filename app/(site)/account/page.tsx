@@ -44,6 +44,10 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
               Make supermatch picks, stack 88Risers coins, play Pin Run and unlock rewards. Free, and separate from
               registering for meets.
             </p>
+            <p className="who-note">
+              This is a <b>website account</b> (coins, games, picks). Want to pull at meets and get a Riser ID?{" "}
+              <Link href="/join">Become a Riser →</Link>
+            </p>
           </div>
         </section>
         <section className="section" style={{ paddingTop: 40 }}>

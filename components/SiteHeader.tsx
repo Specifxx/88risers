@@ -32,6 +32,7 @@ const MENU = [
 export function SiteHeader() {
   const path = usePathname();
   const [scrolled, setScrolled] = useState(false);
+  const signedIn = useSignedIn(path);
   const menu = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
@@ -70,11 +71,19 @@ export function SiteHeader() {
             </Link>
           ))}
         </nav>
-        <Link href="/account" className="header-acct" aria-label="Your account and coins" aria-current={path.startsWith("/account") ? "page" : undefined}>
+        <Link
+          href="/account"
+          className="header-acct"
+          aria-label={signedIn ? "Your account and coins" : "Sign up: make a free account for coins, games and picks"}
+          title={signedIn ? "Your account and coins" : "Make a free account: coins, games, picks"}
+          aria-current={path.startsWith("/account") ? "page" : undefined}
+        >
           <span className="acct-ball" aria-hidden />
+          <span className="acct-label">{signedIn ? "Account" : "Sign up"}</span>
         </Link>
-        <Link href="/join" className="btn btn-primary header-cta">
-          Join
+        <Link href="/join" className="btn btn-primary header-cta" title="Register to join the club as a Riser (get your Riser ID)">
+          <span className="cta-long">Become a Riser</span>
+          <span className="cta-short">Be a Riser</span>
         </Link>
         <details className="menu" ref={menu}>
           <summary aria-label="Menu">
@@ -94,4 +103,35 @@ export function SiteHeader() {
       </div>
     </header>
   );
+}
+
+/**
+ * Whether this browser is logged in, without making pages dynamic: a readable hint cookie set at
+ * login, or (for older sessions) one check with the server per visit.
+ */
+function useSignedIn(path: string) {
+  const [signedIn, setSignedIn] = useState(false);
+  useEffect(() => {
+    const hinted = document.cookie.split("; ").some((c) => c === "88r_in=1");
+    setSignedIn(hinted);
+    if (hinted) return;
+    let asked = false;
+    try {
+      asked = sessionStorage.getItem("88r_whoami") === "1";
+    } catch {}
+    if (asked) return;
+    fetch("/api/whoami", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((r: { in: boolean }) => {
+        try {
+          sessionStorage.setItem("88r_whoami", "1");
+        } catch {}
+        if (r.in) {
+          document.cookie = "88r_in=1; path=/; max-age=2592000; samesite=lax";
+          setSignedIn(true);
+        }
+      })
+      .catch(() => {});
+  }, [path]);
+  return signedIn;
 }

@@ -8592,3 +8592,86 @@ b.gold {
     height: 72px;
   }
 }
+/* header: the coin = website account ("Sign up" / "Account"); the red button = join the club as a Riser */
+.site-header .header-acct {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: auto;
+  height: 42px;
+  padding: 0 12px 0 3px;
+  border-radius: 999px;
+  text-decoration: none;
+}
+.acct-label {
+  font: 700 11px/1 var(--f-tech);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-hi);
+  white-space: nowrap;
+}
+.header-cta .cta-short {
+  display: none;
+}
+@media (max-width: 560px) {
+  .header-cta .cta-long {
+    display: none;
+  }
+  .header-cta .cta-short {
+    display: inline;
+  }
+  .site-header .header-acct {
+    gap: 5px;
+    padding: 0 9px 0 3px;
+  }
+  .acct-label {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+  }
+}
+@media (max-width: 1439px) {
+  .header-cta .cta-long {
+    display: none;
+  }
+  .header-cta .cta-short {
+    display: inline;
+  }
+}
+@media (max-width: 560px) {
+  .site-header .brand > span {
+    display: none;
+  }
+}
+/* mid widths (tablets, small laptops): the full nav needs the room, so the coin goes back to just the coin */
+@media (min-width: 561px) and (max-width: 1279px) {
+  .acct-label {
+    display: none;
+  }
+  .site-header .header-acct {
+    padding: 0 3px;
+  }
+}
+@media (min-width: 561px) and (max-width: 1100px) {
+  .site-header .header-cta {
+    padding: 0 12px;
+    letter-spacing: 0.06em;
+  }
+}
+.who-note {
+  margin-top: 12px;
+  padding: 10px 14px;
+  max-width: 620px;
+  border-left: 3px solid var(--gold);
+  border-radius: 0 10px 10px 0;
+  background: rgba(213, 182, 122, 0.07);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.who-note b {
+  color: var(--bone);
+}
+.who-note a {
+  color: var(--gold-hi);
+  white-space: nowrap;
+}

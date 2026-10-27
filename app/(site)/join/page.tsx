@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { JoinForm } from "@/components/JoinForm";
 import { getClubStats } from "@/lib/data";
@@ -28,6 +29,10 @@ export default async function JoinPage() {
           <p className="lede">
             Register and we&apos;ll text you before every meet and tournament. Pull at an event and you&apos;ll be entered
             into the Riser Database — the next number up is <strong>{formatId(stats.next_id)}</strong>.
+          </p>
+          <p className="who-note">
+            This is <b>joining the club as a Riser</b>. Just want coins, games and supermatch picks?{" "}
+            <Link href="/account">Make a free website account →</Link>
           </p>
           <ol className="join-steps">
             <li>
