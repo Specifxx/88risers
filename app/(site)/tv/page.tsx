@@ -6,6 +6,7 @@ import { LiveRefresh } from "@/components/LiveRefresh";
 import { TvPlayer } from "@/components/TvPlayer";
 import { TvRadio } from "@/components/TvRadio";
 import { listReels } from "@/lib/data";
+import { igShortcode, igVideos } from "@/lib/instagram";
 import { SITE } from "@/lib/site";
 import { tvLive } from "@/lib/tv";
 import { liveEmbed } from "@/lib/video";
@@ -20,7 +21,13 @@ export const metadata: Metadata = {
 };
 
 export default async function TvPage() {
-  const [reels, live] = await Promise.all([listReels(), tvLive()]);
+  const [list, live] = await Promise.all([listReels(), tvLive()]);
+  // our own Instagram reels play as real video (when the club's account is connected in admin)
+  const direct = await igVideos(list.map((r) => r.url)).catch(() => ({}) as Awaited<ReturnType<typeof igVideos>>);
+  const reels = list.map((r) => {
+    const code = igShortcode(r.url);
+    return { ...r, direct: code ? (direct[code] ?? null) : null };
+  });
   const feed = live.onAir && live.url ? liveEmbed(live.url) : null;
 
   return (

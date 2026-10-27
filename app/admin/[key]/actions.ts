@@ -728,3 +728,20 @@ export async function setRequestedId(form: FormData) {
   await db.query(`UPDATE registrations SET requested_id = $2, updated_at = now() WHERE id = $1`, [regId, n]);
   done(key, "registrations", n ? `Reserved #${String(n).padStart(3, "0")}.` : "Reservation cleared.");
 }
+
+/** Connects the club's Instagram (Professional) account so our reels play directly on 88RisersTV. */
+export async function saveIgToken(form: FormData) {
+  const key = guard(form);
+  const { connectInstagram } = await import("@/lib/instagram");
+  const r = await connectInstagram(str(form, "token") ?? "");
+  revalidatePath("/tv");
+  done(key, "tv", r.message, !r.ok);
+}
+
+export async function disconnectIg(form: FormData) {
+  const key = guard(form);
+  const { disconnectInstagram } = await import("@/lib/instagram");
+  await disconnectInstagram();
+  revalidatePath("/tv");
+  done(key, "tv", "Instagram disconnected. Reels fall back to Instagram's own embed.");
+}

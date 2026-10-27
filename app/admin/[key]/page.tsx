@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
 import { logAuthors, logRows } from "@/lib/trainlog";
+import { type IgStatus, igStatus } from "@/lib/instagram";
 import { isAdminKey } from "@/lib/admin";
 import { getClubStats, listEvents, listPullers, listRecentMatches, listReels, listRegistrations, listShopInterest, type ClubEvent, type MatchView, type Puller, type Reel, type ShopInterest } from "@/lib/data";
 import { prettyPhone } from "@/lib/phone";
@@ -49,6 +50,8 @@ import {
   saveMatch,
   savePuller,
   saveReel,
+  saveIgToken,
+  disconnectIg,
   saveLiveFeed,
   saveRegistrationNote,
   sendTestEmail,
@@ -174,7 +177,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
         {tab === "pullers" ? <Pullers pullers={pullers} accts={accts} results={results} k={k} nextId={stats.next_id} /> : null}
         {tab === "matches" ? <Matches matches={matches} pullers={pullers} events={events} k={k} /> : null}
         {tab === "events" ? <Events events={events} k={k} /> : null}
-        {tab === "tv" ? <Tv reels={reels} live={live} k={k} /> : null}
+        {tab === "tv" ? <Tv reels={reels} live={live} k={k} ig={await igStatus()} /> : null}
         {tab === "shop" ? <Shop interest={interest} k={k} /> : null}
         {tab === "chalk" ? <ChalkTab accts={accts} k={k} /> : null}
         {tab === "logs" ? <TrainingLogs base={base} who={typeof sp.who === "string" ? sp.who : null} /> : null}
@@ -792,7 +795,7 @@ function ReelFields({ r }: { r?: Reel }) {
   );
 }
 
-function Tv({ reels, live, k }: { reels: Reel[]; live: LiveState; k: string }) {
+function Tv({ reels, live, k, ig }: { reels: Reel[]; live: LiveState; k: string; ig: IgStatus }) {
   return (
     <>
       <div className="admin-head">
@@ -844,6 +847,7 @@ function Tv({ reels, live, k }: { reels: Reel[]; live: LiveState; k: string }) {
           </div>
         </form>
       </div>
+      <IgPanel ig={ig} k={k} />
       <div className="panel">
         <h2 className="panel-title">Add a reel</h2>
         <form action={saveReel}>
@@ -1501,5 +1505,59 @@ async function TrainingLogs({ base, who }: { base: string; who: string | null })
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** Instagram connection: lets our own reels play as real video on /tv instead of Instagram's embed. */
+function IgPanel({ ig, k }: { ig: IgStatus; k: string }) {
+  const day = (t: number | null) => (t ? new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", year: "numeric" }).format(new Date(t)) : "–");
+  return (
+    <div className="panel">
+      <h2 className="panel-title">
+        Play reels directly{" "}
+        {ig.connected ? <span className="pill">Connected · @{ig.username}</span> : <span className="pill dim">Not connected</span>}
+      </h2>
+      {ig.connected ? (
+        <p className="muted" style={{ marginTop: 0 }}>
+          Reels from @{ig.username} play straight on /tv (no Instagram click-through). The connection renews itself every week; it&apos;s good
+          until about <b>{day(ig.expiresAt)}</b> and keeps extending while people visit the site. Reels from other accounts still use
+          Instagram&apos;s embed.
+          {ig.lastError ? (
+            <>
+              {" "}
+              <b className="red">Last problem: {ig.lastError}</b> If this keeps happening, paste a fresh token below.
+            </>
+          ) : null}
+        </p>
+      ) : (
+        <ol className="muted" style={{ marginTop: 0, paddingLeft: 18, display: "grid", gap: 4 }}>
+          <li>
+            In the Instagram app: <b>Settings → Account type and tools → Switch to professional account</b> (Creator or Business, free).
+          </li>
+          <li>
+            On <a href="https://developers.facebook.com/apps" target="_blank" rel="noreferrer">developers.facebook.com/apps</a>:{" "}
+            <b>Create app</b> → use case <b>Manage messaging &amp; content on Instagram</b> → Business → create.
+          </li>
+          <li>
+            In the app: <b>Instagram → API setup with Instagram login → Generate access tokens → Add account</b>, log in as the club account,
+            then <b>Generate token</b> and copy it.
+          </li>
+          <li>Paste it here and press Connect.</li>
+        </ol>
+      )}
+      <form action={saveIgToken} className="btn-row" style={{ marginTop: 10 }}>
+        <input type="hidden" name="key" value={k} />
+        <input name="token" type="password" autoComplete="off" placeholder={ig.connected ? "Paste a new token to replace it" : "Paste the access token"} style={{ flex: 1, minWidth: 220 }} />
+        <button className="btn btn-primary btn-sm">{ig.connected ? "Replace" : "Connect"}</button>
+      </form>
+      {ig.connected ? (
+        <form action={disconnectIg} style={{ marginTop: 10 }}>
+          <input type="hidden" name="key" value={k} />
+          <ConfirmButton message="Disconnect Instagram? Reels go back to Instagram's embed." className="btn btn-sm btn-ghost danger">
+            Disconnect
+          </ConfirmButton>
+        </form>
+      ) : null}
+    </div>
   );
 }

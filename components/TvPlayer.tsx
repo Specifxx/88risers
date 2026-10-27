@@ -9,7 +9,7 @@ const fmt = (d: string | null) =>
   d ? new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(d)) : null;
 
 /** 88RisersTV: a featured "monitor", a channel guide, and every episode below. */
-export function TvPlayer({ reels, handle }: { reels: Reel[]; handle: string }) {
+export function TvPlayer({ reels, handle }: { reels: (Reel & { direct?: { src: string; poster: string | null } | null })[]; handle: string }) {
   const [on, setOn] = useState(0);
   const [flick, setFlick] = useState(0); // bumps to replay the channel-change static
   const stage = useRef<HTMLDivElement>(null);
@@ -29,7 +29,10 @@ export function TvPlayer({ reels, handle }: { reels: Reel[]; handle: string }) {
         <div className="tv-monitor">
           <div className="tv-bezel">
             <div className="tv-screen">
-              {embed ? (
+              {cur?.direct ? (
+                // our own reel, straight from Instagram's video file: plays right here
+                <video key={cur.id} src={cur.direct.src} poster={cur.direct.poster ?? undefined} controls playsInline preload="metadata" />
+              ) : embed ? (
                 embed.kind === "iframe" ? (
                   <iframe
                     key={cur.id}
