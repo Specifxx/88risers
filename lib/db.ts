@@ -379,7 +379,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v34";
+const MIGRATION_MARKER = "founders_v35";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [
@@ -582,6 +582,14 @@ async function migrate(db: Db) {
          END $$`,
       );
       await tx.query(`INSERT INTO meta (key, value) VALUES ('refund_coin_sinks', now()::text)`);
+    }
+    // George asked for 88RisersTV Episodes 01 and 02 to come off the site. Hidden (not deleted), once only.
+    const [epDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'tv_hide_ep1_2'`);
+    if (!epDone) {
+      await tx.query(
+        `UPDATE tv_reels SET hidden = true WHERE url LIKE '%/reel/DdbKrJFB7cB%' OR url LIKE '%/reel/Dd0Nzb6h_SC%'`,
+      );
+      await tx.query(`INSERT INTO meta (key, value) VALUES ('tv_hide_ep1_2', now()::text)`);
     }
     // The November supermatch is left arm. Once only, so a later admin edit isn't overwritten.
     const [armDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'sm_arm_v1'`);
