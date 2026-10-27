@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_rethrow } from "next/navigation";
 import { getDb } from "./db";
 
 /**
@@ -44,9 +45,20 @@ export function igShortcode(url: string): string | null {
   }
 }
 
+/** Never let a token end up in an error message (they're shown in admin and stored). */
+const scrub = (e: unknown) =>
+  (e instanceof Error ? e.message : String(e))
+    .replace(/access_token=[^&\s"]+/gi, "access_token=[hidden]")
+    .replace(/\bIG[A-Za-z0-9_-]{20,}/g, "[token hidden]")
+    .slice(0, 300);
+
+/**
+ * A Graph API call. Responses are cached for 15 minutes (keyed by URL), which keeps /tv a fast,
+ * pre-built page and is well inside how long Instagram's video links stay valid.
+ */
 async function graph<T>(path: string, token: string): Promise<T> {
   const sep = path.includes("?") ? "&" : "?";
-  const res = await fetch(`${GRAPH}${path}${sep}access_token=${encodeURIComponent(token)}`, { cache: "no-store", signal: AbortSignal.timeout(8000) });
+  const res = await fetch(`${GRAPH}${path}${sep}access_token=${encodeURIComponent(token)}`, { next: { revalidate: 900 }, signal: AbortSignal.timeout(8000) });
   const body = (await res.json().catch(() => ({}))) as T & { error?: { message?: string } };
   if (!res.ok || body.error) throw new Error(body.error?.message ?? `Instagram said ${res.status}`);
   return body;
@@ -64,7 +76,8 @@ export async function connectInstagram(token: string): Promise<{ ok: boolean; me
     await db.query(`DELETE FROM meta WHERE key LIKE 'ig_media:%'`);
     return { ok: true, message: `Connected to @${me.username}. Their reels now play directly on 88RisersTV.` };
   } catch (e) {
-    return { ok: false, message: `Instagram didn't accept that token: ${e instanceof Error ? e.message : String(e)}` };
+    unstable_rethrow(e);
+    return { ok: false, message: `Instagram didn't accept that token: ${scrub(e)}` };
   }
 }
 
@@ -75,7 +88,14 @@ export async function disconnectInstagram() {
 export async function igStatus(): Promise<IgStatus> {
   const s = await readStored();
   if (!s) return { connected: false, username: null, savedAt: null, refreshedAt: null, expiresAt: null, lastError: null };
-  return { connected: true, username: s.username, savedAt: s.savedAt, refreshedAt: s.refreshedAt, expiresAt: s.refreshedAt + 60 * 86_400_000, lastError: s.lastError };
+  return {
+    connected: true,
+    username: s.username,
+    savedAt: s.savedAt,
+    refreshedAt: s.refreshedAt,
+    expiresAt: s.refreshedAt + 60 * 86_400_000,
+    lastError: s.lastError ? scrub(new Error(s.lastError)) : null,
+  };
 }
 
 /** Keeps the token alive: renews it about weekly (it lasts 60 days). */
@@ -88,7 +108,8 @@ async function freshToken(): Promise<string | null> {
       await writeStored({ ...s, token: r.access_token, refreshedAt: Date.now(), lastError: null });
       return r.access_token;
     } catch (e) {
-      await writeStored({ ...s, lastError: `Refresh failed: ${e instanceof Error ? e.message : String(e)}` });
+      unstable_rethrow(e);
+      await writeStored({ ...s, lastError: `Refresh failed: ${scrub(e)}` });
     }
   }
   return s.token;
@@ -131,9 +152,12 @@ export async function igVideos(urls: string[]): Promise<Record<string, IgVideo>>
           }
           next = res.paging?.next ? res.paging.next.replace(GRAPH, "").replace(/([?&])access_token=[^&]*&?/, "$1") : null;
         }
-      } catch (e) {
         const s = await readStored();
-        if (s) await writeStored({ ...s, lastError: `Couldn't load reels: ${e instanceof Error ? e.message : String(e)}` });
+        if (s?.lastError) await writeStored({ ...s, lastError: null });
+      } catch (e) {
+        unstable_rethrow(e);
+        const s = await readStored();
+        if (s) await writeStored({ ...s, lastError: `Couldn't load reels: ${scrub(e)}` });
       }
     }
   }
