@@ -331,9 +331,37 @@ export async function saveReel(form: FormData) {
   done(key, "tv", id ? "Reel updated." : "Reel added to 88RisersTV.");
 }
 
+/**
+ * A YouTube channel link (youtube.com/@88risers) becomes the channel's permanent live link
+ * (/channel/UC…/live), which always plays whatever the channel is streaming right now.
+ */
+async function channelLiveUrl(url: string): Promise<string | null> {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  const handle = /^\/(@[\w.-]+)/.exec(u.pathname)?.[1];
+  if (!/(^|\.)youtube\.com$/.test(u.hostname) || !handle) return null;
+  try {
+    const res = await fetch(`https://www.youtube.com/${handle}`, { headers: { "Accept-Language": "en" }, signal: AbortSignal.timeout(8000), cache: "no-store" });
+    const html = await res.text();
+    const id = /"externalId":"(UC[\w-]{22})"/.exec(html)?.[1] ?? /youtube\.com\/channel\/(UC[\w-]{22})/.exec(html)?.[1];
+    return id ? `https://www.youtube.com/channel/${id}/live` : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function saveLiveFeed(form: FormData) {
   const key = guard(form);
-  const url = str(form, "url");
+  let url = str(form, "url");
+  if (url && /youtube\.com\/@/i.test(url)) {
+    const resolved = await channelLiveUrl(url);
+    if (!resolved) done(key, "tv", "Couldn't look up that YouTube channel. Check the link, or paste the stream's own link (youtube.com/live/…).", true);
+    url = resolved;
+  }
   if (url && !liveEmbed(url)) done(key, "tv", "That stream link isn't supported. Use YouTube Live, Twitch, Kick or an .m3u8 link.", true);
   const m = str(form, "mode");
   await saveLiveSettings({ url, title: str(form, "title"), mode: m === "on" || m === "off" ? m : "auto" });

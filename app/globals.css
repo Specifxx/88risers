@@ -8712,3 +8712,8 @@ b.gold {
     grid-template-columns: 1fr;
   }
 }
+.tv-live-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

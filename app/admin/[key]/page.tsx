@@ -828,7 +828,7 @@ function Tv({ reels, live, k, ig }: { reels: Reel[]; live: LiveState; k: string;
           <input type="hidden" name="key" value={k} />
           <div className="field span4">
             <label>Stream link</label>
-            <input name="url" type="url" defaultValue={live.url ?? ""} placeholder="https://www.youtube.com/live/… or https://twitch.tv/88risers" />
+            <input name="url" type="url" defaultValue={live.url ?? ""} placeholder="https://www.youtube.com/@88risers (your channel) or a youtube.com/live/… link" />
           </div>
           <div className="field span2">
             <label>Title (optional)</label>

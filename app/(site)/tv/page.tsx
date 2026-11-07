@@ -89,11 +89,21 @@ export default async function TvPage() {
                   <span>Presented by</span>
                   <Image src="/sponsors/supp-station.webp" alt="Supp Station" width={393} height={156} />
                 </p>
-                {live.event?.kind === "supermatch" ? (
-                  <Link className="btn btn-primary btn-sm" href={live.event.href}>
-                    Back your pick
-                  </Link>
-                ) : null}
+                <div className="tv-live-links">
+                  {live.event?.kind === "supermatch" ? (
+                    <Link className="btn btn-primary btn-sm" href={live.event.href}>
+                      Back your pick
+                    </Link>
+                  ) : null}
+                  {live.url && /youtube\.com|youtu\.be/.test(live.url) ? (
+                    <a className="btn btn-sm btn-ghost" href={live.url} target="_blank" rel="noreferrer">
+                      Watch on YouTube ↗
+                    </a>
+                  ) : null}
+                  <a className="btn btn-sm btn-ghost" href={`https://www.instagram.com/${SITE.instagramHandle}/live/`} target="_blank" rel="noreferrer">
+                    Instagram Live ↗
+                  </a>
+                </div>
               </div>
             </div>
           ) : (
