@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    // Smart Ref Camera: a standalone full-screen phone app in public/smartref (no site header)
+    return [{ source: "/camera/live", destination: "/smartref/index.html" }];
+  },
   experimental: {
     serverActions: {
       // Photos are resized in the browser first; this is headroom for the multipart envelope.

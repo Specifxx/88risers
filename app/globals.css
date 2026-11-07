@@ -8717,3 +8717,53 @@ b.gold {
   flex-wrap: wrap;
   gap: 8px;
 }
+
+/* ───────── Smart Ref Camera (/camera) ───────── */
+.cam-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+.cam-steps {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+.cam-steps .panel {
+  margin: 0;
+}
+.cam-num {
+  font: 700 13px/1 var(--f-tech);
+  letter-spacing: 0.14em;
+  color: var(--red-hi);
+}
+.cam-steps h2 {
+  font: 900 34px/1 var(--f-display);
+  text-transform: uppercase;
+  color: var(--bone);
+  margin: 10px 0 8px;
+}
+.cam-steps p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.cam-notes {
+  margin-top: 18px;
+}
+.cam-notes ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.cam-notes li + li {
+  margin-top: 6px;
+}
+.cam-notes a {
+  color: var(--gold);
+}

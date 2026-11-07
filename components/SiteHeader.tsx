@@ -23,6 +23,7 @@ const MENU = [
   ...NAV.slice(0, 3),
   { href: "/#founders", label: "Founders" },
   ...NAV.slice(3),
+  { href: "/camera", label: "Camera" },
   { href: "/rewards", label: "Rewards" },
   { href: "/account", label: "Account" },
   { href: "/log", label: "Training log" },
