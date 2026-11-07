@@ -1,0 +1,836 @@
+<!doctype html>
+<!-- 88 Risers Smart Ref Camera. Served at /camera/live (rewrite in next.config.ts). Standalone: no React, runs fully on the phone. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0a0908">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Smart Ref">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-icon.png">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<title>Smart Ref Camera | 88 Risers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+@font-face { font-family: "Saira Extra Condensed"; src: url(/fonts/saira-extra-condensed-900.woff2) format("woff2"); font-weight: 900; font-display: swap; }
+@font-face { font-family: "Chakra Petch"; src: url(/fonts/chakra-petch-600.woff2) format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Chakra Petch"; src: url(/fonts/chakra-petch-700.woff2) format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Barlow Condensed"; src: url(/fonts/barlow-condensed-800.ttf) format("truetype"); font-weight: 800; font-display: swap; }
+:root {
+  --bg: #0a0908; --panel: #16130f; --panel2: #1f1b15; --line: rgba(213,182,122,.24); --ink: #efe7d6; --muted: #a69d8b; --gold: #d5b67a; --red: #d42a2f;
+  --a: #E2582C; --b: #D4467C; --ok: #2BB37F; --check: #F2A630; --foul: #E5413F;
+  --cond: "Barlow Condensed", "Arial Narrow", sans-serif; --disp: "Saira Extra Condensed", "Barlow Condensed", Impact, sans-serif; --tech: "Chakra Petch", ui-monospace, monospace;
+  --st: env(safe-area-inset-top); --sb: env(safe-area-inset-bottom); --sl: env(safe-area-inset-left); --sr: env(safe-area-inset-right);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; background: #000; color: var(--ink); font: 15px/1.4 Inter, system-ui, sans-serif;
+  overflow: hidden; overscroll-behavior: none; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+button { font: 700 13px var(--tech); letter-spacing: .1em; color: var(--ink); background: var(--panel2); border: 1px solid var(--line);
+  border-radius: 12px; padding: 10px 14px; cursor: pointer; text-transform: uppercase; }
+button:active { transform: scale(.97); filter: brightness(1.15); }
+button:disabled { opacity: .4; }
+.hidden { display: none !important; }
+
+/* stage */
+#stage { position: fixed; inset: 0; background: #000; }
+#stage video, #stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+
+/* score bar */
+#hud .score { position: fixed; top: calc(8px + var(--st)); left: calc(8px + var(--sl)); right: calc(96px + var(--sr)); display: flex; justify-content: center; pointer-events: none; }
+.sb { display: flex; align-items: stretch; background: rgba(10,9,8,.88); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; max-width: 640px; width: 100%; }
+.sb .ath { flex: 1; display: flex; align-items: center; gap: 8px; padding: 6px 12px; min-width: 0; }
+.sb .ath.a { border-left: 5px solid var(--a); }
+.sb .ath.b { border-right: 5px solid var(--b); flex-direction: row-reverse; }
+.sb .nm { font: 900 24px var(--disp); letter-spacing: .02em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.sb .ath.b .nm { text-align: right; }
+.sb .rd { font: 500 18px "JetBrains Mono", monospace; color: var(--muted); }
+.sb .fl { display: flex; gap: 4px; }
+.sb .fl i { width: 11px; height: 11px; border-radius: 50%; border: 2px solid #5a5955; display: block; }
+.sb .fl i.on { background: var(--foul); border-color: var(--foul); }
+.sb .mid { padding: 4px 14px; background: rgba(31,27,21,.95); text-align: center; }
+.sb .clock { font: 700 22px var(--tech); line-height: 1.1; }
+.sb .st { font: 600 10px var(--tech); letter-spacing: .2em; color: var(--muted); }
+.sb .st.live { color: var(--foul); }
+.lights { display: flex; gap: 4px; margin-top: 2px; }
+.lights span { font: 700 11px var(--cond); letter-spacing: 1px; padding: 1px 5px; border-radius: 4px; background: #333; color: var(--muted); }
+.lights span.ok { background: rgba(43,179,127,.25); color: var(--ok); }
+.lights span.foul { background: var(--foul); color: #fff; }
+
+/* right rail */
+.rail { position: fixed; right: calc(8px + var(--sr)); top: calc(8px + var(--st)); bottom: calc(8px + var(--sb)); width: 80px; display: flex; flex-direction: column; gap: 8px; }
+.rail button { flex: 1; min-height: 44px; padding: 4px; font-size: 13px; position: relative; }
+.rail .go { background: var(--ok); border-color: var(--ok); color: #06140e; font: 900 34px var(--disp); letter-spacing: .04em; flex: 1.6; }
+.rail .go.stop { background: var(--foul); border-color: var(--foul); color: #fff; }
+.rail .ready { background: var(--check); border-color: var(--check); color: #1a1205; }
+.rail .badge { position: absolute; top: -5px; right: -5px; background: var(--check); color: #1a1205; border-radius: 999px; font: 800 13px var(--cond); min-width: 20px; height: 20px; line-height: 20px; padding: 0 5px; }
+.status { position: fixed; left: calc(10px + var(--sl)); bottom: calc(8px + var(--sb)); font: 500 11px "JetBrains Mono", monospace; color: rgba(255,255,255,.75);
+  background: rgba(0,0,0,.5); padding: 3px 8px; border-radius: 6px; pointer-events: none; }
+.status b { color: var(--check); font-weight: 500; }
+
+/* alert */
+.alert { position: fixed; left: 50%; top: calc(64px + var(--st)); transform: translate(-50%, -20px); opacity: 0; pointer-events: none; transition: .25s;
+  display: flex; align-items: center; gap: 10px; background: rgba(17,17,19,.94); border-radius: 14px; padding: 8px 8px 8px 0; overflow: hidden;
+  margin-left: calc(-44px); max-width: calc(100vw - 120px); }
+.alert.show { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+.alert .tag { align-self: stretch; display: flex; align-items: center; padding: 0 14px; font: 900 28px var(--disp); letter-spacing: 1px; background: var(--foul); margin: -8px 0; }
+.alert .who { font: 900 22px var(--disp); letter-spacing: .02em; text-transform: uppercase; white-space: nowrap; }
+.alert .who small { display: block; font: 500 12px Inter; color: var(--muted); text-transform: none; }
+.alert .btns { display: flex; gap: 6px; }
+.alert .btns button { padding: 10px 12px; }
+.alert .cf { background: var(--foul); border-color: var(--foul); }
+
+/* panels */
+.sheet { position: fixed; top: 0; bottom: 0; right: 0; width: min(420px, 100vw); background: var(--bg); border-left: 1px solid var(--line);
+  transform: translateX(100%); transition: transform .25s; display: flex; flex-direction: column; padding: calc(12px + var(--st)) calc(12px + var(--sr)) calc(12px + var(--sb)) 12px; z-index: 5; }
+.sheet.open { transform: none; }
+.sheet h3 { font: 900 28px var(--disp); letter-spacing: .03em; color: var(--gold); margin: 0; flex: 1; }
+.sheet .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.sheet .body { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
+.call { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin-bottom: 8px; }
+.call.pending { border-color: var(--check); }
+.call .t { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+.call .t span { flex: 1; }
+.call .s { color: var(--muted); font-size: 12px; margin: 2px 0 8px; }
+.call .b { display: flex; gap: 6px; flex-wrap: wrap; }
+.call .b button { padding: 8px 12px; font-size: 14px; }
+.pill { font: 800 12px var(--cond); letter-spacing: 1px; padding: 2px 7px; border-radius: 5px; background: var(--panel2); color: var(--muted); text-transform: uppercase; }
+.pill.pending { background: var(--check); color: #1a1205; } .pill.confirmed { background: var(--foul); color: #fff; }
+.empty { color: var(--muted); padding: 12px 2px; }
+.row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
+.row label { color: var(--muted); font-size: 13px; min-width: 110px; }
+.row input[type=text], .row select { flex: 1; min-width: 0; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; font: 900 22px var(--disp); text-transform: uppercase; }
+.row select { font: 500 14px Inter; text-transform: none; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.sect { font: 600 11px var(--tech); letter-spacing: .22em; color: var(--gold); margin: 14px 0 8px; }
+
+/* replay */
+.modal { position: fixed; inset: 0; background: #000; z-index: 8; display: flex; flex-direction: column; padding: calc(8px + var(--st)) calc(10px + var(--sr)) calc(8px + var(--sb)) calc(10px + var(--sl)); }
+.modal .view { flex: 1; min-height: 0; position: relative; }
+.modal canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.modal .ctl { display: flex; align-items: center; gap: 6px; padding-top: 6px; flex-wrap: wrap; }
+.modal .ctl .lab { flex: 1; font: 900 21px var(--disp); text-transform: uppercase; min-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.modal .ctl button { padding: 8px 11px; font-size: 14px; }
+.modal .ctl button.on { background: var(--ink); color: #111; }
+.modal input[type=range] { width: 100%; accent-color: var(--foul); margin: 6px 0 0; }
+.badgeR { position: absolute; left: 8px; top: 8px; background: var(--foul); font: 800 16px var(--cond); letter-spacing: 2px; padding: 2px 10px; border-radius: 4px; }
+
+/* setup */
+.setupbar { position: fixed; left: calc(8px + var(--sl)); right: calc(8px + var(--sr)); bottom: calc(8px + var(--sb)); display: flex; align-items: center; gap: 8px;
+  background: rgba(17,17,19,.92); border-radius: 12px; padding: 8px 8px 8px 14px; z-index: 4; }
+.setupbar .msg { flex: 1; font: 900 22px var(--disp); letter-spacing: .5px; }
+.setupbar .msg small { display: block; font: 400 12px Inter; color: var(--muted); letter-spacing: 0; }
+.setupbar .step { font: 800 14px var(--cond); color: #111; background: var(--ink); border-radius: 6px; padding: 2px 8px; }
+.save { background: var(--ok) !important; border-color: var(--ok) !important; color: #06140e !important; }
+
+/* start */
+#start { position: fixed; inset: 0; background: radial-gradient(900px 500px at 15% -10%, rgba(212,42,47,.22) 0%, transparent 60%), radial-gradient(700px 500px at 100% 110%, rgba(213,182,122,.12) 0%, transparent 60%), var(--bg); z-index: 10;
+  display: flex; padding: calc(44px + var(--st)) calc(16px + var(--sr)) calc(16px + var(--sb)) calc(16px + var(--sl)); overflow-y: auto; }
+.startcard { margin: auto; max-width: 760px; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: center; }
+@media (max-width: 640px) { .startcard { grid-template-columns: 1fr; gap: 18px; } }
+@media (max-height: 460px) { .crest, .tips { display: none !important; } }
+.crest { width: 54px; height: 54px; border-radius: 50%; border: 1px solid var(--line); display: block; margin-bottom: 14px; }
+.eyebrow { font: 600 11px var(--tech); letter-spacing: .22em; color: var(--gold); text-transform: uppercase; display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--red); }
+.logo { font: 900 clamp(52px, 9vw, 78px)/0.88 var(--disp); letter-spacing: .01em; text-transform: uppercase; }
+.logo span { background: linear-gradient(180deg, #f2e1b6 0%, #d5b67a 45%, #a8854a 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.back { position: fixed; left: calc(14px + var(--sl)); top: calc(12px + var(--st)); color: var(--muted); font: 600 11px var(--tech); letter-spacing: .18em; text-decoration: none; text-transform: uppercase; z-index: 11; }
+.tag2 { color: var(--muted); margin-top: 12px; font-size: 14px; }
+.startbtns { display: flex; flex-direction: column; gap: 10px; }
+.startbtns button { padding: 18px; font-size: 14px; border-radius: 999px; letter-spacing: .14em; border-color: var(--line); }
+.startbtns .primary { background: var(--red); border-color: var(--red); color: #fff; box-shadow: 0 10px 30px rgba(212,42,47,.35); }
+.tips { color: var(--muted); font-size: 13px; margin: 6px 0 0; padding-left: 18px; }
+.tips li { margin-bottom: 4px; }
+.err { color: #ffb4b0; background: rgba(229,65,63,.12); border: 1px solid rgba(229,65,63,.4); border-radius: 10px; padding: 10px; font-size: 13px; }
+.loading { color: var(--check); font-size: 14px; }
+#rotate { position: fixed; left: 50%; bottom: calc(10px + var(--sb)); transform: translateX(-50%); background: var(--check); color: #1a1205; font: 700 14px var(--cond);
+  letter-spacing: 1px; padding: 6px 12px; border-radius: 8px; z-index: 3; display: none; }
+@media (orientation: portrait) { body.running #rotate { display: block; } }
+</style>
+</head>
+<body>
+<div id="stage">
+  <video id="video" playsinline muted autoplay></video>
+  <canvas id="demo" class="hidden"></canvas>
+  <canvas id="ov"></canvas>
+</div>
+
+<div id="hud" class="hidden">
+  <div class="score"><div class="sb">
+    <div class="ath a"><span class="rd" id="rA">0</span><span class="nm" id="nA"></span><div><div class="fl" id="fA"></div><div class="lights" id="lA"></div></div></div>
+    <div class="mid"><div class="clock" id="clock">0:00.0</div><div class="st" id="st">IDLE</div></div>
+    <div class="ath b"><span class="rd" id="rB">0</span><span class="nm" id="nB"></span><div><div class="fl" id="fB"></div><div class="lights" id="lB"></div></div></div>
+  </div></div>
+  <div class="rail">
+    <button class="go" id="bGo">GO</button>
+    <button class="ready" id="bReady">Ready</button>
+    <button id="bClip">Clip</button>
+    <button id="bCalls">Calls<span class="badge hidden" id="nCalls"></span></button>
+    <button id="bMenu">Menu</button>
+  </div>
+  <div class="status" id="status"></div>
+</div>
+
+<div class="alert" id="alert">
+  <div class="tag" id="aTag"></div>
+  <div class="who" id="aWho"></div>
+  <div class="btns">
+    <button class="cf" id="aConfirm">Confirm</button>
+    <button id="aDismiss">Dismiss</button>
+    <button id="aReplay">Replay</button>
+  </div>
+</div>
+
+<div class="sheet" id="calls">
+  <div class="hd"><h3>CALLS</h3><button id="callsClose">Close</button></div>
+  <div class="body" id="callList"></div>
+</div>
+
+<div class="sheet" id="menu">
+  <div class="hd"><h3>MENU</h3><button id="menuClose">Close</button></div>
+  <div class="body">
+    <div class="row"><label>Athlete A</label><input type="text" id="inA" maxlength="24"></div>
+    <div class="row"><label>Athlete B</label><input type="text" id="inB" maxlength="24"></div>
+    <div class="grid2">
+      <button id="mWinA">Win: A</button><button id="mWinB">Win: B</button>
+      <button id="mNext">Next round</button><button id="mReset">Reset match</button>
+    </div>
+    <div class="sect">CAMERA</div>
+    <div class="grid2">
+      <button id="mCal">Re-calibrate</button><button id="mFlip">Switch camera</button>
+    </div>
+    <div class="sect">SETTINGS</div>
+    <div class="row"><label>Fouls to lose</label><select id="sFouls"><option value="0">Never auto-end</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+    <div class="row"><label>Sensitivity</label><select id="sSens"><option value="100">Fast (0.10s hold)</option><option value="160">Normal (0.16s hold)</option><option value="280">Strict (0.28s hold)</option></select></div>
+    <div class="row"><label>AI model</label><select id="sModel"><option value="lite">Lite (fastest)</option><option value="full">Full (more accurate)</option></select></div>
+    <div class="row"><label>Skeleton overlay</label><select id="sSkel"><option value="1">Show</option><option value="0">Hide</option></select></div>
+    <div class="row"><label>Sound on calls</label><select id="sSound"><option value="1">On</option><option value="0">Off</option></select></div>
+    <div class="sect">&nbsp;</div>
+    <button id="mExit" style="width:100%">Exit to start screen</button>
+  </div>
+</div>
+
+<div class="modal hidden" id="replay">
+  <div class="view"><canvas id="rc"></canvas><span class="badgeR">REPLAY</span></div>
+  <input type="range" id="rScrub" min="0" max="0" value="0">
+  <div class="ctl">
+    <span class="lab" id="rLab"></span>
+    <button id="rPlay">Pause</button>
+    <button data-sp="1">1x</button><button data-sp="0.5">.5x</button><button data-sp="0.25" class="on">.25x</button>
+    <button id="rFlag">Flag</button>
+    <button id="rSave">Save video</button>
+    <button id="rClose">Close</button>
+  </div>
+</div>
+
+<div class="setupbar hidden" id="setup">
+  <span class="step" id="suStep">1/4</span>
+  <div class="msg" id="suMsg"></div>
+  <button id="suUndo">Undo</button>
+  <button id="suSkip" class="hidden">Skip</button>
+  <button id="suSave" class="save hidden">Save</button>
+  <button id="suCancel">Cancel</button>
+</div>
+
+<div id="rotate">Turn phone sideways for the best view</div>
+
+<div id="start">
+  <a class="back" href="/camera">&larr; 88risers.com</a>
+  <div class="startcard">
+    <div>
+      <img class="crest" src="/crest.jpg" alt="88 Risers">
+      <div class="eyebrow">88 Risers</div>
+      <div class="logo">Smart Ref <span>Camera.</span></div>
+      <div class="tag2">AI referee assist for armwrestling. Tracks elbows and shoulders with your phone camera, flags fouls, and gives instant slow-mo replays.</div>
+      <ul class="tips">
+        <li>Stand the phone at one end of the table, lined up with the centre line, chest height.</li>
+        <li>Landscape, good light, both elbow pads in view.</li>
+        <li>The ref always has the final call.</li>
+      </ul>
+    </div>
+    <div class="startbtns">
+      <button class="primary" id="bStart">Start camera</button>
+      <button id="bDemo">Try demo</button>
+      <div id="startMsg"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+/* =====================================================================
+   88 RISERS SMART REF - phone edition
+   One phone = one side camera. Everything runs on the phone.
+   ===================================================================== */
+const MP_VER = '0.10.21';
+const MP_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VER}`;
+const MODEL_URL = m => `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_${m}/float16/latest/pose_landmarker_${m}.task`;
+
+// MediaPipe body points
+const NOSE = 0, LSH = 11, RSH = 12, LEL = 13, REL = 14, LWR = 15, RWR = 16, LHIP = 23, RHIP = 24;
+const EDGES = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[24,26],[25,27],[26,28]];
+const COL = { a: '#E2582C', b: '#D4467C', ok: '#2BB37F', foul: '#E5413F', check: '#F2A630', other: 'rgba(200,200,200,.55)', line: '#ffffff' };
+
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('88sr_' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('88sr_' + k, JSON.stringify(v)); } catch {} },
+};
+
+/* ---------- settings ---------- */
+const S = Object.assign({ names: { a: 'Athlete A', b: 'Athlete B' }, foulsToLose: 2, confirmMs: 160, rearmMs: 700,
+  shMargin: 0.006, elMargin: 0.012, kpConf: 0.5, model: 'lite', skeleton: true, sound: true, facing: 'environment' }, store.get('settings', {}));
+const saveSettings = () => store.set('settings', S);
+
+/* ---------- geometry (pixel space) ---------- */
+const sd = (p, l) => { const [[ax, ay], [bx, by]] = l; const L = Math.hypot(bx - ax, by - ay) || 1; return ((bx - ax) * (p[1] - ay) - (by - ay) * (p[0] - ax)) / L; };
+const sideOf = (p, l) => sd(p, l) >= 0 ? 1 : -1;
+const nr = r => [Math.min(r[0], r[2]), Math.min(r[1], r[3]), Math.max(r[0], r[2]), Math.max(r[1], r[3])];
+const rc = r => { const [x1, y1, x2, y2] = nr(r); return [(x1 + x2) / 2, (y1 + y2) / 2]; };
+const inRect = (r, p, m = 0) => { const [x1, y1, x2, y2] = nr(r); return p[0] >= x1 - m && p[0] <= x2 + m && p[1] >= y1 - m && p[1] <= y2 + m; };
+const rDist = (r, p) => { const [x1, y1, x2, y2] = nr(r); return Math.hypot(Math.max(x1 - p[0], 0, p[0] - x2), Math.max(y1 - p[1], 0, p[1] - y2)); };
+
+/* ---------- source (camera or demo) ---------- */
+const video = $('video'), demoCv = $('demo'), ov = $('ov'), octx = ov.getContext('2d');
+let mode = null;            // 'camera' | 'demo'
+let srcW = 1280, srcH = 720;
+let stream = null;
+const source = () => mode === 'demo' ? demoCv : video;
+
+async function startCamera() {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: {
+    facingMode: { ideal: S.facing }, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } } });
+  video.srcObject = stream;
+  await video.play();
+  await new Promise(r => video.videoWidth ? r() : video.addEventListener('loadedmetadata', r, { once: true }));
+  srcW = video.videoWidth; srcH = video.videoHeight;
+}
+
+/* ---------- pose engines ---------- */
+function toPerson(kps) {
+  const vis = kps.filter(k => k[2] >= 0.3);
+  const xs = vis.map(k => k[0]), ys = vis.map(k => k[1]);
+  const box = vis.length ? [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] : [0, 0, 0, 0];
+  return { kps, box };
+}
+async function makeMediaPipe(model, onMsg) {
+  onMsg('Loading AI library...');
+  const { FilesetResolver, PoseLandmarker } = await import(`${MP_BASE}/vision_bundle.mjs`);
+  const fs = await FilesetResolver.forVisionTasks(`${MP_BASE}/wasm`);
+  onMsg('Loading pose model (one-time download)...');
+  const opts = d => ({ baseOptions: { modelAssetPath: MODEL_URL(model), delegate: d }, runningMode: 'VIDEO', numPoses: 3,
+    minPoseDetectionConfidence: 0.4, minPosePresenceConfidence: 0.4, minTrackingConfidence: 0.4 });
+  let lm, delegate = 'GPU';
+  try { lm = await PoseLandmarker.createFromOptions(fs, opts('GPU')); }
+  catch (e) { delegate = 'CPU'; lm = await PoseLandmarker.createFromOptions(fs, opts('CPU')); }
+  let lastTs = 0;
+  return { name: `MediaPipe ${model} (${delegate})`, detect(src) {
+    let ts = performance.now(); if (ts <= lastTs) ts = lastTs + 1; lastTs = ts;
+    const r = lm.detectForVideo(src, ts);
+    return (r.landmarks || []).map(l => toPerson(l.map(p => [p.x * srcW, p.y * srcH, p.visibility ?? 1])));
+  }, close() { try { lm.close(); } catch {} } };
+}
+
+/* demo: a synthetic side view with scripted fouls (20 s loop) */
+const DEMO_CAL = { line: [[0.5, 120 / 720], [0.5, 700 / 720]], padA: [520 / 1280, 440 / 720, 600 / 1280, 482 / 720],
+                   padB: [680 / 1280, 440 / 720, 760 / 1280, 482 / 720], ignore: null };
+const env = (t, s, d, r = 0.25) => (t < s || t > s + d) ? 0 : Math.min(1, Math.min(t - s, s + d - t) / r);
+function demoAthlete(left, t, lift, lean) {
+  const sway = 4 * Math.sin(t * 2.3 + (left ? 0 : 1.7));
+  const P = { 0: [500, 268], 11: [452, 335], 12: [522 + sway, 322], 13: [430, 452], 14: [565, 456 - 62 * lift], 15: [470, 478],
+    16: [628, 345 - 30 * lift], 23: [398, 600], 24: [422, 600], 25: [395, 690], 26: [430, 690] };
+  for (const i of [0, 11, 12, 16]) P[i] = [P[i][0] + 150 * lean, P[i][1] + 10 * lean];
+  const kps = Array.from({ length: 33 }, (_, i) => P[i] ? [left ? P[i][0] : 1280 - P[i][0], P[i][1], 0.95] : [0, 0, 0]);
+  return toPerson(kps);
+}
+function demoScene(t) {
+  const lt = t % 20;
+  return [demoAthlete(true, t, Math.max(env(lt, 6, 1.4), env(lt, 15, 1.4)), 0), demoAthlete(false, t, 0, env(lt, 11, 1.6))];
+}
+function renderDemo(t, people) {
+  const c = demoCv.getContext('2d');
+  c.fillStyle = '#222426'; c.fillRect(0, 0, 1280, 720);
+  c.fillStyle = '#605a5a'; c.fillRect(300, 482, 680, 28); c.fillStyle = '#4c4646'; c.fillRect(620, 510, 40, 210);
+  c.fillStyle = '#8c3c3c'; c.fillRect(520, 452, 80, 30); c.fillRect(680, 452, 80, 30);
+  people.forEach((p, i) => {
+    c.strokeStyle = c.fillStyle = i ? COL.b : COL.a; c.lineWidth = 14; c.lineCap = 'round';
+    for (const [a, b] of [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[24,26]]) {
+      c.beginPath(); c.moveTo(p.kps[a][0], p.kps[a][1]); c.lineTo(p.kps[b][0], p.kps[b][1]); c.stroke();
+    }
+    c.beginPath(); c.arc(p.kps[0][0], p.kps[0][1], 34, 0, 7); c.fill();
+  });
+  c.fillStyle = '#9a9a9a'; c.font = '600 26px Inter, sans-serif'; c.fillText(`DEMO  ${(t % 20).toFixed(1)}s`, 1090, 44);
+}
+let demoT0 = 0;
+const demoEngine = { name: 'Demo', detect() { const t = (performance.now() - demoT0) / 1000; const p = demoScene(t); renderDemo(t, p); return p; } };
+
+/* ---------- calibration (stored normalised 0-1) ---------- */
+let cal = null;
+function px() {           // calibration in source pixels
+  if (!cal) return null;
+  const P = ([x, y]) => [x * srcW, y * srcH];
+  const R = r => r && [r[0] * srcW, r[1] * srcH, r[2] * srcW, r[3] * srcH];
+  const c = { line: cal.line.map(P), pads: { a: R(cal.padA), b: R(cal.padB) }, ignore: R(cal.ignore) };
+  const s = sideOf(rc(c.pads.a), c.line);
+  c.side = { a: s, b: -s };
+  return c;
+}
+
+/* ---------- analysis ---------- */
+const prev = { a: null, b: null };
+const pt = (p, i) => p.kps[i][2] >= S.kpConf ? [p.kps[i][0], p.kps[i][1]] : null;
+function anchor(p) {
+  for (const idxs of [[LHIP, RHIP], [LSH, RSH]]) {
+    const q = idxs.map(i => pt(p, i)).filter(Boolean);
+    if (q.length) return [q.reduce((s, v) => s + v[0], 0) / q.length, q.reduce((s, v) => s + v[1], 0) / q.length];
+  }
+  return [(p.box[0] + p.box[2]) / 2, (p.box[1] + p.box[3]) / 2];
+}
+function analyze(people, C) {
+  const empty = { visible: false, shoulder: null, pen: null, shPt: null, elbow: null, elPt: null, kps: null };
+  if (!C) return { a: { ...empty }, b: { ...empty }, others: people };
+  const pool = people.filter(p => !(C.ignore && inRect(C.ignore, [(p.box[0] + p.box[2]) / 2, (p.box[1] + p.box[3]) / 2])))
+    .map(p => ({ p, a: anchor(p), area: (p.box[2] - p.box[0]) * (p.box[3] - p.box[1]) }));
+  const chosen = { a: null, b: null }, out = {};
+  for (const k of ['a', 'b']) {
+    const cands = pool.filter(c => sideOf(c.a, C.line) === C.side[k] && c.p !== chosen.a && c.p !== chosen.b);
+    if (!cands.length) { prev[k] = null; continue; }
+    let pick = null;
+    if (prev[k]) {
+      const d = c => Math.hypot(c.a[0] - prev[k][0], c.a[1] - prev[k][1]);
+      const near = cands.reduce((m, c) => d(c) < d(m) ? c : m);
+      if (d(near) < Math.max(80, 0.15 * srcW)) pick = near;
+    }
+    pick = pick || cands.reduce((m, c) => c.area > m.area ? c : m);
+    chosen[k] = pick.p; prev[k] = pick.a;
+  }
+  for (const k of ['a', 'b']) {
+    const p = chosen[k];
+    if (!p) { out[k] = { ...empty }; continue; }
+    let best = null;
+    for (const i of [LSH, RSH]) {
+      const q = pt(p, i); if (!q) continue;
+      const pen = -C.side[k] * sd(q, C.line);
+      if (!best || pen > best[0]) best = [pen, q];
+    }
+    const els = [LEL, REL].map(i => pt(p, i)).filter(Boolean);
+    const el = els.length ? els.reduce((m, q) => rDist(C.pads[k], q) < rDist(C.pads[k], m) ? q : m) : null;
+    out[k] = { visible: true, kps: p.kps,
+      shoulder: best ? (best[0] > S.shMargin * srcW ? 'over' : 'ok') : null, pen: best ? best[0] : null, shPt: best ? best[1] : null,
+      elbow: el ? (inRect(C.pads[k], el, S.elMargin * srcW) ? 'on' : 'off') : null, elPt: el };
+  }
+  out.others = pool.map(c => c.p).filter(p => p !== chosen.a && p !== chosen.b);
+  return out;
+}
+
+/* ---------- drawing ---------- */
+function drawScene(ctx, o, C, s = 1) {
+  const lw = Math.max(1.5, 2.5 * s * srcW / 1280);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (C) {
+    if (C.ignore) { const [x1, y1, x2, y2] = nr(C.ignore); ctx.strokeStyle = COL.other; ctx.lineWidth = lw * .6; ctx.setLineDash([8 * s, 6 * s]); ctx.strokeRect(x1 * s, y1 * s, (x2 - x1) * s, (y2 - y1) * s); ctx.setLineDash([]); }
+    for (const k of ['a', 'b']) {
+      const [x1, y1, x2, y2] = nr(C.pads[k]);
+      ctx.strokeStyle = o?.[k]?.elbow === 'off' ? COL.foul : COL.ok; ctx.lineWidth = lw;
+      ctx.strokeRect(x1 * s, y1 * s, (x2 - x1) * s, (y2 - y1) * s);
+      ctx.fillStyle = ctx.strokeStyle; ctx.font = `700 ${Math.round(14 * s * srcW / 1280)}px Inter, sans-serif`;
+      ctx.fillText('PAD ' + k.toUpperCase(), x1 * s, y1 * s - 6 * s);
+    }
+    ctx.strokeStyle = COL.line; ctx.lineWidth = lw;
+    ctx.beginPath(); ctx.moveTo(C.line[0][0] * s, C.line[0][1] * s); ctx.lineTo(C.line[1][0] * s, C.line[1][1] * s); ctx.stroke();
+  }
+  if (!o) return;
+  const skel = (kps, col, w) => {
+    if (!S.skeleton) return;
+    ctx.strokeStyle = col; ctx.lineWidth = w;
+    for (const [i, j] of EDGES) if (kps[i][2] >= S.kpConf && kps[j][2] >= S.kpConf) {
+      ctx.beginPath(); ctx.moveTo(kps[i][0] * s, kps[i][1] * s); ctx.lineTo(kps[j][0] * s, kps[j][1] * s); ctx.stroke();
+    }
+  };
+  (o.others || []).forEach(p => skel(p.kps, COL.other, lw * .6));
+  const dot = (p, r, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(p[0] * s, p[1] * s, r, 0, 7); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke(); };
+  for (const k of ['a', 'b']) {
+    const a = o[k]; if (!a || !a.kps) continue;
+    skel(a.kps, COL[k], lw * 1.3);
+    const r = Math.max(5, 9 * s * srcW / 1280);
+    if (a.shPt) dot(a.shPt, r, a.shoulder === 'over' ? COL.foul : COL[k]);
+    if (a.elPt) dot(a.elPt, r, a.elbow === 'off' ? COL.foul : COL.ok);
+    if (a.kps[NOSE][2] >= S.kpConf) { ctx.fillStyle = COL[k]; ctx.font = `800 ${Math.round(26 * s * srcW / 1280)}px "Barlow Condensed", sans-serif`; ctx.fillText(k.toUpperCase(), a.kps[NOSE][0] * s - 6 * s, a.kps[NOSE][1] * s - 44 * s * srcW / 1280); }
+  }
+}
+
+/* ---------- referee ---------- */
+class Debounce {
+  constructor() { this.reset(); }
+  reset() { this.since = null; this.clear = null; this.fired = false; }
+  update(on, now) {
+    if (on) { this.clear = null; if (this.since === null) this.since = now;
+      if (!this.fired && now - this.since >= S.confirmMs / 1000) { this.fired = true; return true; } return false; }
+    this.since = null;
+    if (this.fired) { if (this.clear === null) this.clear = now; else if (now - this.clear >= S.rearmMs / 1000) { this.fired = false; this.clear = null; } }
+    return false;
+  }
+}
+const R = { state: 'idle', t0: 0, elapsed: 0, fouls: { a: 0, b: 0 }, rounds: { a: 0, b: 0 }, round: 1, winner: null, calls: [], nextId: 1,
+  deb: { a_elbow: new Debounce(), a_shoulder: new Debounce(), b_elbow: new Debounce(), b_shoulder: new Debounce() } };
+const now = () => performance.now() / 1000;
+const matchTime = () => R.state === 'live' ? now() - R.t0 : R.elapsed;
+function resetRound() { Object.assign(R, { state: 'idle', t0: 0, elapsed: 0, fouls: { a: 0, b: 0 }, winner: null }); Object.values(R.deb).forEach(d => d.reset()); }
+function go() { R.state = 'live'; R.t0 = now(); Object.values(R.deb).forEach(d => d.reset()); }
+function stop() { if (R.state === 'live') R.elapsed = now() - R.t0; R.state = 'stopped'; }
+function endRound(k) { if (R.state === 'live') R.elapsed = now() - R.t0; if (!R.winner) { R.winner = k; R.rounds[k]++; } R.state = 'stopped'; }
+function addFoul(k) { R.fouls[k]++; if (S.foulsToLose && R.fouls[k] >= S.foulsToLose && !R.winner) endRound(k === 'a' ? 'b' : 'a'); }
+const LABEL = { elbow: 'Elbow off pad', shoulder: 'Shoulder over line', manual: 'Clip' };
+function newCall(type, athlete) {
+  const c = { id: R.nextId++, type, athlete, status: type === 'manual' ? 'info' : 'pending', round: R.round,
+    matchTime: matchTime(), t: now(), clip: null };
+  c.label = LABEL[type] + (athlete ? ' - ' + S.names[athlete] : '');
+  R.calls.unshift(c); R.calls = R.calls.slice(0, 30);
+  buildClip(c);
+  return c;
+}
+function decide(id, confirmIt) {
+  const c = R.calls.find(x => x.id === id);
+  if (!c || c.status !== 'pending') return;
+  c.status = confirmIt ? 'confirmed' : 'dismissed';
+  if (confirmIt) addFoul(c.athlete);
+  if (alertCall && alertCall.id === id) hideAlert();
+  renderCalls();
+}
+function stepRef(o, t) {
+  if (R.state !== 'live') return;
+  for (const k of ['a', 'b']) {
+    if (R.deb[k + '_elbow'].update(o[k].elbow === 'off', t)) showAlert(newCall('elbow', k));
+    if (R.deb[k + '_shoulder'].update(o[k].shoulder === 'over', t)) showAlert(newCall('shoulder', k));
+  }
+}
+
+/* ---------- replay buffer ---------- */
+const PRE = 3, POST = 1.5, KEEP = 8, CAP_W = 640, CAP_FPS = 20;
+const cap = document.createElement('canvas'); const cctx = cap.getContext('2d');
+const buf = { frames: [], obs: [] };
+let encoding = false, lastCap = 0;
+function captureFrame(src, t) {
+  if (encoding || t - lastCap < 1 / CAP_FPS) return;
+  lastCap = t; encoding = true;
+  cap.width = CAP_W; cap.height = Math.round(CAP_W * srcH / srcW);
+  cctx.drawImage(src, 0, 0, cap.width, cap.height);
+  cap.toBlob(b => { encoding = false; if (b) buf.frames.push({ t, b }); while (buf.frames.length && t - buf.frames[0].t > KEEP) buf.frames.shift(); }, 'image/jpeg', 0.72);
+}
+function pushObs(t, o) { buf.obs.push({ t, o }); while (buf.obs.length && t - buf.obs[0].t > KEEP) buf.obs.shift(); }
+function buildClip(c) {
+  setTimeout(() => {
+    const t0 = c.t - PRE, t1 = c.t + POST;
+    const frames = buf.frames.filter(f => f.t >= t0 && f.t <= t1);
+    if (!frames.length) return;
+    c.clip = { frames, obs: buf.obs.filter(o => o.t >= t0 - .3 && o.t <= t1 + .3), eventT: c.t, w: cap.width, h: cap.height,
+      scale: cap.width / srcW, cal: px() };
+    renderCalls(); updateAlertButtons();
+  }, POST * 1000 + 150);
+}
+
+/* ---------- alert ---------- */
+let alertCall = null, alertTimer = null, audioCtx = null;
+function beep() {
+  if (!S.sound) return;
+  try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.frequency.value = 880; g.gain.value = 0.15;
+    o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.14); } catch {}
+  try { navigator.vibrate?.(180); } catch {}
+}
+function showAlert(c) {
+  alertCall = c; beep();
+  $('aTag').textContent = c.type === 'shoulder' ? 'SHOULDER' : 'ELBOW';
+  $('aWho').innerHTML = `${esc(S.names[c.athlete])}<small>${c.type === 'shoulder' ? 'over the centre line' : 'off the pad'} · ${fmt(c.matchTime)}</small>`;
+  $('alert').classList.add('show'); updateAlertButtons(); renderCalls();
+  clearTimeout(alertTimer); alertTimer = setTimeout(hideAlert, 12000);
+}
+function hideAlert() { $('alert').classList.remove('show'); alertCall = null; }
+function updateAlertButtons() { if (alertCall) { $('aReplay').disabled = !alertCall.clip; $('aReplay').textContent = alertCall.clip ? 'Replay' : 'Replay...'; } }
+$('aConfirm').onclick = () => alertCall && decide(alertCall.id, true);
+$('aDismiss').onclick = () => alertCall && decide(alertCall.id, false);
+$('aReplay').onclick = () => alertCall?.clip && openReplay(alertCall);
+
+/* ---------- calls list ---------- */
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = t => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`;
+function renderCalls() {
+  const pend = R.calls.filter(c => c.status === 'pending').length;
+  $('nCalls').textContent = pend; $('nCalls').classList.toggle('hidden', !pend);
+  $('callList').innerHTML = R.calls.length ? R.calls.map(c => `
+    <div class="call ${c.status}"><div class="t"><span>${esc(c.label)}</span><i class="pill ${c.status}">${c.status === 'info' ? 'clip' : c.status}</i></div>
+    <div class="s">Round ${c.round} · ${fmt(c.matchTime)}${c.clip ? '' : ' · building replay...'}</div>
+    <div class="b">${c.status === 'pending' ? `<button class="cf" data-a="c" data-id="${c.id}" style="background:var(--foul);border-color:var(--foul)">Confirm foul</button><button data-a="d" data-id="${c.id}">Dismiss</button>` : ''}
+    ${c.clip ? `<button data-a="r" data-id="${c.id}">Replay</button>` : ''}</div></div>`).join('')
+    : '<div class="empty">No calls yet. Fouls the camera spots show up here for the ref to confirm or dismiss.</div>';
+}
+$('callList').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const id = +b.dataset.id, c = R.calls.find(x => x.id === id);
+  if (b.dataset.a === 'c') decide(id, true);
+  if (b.dataset.a === 'd') decide(id, false);
+  if (b.dataset.a === 'r' && c?.clip) openReplay(c);
+};
+
+/* ---------- replay player ---------- */
+const rcv = $('rc'), rctx = rcv.getContext('2d');
+const P = { c: null, i: 0, speed: 0.25, playing: true, timer: null, cache: new Map() };
+const nearestObs = (clip, t) => clip.obs.reduce((m, o) => !m || Math.abs(o.t - t) < Math.abs(m.t - t) ? o : m, null);
+async function bitmap(f) { if (!P.cache.has(f)) P.cache.set(f, createImageBitmap(f.b)); return P.cache.get(f); }
+async function drawClipFrame(ctx, clip, i, extra) {
+  const f = clip.frames[i];
+  ctx.drawImage(await bitmap(f), 0, 0, clip.w, clip.h);
+  const o = nearestObs(clip, f.t);
+  drawScene(ctx, o && Math.abs(o.t - f.t) < .25 ? o.o : null, clip.cal, clip.scale);
+  if (Math.abs(f.t - clip.eventT) < 0.35) { ctx.strokeStyle = COL.foul; ctx.lineWidth = 6; ctx.strokeRect(3, 3, clip.w - 6, clip.h - 6); }
+  if (extra) extra(ctx);
+}
+async function showFrame(i) {
+  const clip = P.c.clip; P.i = i; $('rScrub').value = i;
+  await drawClipFrame(rctx, clip, i);
+  const nxt = clip.frames[i + 1]; if (nxt) bitmap(nxt);
+}
+function tick() {
+  clearTimeout(P.timer);
+  if (!P.c || !P.playing) return;
+  const fr = P.c.clip.frames, i = P.i;
+  showFrame(i);
+  const dt = i + 1 < fr.length ? (fr[i + 1].t - fr[i].t) : 0.8;
+  P.i = (i + 1) % fr.length;
+  P.timer = setTimeout(tick, (i + 1 < fr.length ? dt / P.speed : dt) * 1000);
+}
+function openReplay(c) {
+  P.c = c; P.i = 0; P.playing = true; P.cache.clear();
+  rcv.width = c.clip.w; rcv.height = c.clip.h;
+  $('rScrub').max = c.clip.frames.length - 1;
+  $('rLab').textContent = c.label;
+  $('rPlay').textContent = 'Pause';
+  $('replay').classList.remove('hidden');
+  tick();
+}
+function closeReplay() { clearTimeout(P.timer); P.c = null; P.cache.clear(); $('replay').classList.add('hidden'); }
+$('rClose').onclick = closeReplay;
+$('rPlay').onclick = () => { P.playing = !P.playing; $('rPlay').textContent = P.playing ? 'Pause' : 'Play'; tick(); };
+$('rScrub').oninput = e => { P.playing = false; $('rPlay').textContent = 'Play'; clearTimeout(P.timer); showFrame(+e.target.value); };
+$('rFlag').onclick = () => { if (!P.c) return; P.playing = false; $('rPlay').textContent = 'Play'; clearTimeout(P.timer);
+  const fr = P.c.clip.frames; let bi = 0; fr.forEach((f, i) => { if (Math.abs(f.t - P.c.clip.eventT) < Math.abs(fr[bi].t - P.c.clip.eventT)) bi = i; }); showFrame(bi); };
+document.querySelectorAll('[data-sp]').forEach(b => b.onclick = () => {
+  P.speed = +b.dataset.sp; document.querySelectorAll('[data-sp]').forEach(x => x.classList.toggle('on', x === b)); });
+
+/* save the replay as a video (slow-mo, branded) */
+$('rSave').onclick = async () => {
+  if (!P.c) return;
+  const c = P.c, clip = c.clip, btn = $('rSave');
+  const types = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
+  const mime = window.MediaRecorder && types.find(t => MediaRecorder.isTypeSupported(t));
+  if (!mime) { alert('Saving video is not supported on this browser.'); return; }
+  btn.disabled = true; btn.textContent = 'Rendering...';
+  const cv = document.createElement('canvas'); cv.width = clip.w; cv.height = clip.h; const ctx = cv.getContext('2d');
+  const rec = new MediaRecorder(cv.captureStream(30), { mimeType: mime, videoBitsPerSecond: 4e6 });
+  const chunks = []; rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  const done = new Promise(r => rec.onstop = r);
+  const brand = x => { x.fillStyle = 'rgba(0,0,0,.6)'; x.fillRect(0, clip.h - 34, clip.w, 34); x.fillStyle = '#fff';
+    x.font = '800 20px "Barlow Condensed", sans-serif'; x.fillText('88 RISERS SMART REF  ·  ' + c.label.toUpperCase(), 12, clip.h - 11); };
+  await drawClipFrame(ctx, clip, 0, brand);
+  rec.start();
+  const SLOW = 0.5;
+  for (let i = 0; i < clip.frames.length; i++) {
+    await drawClipFrame(ctx, clip, i, brand);
+    const dt = i + 1 < clip.frames.length ? clip.frames[i + 1].t - clip.frames[i].t : 0.3;
+    await new Promise(r => setTimeout(r, dt / SLOW * 1000));
+  }
+  rec.stop(); await done;
+  const ext = mime.includes('mp4') ? 'mp4' : 'webm';
+  const file = new File(chunks, `88risers-${c.type}-${c.id}.${ext}`, { type: mime.split(';')[0] });
+  btn.disabled = false; btn.textContent = 'Save video';
+  try { if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: '88 Risers replay' }); return; } } catch (e) { if (e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+};
+
+/* ---------- calibration (tap on the view) ---------- */
+const STEPS = [
+  ['line', 'Tap 2 points along the CENTRE LINE', 'Any two points on the line, as far apart as you can'],
+  ['padA', "Tap 2 corners around ATHLETE A's elbow pad", 'Include a little space above the pad surface'],
+  ['padB', "Tap 2 corners around ATHLETE B's elbow pad", 'Include a little space above the pad surface'],
+  ['ignore', 'Optional: tap 2 corners where the REF stands', 'People in this box are ignored. Skip if not needed'],
+];
+let setup = null;   // {step, taps:[], done:{}}
+function startSetup() {
+  setup = { step: 0, taps: [], done: {} };
+  $('setup').classList.remove('hidden'); $('hud').classList.add('hidden'); hideAlert();
+  renderSetup();
+}
+function renderSetup() {
+  const st = setup.step;
+  $('suStep').textContent = st < 4 ? `${st + 1}/4` : 'DONE';
+  $('suMsg').innerHTML = st < 4 ? `${STEPS[st][1]}<small>${STEPS[st][2]}</small>` : 'All set<small>Save to start refereeing, or Undo to fix a step</small>';
+  $('suSkip').classList.toggle('hidden', st !== 3);
+  $('suSave').classList.toggle('hidden', st < 3);
+}
+function viewToSource(e) {
+  const r = ov.getBoundingClientRect(), sc = Math.min(r.width / srcW, r.height / srcH);
+  const ox = (r.width - srcW * sc) / 2, oy = (r.height - srcH * sc) / 2;
+  return [Math.min(1, Math.max(0, (e.clientX - r.left - ox) / sc / srcW)), Math.min(1, Math.max(0, (e.clientY - r.top - oy) / sc / srcH))];
+}
+ov.addEventListener('pointerdown', e => {
+  if (!setup || setup.step > 3) return;
+  setup.taps.push(viewToSource(e));
+  if (setup.taps.length === 2) {
+    const [[x1, y1], [x2, y2]] = setup.taps, key = STEPS[setup.step][0];
+    setup.done[key] = key === 'line' ? [[x1, y1], [x2, y2]] : [x1, y1, x2, y2];
+    setup.taps = []; setup.step++;
+  }
+  renderSetup();
+});
+$('suUndo').onclick = () => {
+  if (setup.taps.length) setup.taps = [];
+  else if (setup.step > 0) { setup.step--; delete setup.done[STEPS[setup.step][0]]; }
+  renderSetup();
+};
+$('suSkip').onclick = () => { setup.step = 4; renderSetup(); };
+$('suSave').onclick = () => {
+  const d = setup.done;
+  cal = { line: d.line, padA: d.padA, padB: d.padB, ignore: d.ignore || null };
+  if (mode === 'camera') store.set('cal', cal);
+  endSetup();
+};
+$('suCancel').onclick = () => endSetup();
+function endSetup() { setup = null; prev.a = prev.b = null; $('setup').classList.add('hidden'); $('hud').classList.remove('hidden'); }
+function setupPreview() {
+  if (!setup) return null;
+  const d = setup.done, P2 = ([x, y]) => [x * srcW, y * srcH];
+  octx.lineWidth = 3;
+  if (d.line) { octx.strokeStyle = '#fff'; octx.beginPath(); octx.moveTo(...P2(d.line[0])); octx.lineTo(...P2(d.line[1])); octx.stroke(); }
+  for (const [k, col] of [['padA', COL.a], ['padB', COL.b], ['ignore', COL.other]]) if (d[k]) {
+    const [x1, y1, x2, y2] = nr([d[k][0] * srcW, d[k][1] * srcH, d[k][2] * srcW, d[k][3] * srcH]);
+    octx.strokeStyle = col; octx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+  }
+  octx.fillStyle = '#ffd400';
+  setup.taps.forEach(t => { octx.beginPath(); octx.arc(t[0] * srcW, t[1] * srcH, 10 * srcW / 1280, 0, 7); octx.fill(); });
+}
+
+/* ---------- main loop ---------- */
+let engine = null, running = false, lastVT = -1, fpsE = 0, lastLoop = 0, lastObs = null;
+function loop() {
+  if (!running) return;
+  requestAnimationFrame(loop);
+  const src = source();
+  if (mode === 'camera') { if (video.readyState < 2 || video.currentTime === lastVT) return; lastVT = video.currentTime; }
+  const t = now();
+  if (lastLoop) fpsE = fpsE ? fpsE * 0.9 + 0.1 / (t - lastLoop) : 1 / (t - lastLoop);
+  lastLoop = t;
+  let people = [];
+  try { people = engine.detect(src); } catch (e) { console.warn(e); }
+  const C = px();
+  const o = analyze(people, C);
+  lastObs = o;
+  if (!setup) stepRef(o, t);
+  if (ov.width !== srcW || ov.height !== srcH) { ov.width = srcW; ov.height = srcH; }
+  octx.clearRect(0, 0, srcW, srcH);
+  if (setup) setupPreview(); else drawScene(octx, o, C);
+  captureFrame(src, t);
+  pushObs(t, o);
+  renderHud(o);
+}
+function lights(o) {
+  const c = (st, bad, txt) => `<span class="${st == null ? '' : st === bad ? 'foul' : 'ok'}">${txt}</span>`;
+  return c(o.elbow, 'off', 'ELB') + c(o.shoulder, 'over', 'SHO');
+}
+let hudKey = '';
+function renderHud(o) {
+  $('clock').textContent = fmt(matchTime());
+  const key = JSON.stringify([R.state, R.winner, R.fouls, R.rounds, S.names, S.foulsToLose, o.a.elbow, o.a.shoulder, o.b.elbow, o.b.shoulder, !!cal]);
+  if (key !== hudKey) {
+    hudKey = key;
+    for (const k of ['a', 'b']) {
+      const K = k.toUpperCase();
+      $('n' + K).textContent = S.names[k];
+      $('r' + K).textContent = R.rounds[k];
+      const n = Math.max(S.foulsToLose || 2, R.fouls[k]);
+      $('f' + K).innerHTML = Array.from({ length: n }, (_, i) => `<i class="${i < R.fouls[k] ? 'on' : ''}"></i>`).join('');
+      $('l' + K).innerHTML = lights(o[k]);
+    }
+    $('st').textContent = R.winner ? `${S.names[R.winner]} WINS` : { idle: 'READY UP', ready: 'GET READY', live: 'LIVE', stopped: 'STOPPED' }[R.state];
+    $('st').className = 'st ' + R.state;
+    const g = $('bGo'); g.textContent = R.state === 'live' ? 'STOP' : 'GO'; g.classList.toggle('stop', R.state === 'live');
+  }
+  $('status').innerHTML = `${engine?.name || ''} · ${fpsE.toFixed(0)} fps` + (cal ? '' : ' · <b>not calibrated - Menu > Re-calibrate</b>')
+    + (cal && !o.a.visible ? ' · <b>A not seen</b>' : '') + (cal && !o.b.visible ? ' · <b>B not seen</b>' : '');
+}
+
+/* ---------- buttons ---------- */
+$('bGo').onclick = () => { R.state === 'live' ? stop() : go(); hudKey = ''; };
+$('bReady').onclick = () => { R.state = 'ready'; hudKey = ''; };
+$('bClip').onclick = () => { const c = newCall('manual', null); $('bClip').textContent = 'Saved'; setTimeout(() => $('bClip').textContent = 'Clip', 1600); };
+$('bCalls').onclick = () => { renderCalls(); $('calls').classList.add('open'); };
+$('callsClose').onclick = () => $('calls').classList.remove('open');
+$('bMenu').onclick = () => {
+  $('inA').value = S.names.a; $('inB').value = S.names.b; $('sFouls').value = S.foulsToLose; $('sSens').value = S.confirmMs;
+  $('sModel').value = S.model; $('sSkel').value = S.skeleton ? '1' : '0'; $('sSound').value = S.sound ? '1' : '0';
+  $('mWinA').textContent = 'Win: ' + S.names.a; $('mWinB').textContent = 'Win: ' + S.names.b;
+  $('menu').classList.add('open');
+};
+$('menuClose').onclick = () => $('menu').classList.remove('open');
+$('inA').onchange = e => { S.names.a = e.target.value.trim() || 'Athlete A'; saveSettings(); hudKey = ''; };
+$('inB').onchange = e => { S.names.b = e.target.value.trim() || 'Athlete B'; saveSettings(); hudKey = ''; };
+$('sFouls').onchange = e => { S.foulsToLose = +e.target.value; saveSettings(); hudKey = ''; };
+$('sSens').onchange = e => { S.confirmMs = +e.target.value; saveSettings(); };
+$('sSkel').onchange = e => { S.skeleton = e.target.value === '1'; saveSettings(); };
+$('sSound').onchange = e => { S.sound = e.target.value === '1'; saveSettings(); };
+$('sModel').onchange = async e => {
+  S.model = e.target.value; saveSettings();
+  if (mode === 'camera') { running = false; engine?.close?.(); $('menu').classList.remove('open'); await boot('camera'); }
+};
+$('mWinA').onclick = () => { endRound('a'); hudKey = ''; $('menu').classList.remove('open'); };
+$('mWinB').onclick = () => { endRound('b'); hudKey = ''; $('menu').classList.remove('open'); };
+$('mNext').onclick = () => { R.round++; resetRound(); hudKey = ''; $('menu').classList.remove('open'); };
+$('mReset').onclick = () => { if (!confirm('Reset the whole match?')) return; R.rounds = { a: 0, b: 0 }; R.round = 1; R.calls = []; resetRound(); hudKey = ''; renderCalls(); $('menu').classList.remove('open'); };
+$('mCal').onclick = () => { $('menu').classList.remove('open'); startSetup(); };
+$('mFlip').onclick = async () => { if (mode !== 'camera') return; S.facing = S.facing === 'environment' ? 'user' : 'environment'; saveSettings(); await startCamera(); };
+$('mExit').onclick = () => { location.hash = ''; location.reload(); };
+
+/* ---------- start ---------- */
+let wakeLock = null;
+async function keepAwake() { try { wakeLock = await navigator.wakeLock?.request('screen'); } catch {} }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && running) keepAwake(); });
+
+async function boot(m) {
+  const msg = t => $('startMsg').innerHTML = t ? `<div class="loading">${t}</div>` : '';
+  const fail = t => { $('startMsg').innerHTML = `<div class="err">${t}</div>`; $('start').classList.remove('hidden'); };
+  mode = m;
+  try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); } catch {}   // unlock sound on the tap
+  try {
+    if (m === 'demo') {
+      srcW = 1280; srcH = 720; demoCv.width = srcW; demoCv.height = srcH;
+      demoCv.classList.remove('hidden'); video.classList.add('hidden');
+      demoT0 = performance.now(); engine = demoEngine; cal = DEMO_CAL;
+    } else {
+      if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia)
+        return fail('The camera needs a secure (https://) page. Open this from your website or a Netlify / GitHub Pages link, not a file.');
+      msg('Starting camera...');
+      try { await startCamera(); } catch (e) { return fail('Camera blocked: ' + esc(e.message || e.name) + '. Allow camera access for this site in your browser settings, then try again.'); }
+      demoCv.classList.add('hidden'); video.classList.remove('hidden');
+      try { engine = await makeMediaPipe(S.model, msg); }
+      catch (e) { return fail("Couldn't load the AI model (" + esc(e.message || e) + "). Check your internet connection - it's needed the first time."); }
+      cal = store.get('cal', null);
+    }
+  } catch (e) { return fail(esc(e.message || e)); }
+  msg('');
+  $('start').classList.add('hidden'); $('hud').classList.remove('hidden'); document.body.classList.add('running');
+  keepAwake();
+  try { if (m === 'camera' && document.documentElement.requestFullscreen && !/iPhone|iPad/.test(navigator.userAgent)) await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch {}
+  running = true; lastVT = -1; requestAnimationFrame(loop);
+  if (m === 'demo') go(); else if (!cal) startSetup();
+  hudKey = '';
+}
+$('bStart').onclick = () => boot('camera');
+$('bDemo').onclick = () => boot('demo');
+if (location.hash === '#demo') boot('demo');
+window.__sr = { R, S, get cal() { return cal; }, decide, openReplay, get lastObs() { return lastObs; } };   // for testing
+</script>
+</body>
+</html>
