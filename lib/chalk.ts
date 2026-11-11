@@ -74,6 +74,36 @@ export async function awardChalk(db: Db, accountId: number, season: number, amou
   return r.length > 0;
 }
 
+/** Chalk for a Riser with no linked account yet (moves to their account when they link one). */
+export async function awardRiserChalk(db: Db, pullerId: number, season: number, amount: number, reason: string, ref: string) {
+  const r = await db.query(
+    `INSERT INTO chalk_tx (account_id, puller_id, season, amount, reason, ref) VALUES (NULL, $1, $2, $3, $4, $5)
+     ON CONFLICT (puller_id, ref) WHERE account_id IS NULL DO NOTHING RETURNING id`,
+    [pullerId, season, amount, reason, ref],
+  );
+  return r.length > 0;
+}
+
+/** Moves a Riser's held Chalk onto the account they've just linked (anything already there isn't doubled). */
+export async function claimRiserChalk(db: Db, pullerId: number, accountId: number) {
+  await db.query(
+    `DELETE FROM chalk_tx r WHERE r.puller_id = $1 AND r.account_id IS NULL
+       AND EXISTS (SELECT 1 FROM chalk_tx a WHERE a.account_id = $2 AND a.ref = r.ref)`,
+    [pullerId, accountId],
+  );
+  await db.query(`UPDATE chalk_tx SET account_id = $2 WHERE puller_id = $1 AND account_id IS NULL`, [pullerId, accountId]);
+}
+
+/** Season Chalk held by a Riser profile that isn't linked to an account. */
+export async function riserChalkOf(pullerId: number, season = currentSeason()) {
+  const db = await getDb();
+  const [r] = await db.query<{ n: number }>(
+    `SELECT coalesce(sum(amount), 0)::int AS n FROM chalk_tx WHERE puller_id = $1 AND account_id IS NULL AND season = $2`,
+    [pullerId, season],
+  );
+  return r.n;
+}
+
 export async function chalkOf(accountId: number, season = currentSeason()) {
   const db = await getDb();
   const [r] = await db.query<{ n: number }>(
@@ -110,7 +140,9 @@ export async function liftCompletedEver(accountId: number, target: number) {
 }
 
 export interface BoardRow {
-  handle: string;
+  /** null for a Riser who hasn't linked an account (their row links to the Riser profile). */
+  handle: string | null;
+  riser_id: number | null;
   display_name: string;
   chalk: number;
   meets: number;
@@ -122,16 +154,25 @@ export interface BoardRow {
 export async function chalkboard(season = currentSeason(), limit = 50) {
   const db = await getDb();
   return db.query<BoardRow>(
-    `SELECT a.handle, a.display_name, s.frame, coalesce(s.badge, false) AS badge, t.chalk,
-            (SELECT count(*)::int FROM checkins c JOIN meets m ON m.id = c.meet_id
-             WHERE c.account_id = a.id AND extract(year FROM m.day) = $1) AS meets
-     FROM (
-       SELECT account_id, sum(amount)::int AS chalk, max(id) AS last_id
-       FROM chalk_tx WHERE season = $1 GROUP BY account_id HAVING sum(amount) > 0
-     ) t
-     JOIN accounts a ON a.id = t.account_id
-     LEFT JOIN account_style s ON s.account_id = a.id
-     ORDER BY t.chalk DESC, t.last_id ASC
+    `SELECT handle, riser_id, display_name, frame, badge, chalk, meets FROM (
+       SELECT a.handle, NULL::int AS riser_id, a.display_name, s.frame, coalesce(s.badge, false) AS badge, t.chalk, t.last_id,
+              (SELECT count(*)::int FROM checkins c JOIN meets m ON m.id = c.meet_id
+               WHERE c.account_id = a.id AND extract(year FROM m.day) = $1) AS meets
+       FROM (
+         SELECT account_id, sum(amount)::int AS chalk, max(id) AS last_id
+         FROM chalk_tx WHERE season = $1 AND account_id IS NOT NULL GROUP BY account_id HAVING sum(amount) > 0
+       ) t
+       JOIN accounts a ON a.id = t.account_id
+       LEFT JOIN account_style s ON s.account_id = a.id
+       UNION ALL
+       SELECT NULL::text, p.id, p.name, NULL::text, false, t.chalk, t.last_id, 0
+       FROM (
+         SELECT puller_id, sum(amount)::int AS chalk, max(id) AS last_id
+         FROM chalk_tx WHERE season = $1 AND account_id IS NULL AND puller_id IS NOT NULL GROUP BY puller_id HAVING sum(amount) > 0
+       ) t
+       JOIN pullers p ON p.id = t.puller_id AND NOT p.hidden
+     ) x
+     ORDER BY chalk DESC, last_id ASC
      LIMIT $2`,
     [season, limit],
   );

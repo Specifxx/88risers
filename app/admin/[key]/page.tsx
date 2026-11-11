@@ -1379,10 +1379,11 @@ async function ChalkTab({ accts, k }: { accts: AdminAccount[]; k: string }) {
         <h2 className="panel-title">The Chalkboard · top 10</h2>
         <ol className="coin-leaders">
           {board.map((r, i) => (
-            <li key={r.handle}>
+            <li key={r.handle ?? `riser-${r.riser_id}`}>
               <span className="cl-rank">{i + 1}</span>
               <span className="cl-name">
-                {r.display_name} <span className="muted">@{r.handle}</span>
+                {r.display_name}{" "}
+                <span className="muted">{r.handle ? `@${r.handle}` : `Riser #${String(r.riser_id).padStart(3, "0")} (no account linked)`}</span>
               </span>
               <b>
                 {r.chalk}

@@ -244,6 +244,11 @@ CREATE TABLE IF NOT EXISTS chalk_tx (
   UNIQUE (account_id, ref)
 );
 CREATE INDEX IF NOT EXISTS chalk_tx_season ON chalk_tx (season, account_id);
+-- Chalk can also be held by a Riser who hasn't linked a website account yet (account_id null,
+-- puller_id set); it moves to their account when they link it.
+ALTER TABLE chalk_tx ALTER COLUMN account_id DROP NOT NULL;
+ALTER TABLE chalk_tx ADD COLUMN IF NOT EXISTS puller_id integer REFERENCES pullers(id) ON DELETE CASCADE;
+CREATE UNIQUE INDEX IF NOT EXISTS chalk_tx_riser_ref ON chalk_tx (puller_id, ref) WHERE account_id IS NULL;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS invited_by integer REFERENCES accounts(id) ON DELETE SET NULL;
 -- A Riser number someone asked for when registering ($2 gold coin donation).
 ALTER TABLE registrations ADD COLUMN IF NOT EXISTS requested_id integer;
@@ -379,12 +384,13 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v39";
+const MIGRATION_MARKER = "founders_v41";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [
   ["link_harry_001", "savethepenguin9", "harry lu", 1, "harry lu"],
   ["link_erick_008", "daddy", "erick", 8, "erick%"],
+  ["link_luie_007", "hoang", "luie%", 7, "luie%"],
 ];
 
 async function migrate(db: Db) {
@@ -637,9 +643,11 @@ async function migrate(db: Db) {
     }
     // Chalk for Supermatch #1 (Luie and Isaac), if their Riser profiles are linked to accounts; otherwise it's
     // paid the moment they're linked. Re-checked each deploy; awards never double up.
+    // (Every Riser is checked: unlinked Risers hold their podium and supermatch Chalk on their profile.)
     {
       const { awardResultsChalk: award } = await import("./results");
-      for (const id of [7, 10]) await award(tx, id);
+      const all = await tx.query<{ id: number }>(`SELECT id FROM pullers`);
+      for (const { id } of all) await award(tx, id);
     }
     // Supermatch #1's video moved from Google Drive (unreliable on phones) to the site itself. Once only.
     const [smVidDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'sm1_video_local'`);

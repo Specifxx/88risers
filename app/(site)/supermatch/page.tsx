@@ -3,10 +3,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { Countdown } from "@/components/Countdown";
 import { LiveRefresh } from "@/components/LiveRefresh";
+import { VideoToggle } from "@/components/VideoToggle";
 import { VotePanel } from "@/components/VotePanel";
 import { currentAccount } from "@/lib/auth";
 import { MAX_STAKE, coinLeaders } from "@/lib/coins";
 import { type Puller, getPuller } from "@/lib/data";
+import { getDb } from "@/lib/db";
 import { POOL_SEED, fmtOdds, oddsOf, payoutAt } from "@/lib/odds";
 import { fmtDay, fmtTime } from "@/lib/schedule";
 import { formatId } from "@/lib/site";
@@ -46,6 +48,7 @@ export default async function SupermatchPage() {
   const [m, me, leaders, predictors] = await Promise.all([featuredSupermatch(), currentAccount(), coinLeaders(10), topPredictors(5)]);
   if (!m) {
     return (
+      <>
       <section className="page-hero">
         <div className="wrap">
           <h1 className="display">
@@ -54,6 +57,8 @@ export default async function SupermatchPage() {
           <p className="lede">The next one will be announced on Instagram.</p>
         </div>
       </section>
+      <PastSupermatches />
+      </>
     );
   }
   const [a, b, mine, rec] = await Promise.all([
@@ -89,6 +94,9 @@ export default async function SupermatchPage() {
             {a.name.split(" ")[0]} <span className="gold-text">vs</span> {b.name.split(" ")[0]}.
           </h1>
           {m.blurb ? <p className="lede">{m.blurb}</p> : null}
+          <a className="link-arrow" href="#past-supermatches" style={{ marginTop: 14 }}>
+            Watch past supermatches <span>↓</span>
+          </a>
         </div>
       </section>
 
@@ -228,6 +236,69 @@ export default async function SupermatchPage() {
           </p>
         </div>
       </section>
+      <PastSupermatches />
     </>
+  );
+}
+
+type Past = {
+  id: number;
+  round: string;
+  day: string;
+  arm: string;
+  score: string | null;
+  video_url: string | null;
+  winner_id: number;
+  winner: string;
+  loser_id: number;
+  loser: string;
+};
+
+/** Every supermatch on record (matches whose round is "Supermatch …"), newest first, with the video. */
+async function PastSupermatches() {
+  const db = await getDb();
+  const past = await db.query<Past>(
+    `SELECT m.id, m.round, to_char(m.played_on, 'YYYY-MM-DD') AS day, m.arm, m.score, m.video_url,
+            m.winner_id, w.name AS winner, m.loser_id, l.name AS loser
+     FROM matches m JOIN pullers w ON w.id = m.winner_id JOIN pullers l ON l.id = m.loser_id
+     WHERE m.round ILIKE 'Supermatch%'
+     ORDER BY m.played_on DESC, m.id DESC`,
+  );
+  if (!past.length) return null;
+  const day = (d: string) => new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${d}T00:00:00Z`));
+  return (
+    <section className="section past-sm" id="past-supermatches" style={{ paddingTop: 24 }}>
+      <div className="wrap">
+        <div className="section-head">
+          <div>
+            <p className="eyebrow">The archive</p>
+            <h2 className="display">
+              Past <span className="gold-text">supermatches.</span>
+            </h2>
+          </div>
+          <p className="lede">Every 88 Risers supermatch on record. Hit play to watch it back.</p>
+        </div>
+        <div className="past-sm-list">
+          {past.map((p) => (
+            <article key={p.id} className="panel past-sm-card">
+              <p className="eyebrow">
+                {p.round} · {day(p.day)} · {p.arm === "left" ? "Left" : "Right"} arm
+              </p>
+              <h3>
+                <Link href={`/pullers/${p.winner_id}`}>{p.winner}</Link> <span className="muted">def.</span>{" "}
+                <Link href={`/pullers/${p.loser_id}`}>{p.loser}</Link>
+              </h3>
+              <p className="past-sm-meta">
+                <span>
+                  {formatId(p.winner_id)} vs {formatId(p.loser_id)}
+                </span>
+                {p.score ? <b>{p.score}</b> : null}
+              </p>
+              {p.video_url ? <VideoToggle url={p.video_url} label="Watch the supermatch" /> : null}
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }

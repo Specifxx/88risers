@@ -8717,3 +8717,38 @@ b.gold {
   flex-wrap: wrap;
   gap: 8px;
 }
+/* Supermatch page: the archive of past supermatches */
+.past-sm-list {
+  display: grid;
+  gap: 14px;
+}
+.past-sm-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.past-sm-card h3 {
+  margin: 0;
+  font: 900 clamp(26px, 5vw, 38px)/1 var(--f-display);
+  text-transform: uppercase;
+}
+.past-sm-card h3 a {
+  color: var(--bone);
+  text-decoration: none;
+}
+.past-sm-card h3 a:hover {
+  color: var(--gold-hi);
+}
+.past-sm-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  font: 700 12px/1 var(--f-tech);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.past-sm-meta b {
+  font: 900 26px/1 var(--f-display);
+  color: var(--gold-hi);
+}

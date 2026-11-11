@@ -6,7 +6,7 @@ import { Instagram } from "@/components/Icons";
 import { PullerSlab } from "@/components/PullerSlab";
 import { VideoToggle } from "@/components/VideoToggle";
 import { getPuller, getPullerMatches, type MatchView } from "@/lib/data";
-import { chalkOf, currentSeason } from "@/lib/chalk";
+import { chalkOf, currentSeason, riserChalkOf } from "@/lib/chalk";
 import { medal, placeLabel, podiumChalk, resultsFor } from "@/lib/results";
 import { fmtShortDate } from "@/lib/schedule";
 import { formatId } from "@/lib/site";
@@ -65,7 +65,7 @@ export default async function PullerPage({ params }: PageProps<"/pullers/[id]">)
   const s = summary(id, matches);
   const total = p.wins + p.losses;
   const season = currentSeason();
-  const chalk = p.account_id ? await chalkOf(p.account_id, season) : null;
+  const chalk = p.account_id ? await chalkOf(p.account_id, season) : (await riserChalkOf(p.id, season)) || null;
 
   return (
     <section className="page-hero" style={{ paddingBottom: 100 }}>

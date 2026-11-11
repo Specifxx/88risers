@@ -20,14 +20,14 @@ export function Leaderboard({ rows, target, emptyNote }: { rows: BoardRow[]; tar
         </div>
       ) : (
         rows.map((r, i) => (
-          <Link key={r.handle} href={`/members/${r.handle}`} className="board-row">
+          <Link key={r.handle ?? `riser-${r.riser_id}`} href={r.handle ? `/members/${r.handle}` : `/pullers/${r.riser_id}`} className="board-row">
             <span className="rank">{i === 0 ? "♛" : i + 1}</span>
             <span className="rid">{r.chalk >= target ? "✓" : `${Math.round((r.chalk / target) * 100)}%`}</span>
             <span className="who">
               <Avatar src={null} name={r.display_name} />
               <span style={{ minWidth: 0 }}>
                 <b>{r.display_name}</b>
-                <small>{i === 0 ? "Top Riser so far" : `@${r.handle}`}</small>
+                <small>{i === 0 ? "Top Riser so far" : r.handle ? `@${r.handle}` : `Riser #${String(r.riser_id).padStart(3, "0")}`}</small>
               </span>
             </span>
             <span className="elo">{r.chalk}</span>

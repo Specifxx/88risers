@@ -1,5 +1,5 @@
 import "server-only";
-import { CHALK, awardChalk } from "./chalk";
+import { CHALK, awardChalk, awardRiserChalk, claimRiserChalk } from "./chalk";
 import type { Db } from "./db";
 import { getDb } from "./db";
 
@@ -40,12 +40,16 @@ export const podiumChalk = (place: number) => (place >= 1 && place <= 3 ? CHALK.
 /** Pays podium Chalk for any of this Riser's results to their linked account (once each). */
 export async function awardResultsChalk(db: Db, pullerId: number) {
   const [p] = await db.query<{ account_id: number | null }>(`SELECT account_id FROM pullers WHERE id = $1`, [pullerId]);
-  if (!p?.account_id) return 0;
+  if (!p) return 0;
+  // linked: anything the Riser profile was holding moves to the account first
+  if (p.account_id) await claimRiserChalk(db, pullerId, p.account_id);
+  const give = (season: number, amount: number, label: string, ref: string) =>
+    p.account_id ? awardChalk(db, p.account_id, season, amount, label, ref) : awardRiserChalk(db, pullerId, season, amount, label, ref);
   const rows = await db.query<CompResult>(`SELECT ${COLS} FROM comp_results WHERE puller_id = $1 AND place BETWEEN 1 AND 3`, [pullerId]);
   let n = 0;
   for (const r of rows) {
     const label = `${placeLabel(r.place)} at ${r.event}${r.division ? ` (${r.division})` : ""}`;
-    if (await awardChalk(db, p.account_id, r.season, podiumChalk(r.place), label, `result:${r.id}`)) n++;
+    if (await give(r.season, podiumChalk(r.place), label, `result:${r.id}`)) n++;
   }
   // Supermatches recorded as matches (round "Supermatch …"): Chalk for pulling, more for winning.
   // (Supermatches run through the picks system pay their Chalk when settled, so they aren't recorded twice.)
@@ -57,7 +61,7 @@ export async function awardResultsChalk(db: Db, pullerId: number) {
   for (const m of sms) {
     const amount = CHALK.supermatch + (m.won ? CHALK.supermatchWin : 0);
     const label = `${m.won ? "Won" : "Pulled in"} ${m.round}`;
-    if (await awardChalk(db, p.account_id, m.season, amount, label, `match-sm:${m.id}`)) n++;
+    if (await give(m.season, amount, label, `match-sm:${m.id}`)) n++;
   }
   return n;
 }
