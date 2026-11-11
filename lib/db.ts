@@ -379,7 +379,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v36";
+const MIGRATION_MARKER = "founders_v37";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [
@@ -603,6 +603,37 @@ async function migrate(db: Db) {
       ];
       for (const [code, title] of ren) await tx.query(`UPDATE tv_reels SET title = $2 WHERE url LIKE $1`, [`%/reel/${code}%`, title]);
       await tx.query(`INSERT INTO meta (key, value) VALUES ('tv_renumber_eps', now()::text)`);
+    }
+    // Isaac Tang joins as Riser #010, and Supermatch #1 (8 Nov 2026: Luie Hoang beat Isaac 3-0, right arm)
+    // goes on both profiles and 88RisersTV. Once only.
+    const [sm1Done] = await tx.query(`SELECT 1 FROM meta WHERE key = 'sm1_luie_isaac'`);
+    if (!sm1Done) {
+      const video = "https://drive.google.com/file/d/15YgFbdMlP908idT7R4tfM6SHV9EgbgFN/view";
+      await tx.query(
+        `INSERT INTO pullers (id, name, title, joined_on) VALUES (10, 'Isaac Tang', 'Newcomer', '2026-11-08') ON CONFLICT (id) DO NOTHING`,
+      );
+      const [isaac] = await tx.query<{ name: string }>(`SELECT name FROM pullers WHERE id = 10`);
+      const [luie] = await tx.query<{ name: string }>(`SELECT name FROM pullers WHERE id = 7`);
+      if (isaac?.name === "Isaac Tang" && luie) {
+        const [already] = await tx.query(`SELECT 1 FROM matches WHERE winner_id = 7 AND loser_id = 10 AND played_on = '2026-11-08'`);
+        if (!already) {
+          await tx.query(
+            `INSERT INTO matches (played_on, arm, round, score, winner_id, loser_id, video_url, notes)
+             VALUES ('2026-11-08', 'right', 'Supermatch #1', '3-0', 7, 10, $1, 'The first 88 Risers supermatch.')`,
+            [video],
+          );
+          const { recomputeElo } = await import("./data");
+          await recomputeElo(tx);
+        }
+        const [onTv] = await tx.query(`SELECT 1 FROM tv_reels WHERE url LIKE '%15YgFbdMlP908idT7R4tfM6SHV9EgbgFN%'`);
+        if (!onTv)
+          await tx.query(
+            `INSERT INTO tv_reels (url, title, caption, posted_on, sort_order, hidden)
+             VALUES ($1, 'Supermatch #1: Luie vs Isaac', 'Luie Hoang (#007) beats Isaac Tang (#010) 3–0, right arm. The first 88 Risers supermatch.', '2026-11-08', 0, false)`,
+            [video],
+          );
+        await tx.query(`INSERT INTO meta (key, value) VALUES ('sm1_luie_isaac', now()::text)`);
+      }
     }
     // The November supermatch is left arm. Once only, so a later admin edit isn't overwritten.
     const [armDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'sm_arm_v1'`);
