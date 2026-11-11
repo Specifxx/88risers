@@ -83,15 +83,16 @@ const FAQ: ReadonlyArray<readonly [string, React.ReactNode]> = [
 ];
 
 export default async function Home() {
-  const [stats, leaders, founders, calendar, giveaway, chalkCfg, meet] = await Promise.all([
+  const [stats, leaders, pullers, calendar, giveaway, chalkCfg, meet] = await Promise.all([
     getClubStats(),
     chalkboard(currentSeason(), 5),
-    listPullers().then((ps) => ps.filter((p) => p.is_founder)),
+    listPullers(),
     upcomingCalendar(3),
     getGiveaway(),
     chalkSettings(),
     todaysMeet(),
   ]);
+  const founders = pullers.filter((p) => p.is_founder);
   const chalkTarget = chalkCfg.target;
   const taken = new Set(stats.taken);
   const held = new Set(stats.held);
@@ -226,7 +227,7 @@ export default async function Home() {
             </div>
             <div className="grid88">
               {Array.from({ length: 88 }, (_, i) => i + 1).map((n) => {
-                const p = founders.find((f) => f.id === n);
+                const p = pullers.find((f) => f.id === n);
                 if (taken.has(n))
                   return (
                     <Link key={n} href={`/pullers/${n}`} className="cell taken" title={p?.name ?? `Riser ${formatId(n)}`}>

@@ -379,7 +379,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v37";
+const MIGRATION_MARKER = "founders_v38";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [
@@ -634,6 +634,12 @@ async function migrate(db: Db) {
           );
         await tx.query(`INSERT INTO meta (key, value) VALUES ('sm1_luie_isaac', now()::text)`);
       }
+    }
+    // Chalk for Supermatch #1 (Luie and Isaac), if their Riser profiles are linked to accounts; otherwise it's
+    // paid the moment they're linked. Re-checked each deploy; awards never double up.
+    {
+      const { awardResultsChalk: award } = await import("./results");
+      for (const id of [7, 10]) await award(tx, id);
     }
     // The November supermatch is left arm. Once only, so a later admin edit isn't overwritten.
     const [armDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'sm_arm_v1'`);
