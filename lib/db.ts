@@ -365,7 +365,7 @@ const FOUNDERS: Array<[number, string, string | null, string | null]> = [
   [4, "Bhavya Sharma", "70kg Arm Wrestling Silver Medalist", "/founders/bhavya.jpg"],
   [5, "Kelvin Gian", "85kg+ Bushy's Amateur 2nd Place", "/founders/kelvin.jpg"],
   [6, "Tommy Cao", null, null],
-  [7, "Luie Hoang", null, null],
+  [7, "Luie Hoang", "88Risers Supermatch #1 Winner", "/founders/luie.jpg"],
   [8, "Erick Kang", "80kg Newcastle Arm Wrestling Champion", "/founders/erick.jpg"],
 ];
 
@@ -384,7 +384,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v41";
+const MIGRATION_MARKER = "founders_v42";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [
@@ -431,6 +431,12 @@ async function migrate(db: Db) {
       `UPDATE pullers SET card_url = $2, title = coalesce(title, $3) WHERE id = $1 AND name ILIKE $4 AND is_founder
        AND (card_url IS NULL OR card_url LIKE '/founders/%')`,
       [5, "/founders/kelvin.jpg", "85kg+ Bushy's Amateur 2nd Place", "Kelvin%"],
+    );
+    // Luie's card, celebrating his Supermatch #1 win. Keeps a title or card an admin already set.
+    await tx.query(
+      `UPDATE pullers SET card_url = $2, title = coalesce(title, $3) WHERE id = $1 AND name ILIKE $4
+       AND (card_url IS NULL OR card_url LIKE '/founders/%')`,
+      [7, "/founders/luie.jpg", "88Risers Supermatch #1 Winner", "Luie%"],
     );
     // Phillip's new card (the old file was removed). Leaves a card an admin uploaded alone.
     await tx.query(`UPDATE pullers SET card_url = $1 WHERE card_url = $2`, [
