@@ -201,7 +201,8 @@ export async function saveMatch(form: FormData) {
   const eventId = int(form, "event_id");
   const arm = str(form, "arm") === "left" ? "left" : "right";
   const video = str(form, "video_url");
-  if (video && !/^https?:\/\//i.test(video)) done(key, "matches", "Video link must start with http(s)://", true);
+  if (video && !/^https?:\/\//i.test(video) && !/^\/video\/[\w.-]+\.(mp4|webm)$/i.test(video))
+    done(key, "matches", "Video link must start with http(s):// (or be a site video like /video/name.mp4)", true);
   try {
     const db = await getDb();
     await db.transaction(async (tx) => {

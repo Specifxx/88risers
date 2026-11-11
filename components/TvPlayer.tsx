@@ -43,7 +43,7 @@ export function TvPlayer({ reels, handle }: { reels: (Reel & { direct?: { src: s
                     loading="lazy"
                   />
                 ) : (
-                  <video key={cur.id} src={embed.src} controls playsInline preload="metadata" />
+                  <video key={cur.id} src={embed.src} poster={embed.poster} controls playsInline preload="metadata" />
                 )
               ) : null}
               <div className="tv-scan" aria-hidden />
@@ -65,9 +65,11 @@ export function TvPlayer({ reels, handle }: { reels: (Reel & { direct?: { src: s
           {cur.caption ? <p className="tv-caption">{cur.caption}</p> : null}
           <p className="tv-meta">
             {fmt(cur.posted_on) ? <span>{fmt(cur.posted_on)}</span> : null}
-            <a href={cur.url} target="_blank" rel="noreferrer">
-              Watch on {sourceName(cur.url)} ↗
-            </a>
+            {cur.url.startsWith("/") ? null : (
+              <a href={cur.url} target="_blank" rel="noreferrer">
+                Watch on {sourceName(cur.url)} ↗
+              </a>
+            )}
           </p>
 
           {reels.length > 1 ? (

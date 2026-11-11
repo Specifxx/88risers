@@ -22,7 +22,7 @@ export function VideoToggle({ url, label = "Watch match" }: { url: string; label
       {open ? (
         <div className={`video-frame ${embed.tall ? "tall" : ""}`}>
           {embed.kind === "video" ? (
-            <video src={embed.src} controls playsInline autoPlay />
+            <video src={embed.src} poster={embed.poster} controls playsInline autoPlay preload="metadata" />
           ) : (
             <iframe
               src={embed.src}

@@ -1,5 +1,8 @@
 /** Turn a pasted video link into something embeddable. */
-export function videoEmbed(url: string): { src: string; kind: "iframe" | "video"; tall: boolean } | null {
+export function videoEmbed(url: string): { src: string; kind: "iframe" | "video"; tall: boolean; poster?: string } | null {
+  // a video hosted on this site (public/video/…): plays in a native player, with a poster frame
+  // saved next to it as the same name .jpg
+  if (/^\/video\/[\w.-]+\.(mp4|webm)$/i.test(url)) return { src: url, kind: "video", tall: false, poster: url.replace(/\.(mp4|webm)$/i, ".jpg") };
   let u: URL;
   try {
     u = new URL(url);
