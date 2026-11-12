@@ -254,6 +254,22 @@ ALTER TABLE accounts ADD COLUMN IF NOT EXISTS invited_by integer REFERENCES acco
 ALTER TABLE registrations ADD COLUMN IF NOT EXISTS requested_id integer;
 -- When an organiser ticked off that $2 as received (null = still owing).
 ALTER TABLE registrations ADD COLUMN IF NOT EXISTS coin_paid_at timestamptz;
+-- Entries for open tournaments (Rhodes Open 2027 first). One per phone per comp; no payment taken.
+CREATE TABLE IF NOT EXISTS comp_entries (
+  id            serial PRIMARY KEY,
+  comp          text NOT NULL,
+  name          text NOT NULL,
+  phone         text NOT NULL,
+  email         text,
+  instagram     text,
+  riser_id      integer,
+  arms          text NOT NULL CHECK (arms IN ('right', 'left', 'both')),
+  weight_class  text NOT NULL,
+  notes         text,
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  updated_at    timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (comp, phone)
+);
 -- A featured video on a Riser's profile (link or /video/name.mp4), with a caption.
 ALTER TABLE pullers ADD COLUMN IF NOT EXISTS highlight_url text;
 ALTER TABLE pullers ADD COLUMN IF NOT EXISTS highlight_title text;
@@ -389,7 +405,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v46";
+const MIGRATION_MARKER = "founders_v47";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [

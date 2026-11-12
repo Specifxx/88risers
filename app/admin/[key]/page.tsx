@@ -18,6 +18,7 @@ import { type Backer, type Supermatch, listBackers, listSupermatches } from "@/l
 import { PRODUCTS } from "@/lib/shop";
 import { type LiveState, tvLive } from "@/lib/tv";
 import { SITE, formatId } from "@/lib/site";
+import { ARMS_LABEL, OPEN, bracketCounts, classLabel, openEntries } from "@/lib/rhodesOpen";
 import {
   deleteEvent,
   deleteInterest,
@@ -33,6 +34,7 @@ import {
   setGiveawayDate,
   openCheckin,
   setRequestedId,
+  deleteOpenEntry,
   setCoinPaid,
   addResult,
   deleteResult,
@@ -79,6 +81,7 @@ const TABS = [
   ["coins", "Coins"],
   ["chalk", "Chalk"],
   ["logs", "Training logs"],
+  ["open", "Rhodes Open"],
 ] as const;
 type Tab = (typeof TABS)[number][0];
 
@@ -181,6 +184,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
         {tab === "tv" ? <Tv reels={reels} live={live} k={k} ig={await igStatus()} /> : null}
         {tab === "shop" ? <Shop interest={interest} k={k} /> : null}
         {tab === "chalk" ? <ChalkTab accts={accts} k={k} /> : null}
+        {tab === "open" ? <RhodesOpen k={k} base={base} /> : null}
         {tab === "logs" ? <TrainingLogs base={base} who={typeof sp.who === "string" ? sp.who : null} /> : null}
         {tab === "coins" ? <Coins sms={sms} accts={accts} redeems={redeems} pullers={pullers} backers={backers} giveaway={giveaway} k={k} /> : null}
 
@@ -1582,5 +1586,102 @@ function IgPanel({ ig, k }: { ig: IgStatus; k: string }) {
         </form>
       ) : null}
     </div>
+  );
+}
+
+/* ─────────── Rhodes Open ─────────── */
+
+async function RhodesOpen({ k, base }: { k: string; base: string }) {
+  const entries = await openEntries();
+  const counts = bracketCounts(entries);
+  return (
+    <>
+      <div className="panel">
+        <h2 className="panel-title">
+          {OPEN.title} <small>{entries.length} ENTRIES · NO PAYMENT TAKEN</small>
+        </h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Public page: <Link href="/rhodes-open" target="_blank">/rhodes-open ↗</Link> (marked as a preliminary draft). Download:{" "}
+          <a href={`${base}/open-export`}>CSV</a>
+        </p>
+        <table className="open-prices open-counts">
+          <thead>
+            <tr>
+              <th>Class</th>
+              <th>Right</th>
+              <th>Left</th>
+            </tr>
+          </thead>
+          <tbody>
+            {counts.map((c) => (
+              <tr key={c.cls}>
+                <th>{classLabel(c.cls)}</th>
+                <td>{c.right}</td>
+                <td>{c.left}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {entries.length === 0 ? (
+        <div className="panel empty">
+          <b>No entries yet</b>
+          Share 88risers.com/rhodes-open to start collecting them.
+        </div>
+      ) : (
+        <div className="panel" style={{ overflowX: "auto" }}>
+          <table className="sm-backers">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Arm</th>
+                <th>Class</th>
+                <th>Mobile</th>
+                <th>Riser</th>
+                <th>Contact</th>
+                <th>Notes</th>
+                <th>Entered</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((e) => (
+                <tr key={e.id}>
+                  <td>
+                    <b>{e.name}</b>
+                  </td>
+                  <td>{ARMS_LABEL[e.arms]}</td>
+                  <td>{classLabel(e.weight_class)}</td>
+                  <td>
+                    <a href={`tel:${e.phone}`}>{prettyPhone(e.phone)}</a>
+                  </td>
+                  <td>{e.riser_id ? <Link href={`/pullers/${e.riser_id}`}>{formatId(e.riser_id)}</Link> : "—"}</td>
+                  <td>
+                    {e.instagram ? (
+                      <a href={`https://www.instagram.com/${e.instagram}/`} target="_blank" rel="noreferrer">
+                        @{e.instagram}
+                      </a>
+                    ) : null}
+                    {e.instagram && e.email ? <br /> : null}
+                    {e.email ? <a href={`mailto:${e.email}`}>{e.email}</a> : null}
+                  </td>
+                  <td className="muted" style={{ maxWidth: 260 }}>
+                    {e.notes}
+                  </td>
+                  <td className="muted">{fmtWhen(new Date(e.created_at))}</td>
+                  <td>
+                    <form action={deleteOpenEntry}>
+                      <input type="hidden" name="key" value={k} />
+                      <input type="hidden" name="id" value={e.id} />
+                      <ConfirmButton message={`Remove ${e.name}'s Rhodes Open entry?`}>Remove</ConfirmButton>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
   );
 }

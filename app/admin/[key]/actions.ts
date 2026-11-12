@@ -17,7 +17,7 @@ import { createResetToken, hashPassword } from "@/lib/auth";
 import { grant, itemById } from "@/lib/coins";
 import { fmtOdds, oddsOf, payoutAt } from "@/lib/odds";
 
-type Tab = "registrations" | "pullers" | "matches" | "events" | "tv" | "shop" | "coins" | "chalk";
+type Tab = "registrations" | "pullers" | "matches" | "events" | "tv" | "shop" | "coins" | "chalk" | "open";
 
 const str = (f: FormData, k: string) => {
   const v = f.get(k);
@@ -775,6 +775,14 @@ export async function setCoinPaid(form: FormData) {
   );
   if (!r) done(key, "registrations", "Only people who asked for a number owe the $2.", true);
   done(key, "registrations", paid ? `Marked ${r.name}'s $2 as paid.` : `${r.name}'s $2 is back to owing.`);
+}
+
+/** Removes a Rhodes Open entry (duplicates, withdrawals). */
+export async function deleteOpenEntry(form: FormData) {
+  const key = guard(form);
+  const db = await getDb();
+  const [r] = await db.query<{ name: string }>(`DELETE FROM comp_entries WHERE id = $1 RETURNING name`, [int(form, "id")]);
+  done(key, "open", r ? `Removed ${r.name}'s entry.` : "Entry already removed.");
 }
 
 /** Connects the club's Instagram (Professional) account so our reels play directly on 88RisersTV. */

@@ -43,6 +43,13 @@ export default async function EventsPage() {
 
       <section className="section" style={{ paddingTop: 60 }}>
         <div className="wrap">
+          <Link href="/rhodes-open" className="open-promo">
+            <span className="pill red">Entries open · draft</span>
+            <b>Rhodes Open 2027</b>
+            <span>Sun 4 April 2027 · Rhodes Amphitheatre · right & left arm, five classes, ten champion cards</span>
+            <i>Enter →</i>
+          </Link>
+
           <div className="panel-title">
             <span>Coming up</span>
             <small>{upcoming.length} SCHEDULED</small>
