@@ -115,23 +115,24 @@ export default async function ChalkPage() {
           </div>
 
           <section className="top-prize" aria-labelledby="top-prize-title">
-            <div className="top-prize-art">
+            <a className="top-prize-art" href="/chalk/katana-88.webp" target="_blank" rel="noreferrer" title="Open full size">
               <Image
-                src="/chalk/katana.webp"
-                alt="The custom 88 Risers katana: etched 'RISERS' blade, gold lion tsuba, black and red wrapped handle, lacquered scabbard with gold lion art"
+                src="/chalk/katana-88.webp"
+                alt="The custom 88 Risers katana: blade engraved 88RISERS with a wavy hamon, 88 openwork tsuba, flexing-arm habaki, gold lion menuki on a black and red wrapped handle, and a red and gold lacquered scabbard with a gold lion"
                 fill
-                sizes="(max-width: 860px) 100vw, 760px"
+                sizes="(max-width: 1240px) 100vw, 1200px"
+                priority
               />
-            </div>
+            </a>
             <div className="top-prize-copy">
               <p className="eyebrow">Top Riser · {season}</p>
               <h2 id="top-prize-title" className="display">
                 Win the <span className="gold-text">blade.</span>
               </h2>
               <p className="lede">
-                Finish the season #1 on the Chalkboard and take home a custom 88 Risers katana: a real, sharp blade etched with
-                RISERS, a gold lion hand guard, a black-and-red wrapped handle and a lacquered scabbard with gold lion art. One
-                of one.
+                Finish the season #1 on the Chalkboard and take home the 88 Risers katana: a real, sharp blade engraved
+                88RISERS with a wavy hamon, an 88 openwork tsuba, a flexing-arm habaki, gold lion menuki on a black-and-red wrapped
+                handle, and a red-and-gold lacquered scabbard. Limited edition serial and maker&rsquo;s mark. One of one.
               </p>
               <p className="fine">Winner must be 18 or over. Crowned on 31 December; ties go to whoever got there first.</p>
             </div>

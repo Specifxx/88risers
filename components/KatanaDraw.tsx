@@ -359,7 +359,7 @@ export function KatanaDraw({ loggedIn, coins: initialCoins, bosses, skin = DEFAU
             <div className="kd-card" onPointerDown={stop}>
               {wins >= rungs ? (
                 <>
-                  <img className="kd-katana" src="/chalk/katana.webp" alt="The 88 Risers katana" />
+                  <img className="kd-katana" src="/chalk/katana-88.webp" alt="The 88 Risers katana" />
                   <h3>
                     Katana <span className="gold-text">Master</span>
                   </h3>

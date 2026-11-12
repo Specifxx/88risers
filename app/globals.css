@@ -6500,7 +6500,7 @@ b.gold {
 /* ─────────── Top Riser prize ─────────── */
 .top-prize {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  grid-template-columns: 1fr;
   gap: 0;
   margin-top: 24px;
   border-radius: 20px;
@@ -6511,11 +6511,13 @@ b.gold {
 }
 .top-prize-art {
   position: relative;
-  aspect-ratio: 1536 / 1024;
-  background: #0a0807;
+  display: block;
+  aspect-ratio: 2172 / 724;
+  background: #000;
+  cursor: zoom-in;
 }
 .top-prize-art img {
-  object-fit: cover;
+  object-fit: contain;
 }
 .top-prize-copy {
   padding: clamp(20px, 3vw, 36px);
