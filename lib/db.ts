@@ -386,7 +386,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v44";
+const MIGRATION_MARKER = "founders_v45";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [
@@ -514,6 +514,11 @@ async function migrate(db: Db) {
       );
       await tx.query(`INSERT INTO meta (key, value) VALUES ('top_prize_katana_v1', now()::text)`);
     }
+    // Oz's photo is a two-person selfie: centre crops on Oz (the person on the left).
+    await tx.query(
+      `UPDATE pullers SET photo_url = split_part(photo_url, '#', 1) || '#focus=4,38'
+       WHERE id = 20 AND name ILIKE 'oz%' AND photo_url LIKE '/api/photos/0430a9d8-%'`,
+    );
     // Felix opted in to reserve #017 ($2 gold coin). Once only, and only if exactly one open
     // registration is named Felix and #017 is still free.
     const [felixDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'reserve_felix_17'`);

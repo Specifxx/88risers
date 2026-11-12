@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { photoPos } from "@/lib/focus";
 
 interface Props {
   name: string;
@@ -26,7 +27,7 @@ export function CardFace({ name, id, title, photo, card, mystery, priority }: Pr
       {photo ? (
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="face-photo" src={photo} alt="" loading={priority ? "eager" : "lazy"} />
+          <img className="face-photo" src={photo} style={{ objectPosition: photoPos(photo) }} alt="" loading={priority ? "eager" : "lazy"} />
           <div className="face-shade" />
         </>
       ) : (
