@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ChalkLift } from "@/components/ChalkLift";
 import { CheckInBox } from "@/components/CheckInBox";
 import { currentAccount } from "@/lib/auth";
-import { CHALK, chalkboard, chalkOf, chalkSettings, checkedInToday, currentSeason, seasonEnd, todaysMeet } from "@/lib/chalk";
+import { CHALK, chalkboard, chalkOf, chalkSettings, checkedInToday, currentSeason, seasonEnd, seasonEndLabel, todaysMeet } from "@/lib/chalk";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +17,7 @@ export default async function ChalkPage() {
   const season = currentSeason();
   const [me, settings, board, meet] = await Promise.all([currentAccount(), chalkSettings(), chalkboard(season, 50), todaysMeet()]);
   const [mine, here] = await Promise.all([me ? chalkOf(me.id, season) : 0, me && meet ? checkedInToday(me.id) : false]);
+  const endLabel = seasonEndLabel(season);
   const days = Math.max(0, Math.ceil((seasonEnd(season).getTime() - Date.now()) / 86400000));
   const lifted = board.filter((r) => r.chalk >= settings.target).length;
 
@@ -32,8 +33,8 @@ export default async function ChalkPage() {
             The <span className="gold-text">Chalkboard.</span>
           </h1>
           <p className="lede">
-            Chalk up by showing up. Hit {settings.target} Chalk this season to complete the Lift, and whoever tops the board on
-            31 December is crowned <b>Top Riser</b>.
+            Chalk up by showing up. Hit {settings.target} Chalk this season to complete the Lift, and whoever tops the board on{" "}
+            {endLabel} is crowned <b>Top Riser</b>.
           </p>
         </div>
       </section>
@@ -99,7 +100,7 @@ export default async function ChalkPage() {
                   <small>Everyone who gets there.</small>
                 </div>
                 <div className="top">
-                  <span>Top Riser · #1 on 31 December</span>
+                  <span>Top Riser · #1 on {endLabel}</span>
                   <b>{settings.topPrize}</b>
                   <small>
                     <a href="#top-prize-title">See the blade ↓</a> · 18+ · ties go to whoever got there first.
@@ -134,7 +135,7 @@ export default async function ChalkPage() {
                 88RISERS with a wavy hamon, an 88 openwork tsuba, a flexing-arm habaki, gold lion menuki on a black-and-red wrapped
                 handle, and a red-and-gold lacquered scabbard. Limited edition serial and maker&rsquo;s mark. One of one.
               </p>
-              <p className="fine">Winner must be 18 or over. Crowned on 31 December; ties go to whoever got there first.</p>
+              <p className="fine">Winner must be 18 or over. Crowned on {endLabel}; ties go to whoever got there first.</p>
             </div>
           </section>
 

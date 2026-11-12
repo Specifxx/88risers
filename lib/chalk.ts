@@ -22,12 +22,41 @@ export const DEFAULT_TARGET = 20;
 const sydney = (opts: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-CA", { timeZone: SITE.timeZone, ...opts });
 /** Today's date in Sydney as YYYY-MM-DD. */
 export const sydneyToday = () => sydney({ year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-export const currentSeason = () => Number(sydney({ year: "numeric" }).format(new Date()));
-/** Last moment of the season: 31 December, 11:59pm Sydney. */
+/**
+ * Seasons are named by the year they start in and normally end on 31 December. A season can run
+ * longer: 2026 ends at the Rhodes Open on Sunday 4 April 2027, and the next season starts the day after.
+ */
+const SEASON_END_DAY: Record<number, string> = { 2026: "2027-04-04" };
+/** The season's last day, YYYY-MM-DD. */
+export const seasonEndDay = (season: number) => SEASON_END_DAY[season] ?? `${season}-12-31`;
+/** The season's first day, YYYY-MM-DD (the day after the previous one ended). */
+export const seasonStartDay = (season: number) => {
+  const prev = SEASON_END_DAY[season - 1];
+  if (!prev) return `${season}-01-01`;
+  const d = new Date(`${prev}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+};
+/** Which season a date (YYYY-MM-DD) belongs to. */
+export const seasonOf = (day: string) => {
+  const y = Number(day.slice(0, 4));
+  return day <= seasonEndDay(y - 1) ? y - 1 : y;
+};
+export const currentSeason = () => seasonOf(sydneyToday());
+/** "4 April 2027": when the season's Top Riser is crowned. */
+export const seasonEndLabel = (season: number) =>
+  new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(
+    new Date(`${seasonEndDay(season)}T00:00:00Z`),
+  );
+/** Last moment of the season: 11:59pm Sydney on its last day. */
 /** "23 Oct" from a YYYY-MM-DD meet day, for Chalk history. */
 export const meetLabel = (day: string) =>
   new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${day}T00:00:00Z`));
-export const seasonEnd = (season: number) => new Date(`${season}-12-31T23:59:59+11:00`);
+export const seasonEnd = (season: number) => {
+  const day = seasonEndDay(season);
+  const m = Number(day.slice(5, 7));
+  return new Date(`${day}T23:59:59${m >= 4 && m <= 9 ? "+10:00" : "+11:00"}`); // AEST in winter, AEDT in summer
+};
 
 /* ─────────── Settings (admin HQ) ─────────── */
 
@@ -157,7 +186,7 @@ export async function chalkboard(season = currentSeason(), limit = 50) {
     `SELECT handle, riser_id, display_name, frame, badge, chalk, meets FROM (
        SELECT a.handle, NULL::int AS riser_id, a.display_name, s.frame, coalesce(s.badge, false) AS badge, t.chalk, t.last_id,
               (SELECT count(*)::int FROM checkins c JOIN meets m ON m.id = c.meet_id
-               WHERE c.account_id = a.id AND extract(year FROM m.day) = $1) AS meets
+               WHERE c.account_id = a.id AND m.day BETWEEN $3::date AND $4::date) AS meets
        FROM (
          SELECT account_id, sum(amount)::int AS chalk, max(id) AS last_id
          FROM chalk_tx WHERE season = $1 AND account_id IS NOT NULL GROUP BY account_id HAVING sum(amount) > 0
@@ -174,7 +203,7 @@ export async function chalkboard(season = currentSeason(), limit = 50) {
      ) x
      ORDER BY chalk DESC, last_id ASC
      LIMIT $2`,
-    [season, limit],
+    [season, limit, seasonStartDay(season), seasonEndDay(season)],
   );
 }
 
@@ -233,7 +262,7 @@ export const newMeetCode = () => String(randomInt(0, 10000)).padStart(4, "0");
  * whoever invited this member if it's their first meet. Runs inside a transaction.
  */
 export async function recordCheckin(tx: Db, meet: { id: number; day: string }, accountId: number) {
-  const season = Number(meet.day.slice(0, 4));
+  const season = seasonOf(meet.day);
   const added = await tx.query(
     `INSERT INTO checkins (meet_id, account_id) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING meet_id`,
     [meet.id, accountId],

@@ -9,7 +9,7 @@ import { savePhoto, photoUrl } from "@/lib/photos";
 import { fromSydneyInput } from "@/lib/schedule";
 import { setGiveawayDrawAt } from "@/lib/giveaway";
 import { awardResultsChalk } from "@/lib/results";
-import { CHALK, awardChalk, currentSeason, meetLabel, newMeetCode, recordCheckin, saveChalkSettings, sydneyToday } from "@/lib/chalk";
+import { CHALK, awardChalk, currentSeason, meetLabel, newMeetCode, recordCheckin, saveChalkSettings, seasonOf, sydneyToday } from "@/lib/chalk";
 import { liveEmbed, videoEmbed } from "@/lib/video";
 import { saveLiveSettings } from "@/lib/tv";
 import { mailConfigured, mailStatus, sendClubMail } from "@/lib/mail";
@@ -653,7 +653,7 @@ export async function setPodium(form: FormData) {
   await db.transaction(async (tx) => {
     const [meet] = await tx.query<{ day: string }>(`SELECT day::text AS day FROM meets WHERE id = $1 FOR UPDATE`, [id]);
     if (!meet) return;
-    const season = Number(meet.day.slice(0, 4));
+    const season = seasonOf(meet.day);
     await tx.query(`UPDATE meets SET first_id = $2, second_id = $3, third_id = $4, is_tournament = true WHERE id = $1`, [
       id,
       places[0] ?? null,
@@ -716,7 +716,7 @@ export async function addResult(form: FormData) {
   const event = str(form, "event");
   const place = int(form, "place");
   const date = str(form, "played_on");
-  const season = date ? Number(date.slice(0, 4)) : (int(form, "season") ?? currentSeason());
+  const season = date ? seasonOf(date) : (int(form, "season") ?? currentSeason());
   if (!puller || !event || !place) done(key, "pullers", "Add the competition name and placing.", true);
   const db = await getDb();
   try {

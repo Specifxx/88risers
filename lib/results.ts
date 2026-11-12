@@ -1,5 +1,5 @@
 import "server-only";
-import { CHALK, awardChalk, awardRiserChalk, claimRiserChalk } from "./chalk";
+import { CHALK, awardChalk, awardRiserChalk, claimRiserChalk, currentSeason, seasonOf } from "./chalk";
 import type { Db } from "./db";
 import { getDb } from "./db";
 
@@ -53,15 +53,15 @@ export async function awardResultsChalk(db: Db, pullerId: number) {
   }
   // Supermatches recorded as matches (round "Supermatch …"): Chalk for pulling, more for winning.
   // (Supermatches run through the picks system pay their Chalk when settled, so they aren't recorded twice.)
-  const sms = await db.query<{ id: number; won: boolean; season: number; round: string }>(
-    `SELECT id, winner_id = $1 AS won, extract(year FROM played_on)::int AS season, round FROM matches
+  const sms = await db.query<{ id: number; won: boolean; played_on: string | null; round: string }>(
+    `SELECT id, winner_id = $1 AS won, played_on::text AS played_on, round FROM matches
      WHERE (winner_id = $1 OR loser_id = $1) AND round ILIKE 'Supermatch%'`,
     [pullerId],
   );
   for (const m of sms) {
     const amount = CHALK.supermatch + (m.won ? CHALK.supermatchWin : 0);
     const label = `${m.won ? "Won" : "Pulled in"} ${m.round}`;
-    if (await give(m.season, amount, label, `match-sm:${m.id}`)) n++;
+    if (await give(m.played_on ? seasonOf(m.played_on) : currentSeason(), amount, label, `match-sm:${m.id}`)) n++;
   }
   return n;
 }

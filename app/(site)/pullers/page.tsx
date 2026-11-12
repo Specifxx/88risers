@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Leaderboard } from "@/components/Leaderboard";
 import { PullerSearch } from "@/components/PullerSearch";
 import { PullerSlab } from "@/components/PullerSlab";
-import { chalkboard, chalkSettings, currentSeason } from "@/lib/chalk";
+import { chalkboard, chalkSettings, currentSeason, seasonEndLabel } from "@/lib/chalk";
 import { getClubStats, listPullers } from "@/lib/data";
 import { formatId } from "@/lib/site";
 
@@ -45,7 +45,7 @@ export default async function PullersPage() {
               </h2>
               <p className="lede" style={{ marginTop: 18 }}>
                 Members earn Chalk by checking in at meets, bringing friends, placing at tournaments and pulling in
-                supermatches. Hit {settings.target} to complete the Lift; top of the board on 31 December is crowned Top Riser.
+                supermatches. Hit {settings.target} to complete the Lift; top of the board on {seasonEndLabel(currentSeason())} is crowned Top Riser.
               </p>
               <Link className="link-arrow" href="/chalk" style={{ marginTop: 18, display: "inline-flex" }}>
                 Full standings &amp; how it works <span>→</span>

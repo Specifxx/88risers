@@ -13,7 +13,7 @@ import { mailStatus } from "@/lib/mail";
 import { type AdminAccount, type AdminRedemption, STORE, adminAccounts, adminRedemptions, itemById } from "@/lib/coins";
 import { type Giveaway, getGiveaway } from "@/lib/giveaway";
 import { type CompResult, allResults, placeLabel } from "@/lib/results";
-import { CHALK, chalkboard, chalkSettings, currentSeason, listMeets, meetAttendees, sydneyToday } from "@/lib/chalk";
+import { CHALK, chalkboard, chalkSettings, currentSeason, listMeets, meetAttendees, seasonEndLabel, sydneyToday } from "@/lib/chalk";
 import { type Backer, type Supermatch, listBackers, listSupermatches } from "@/lib/supermatch";
 import { PRODUCTS } from "@/lib/shop";
 import { type LiveState, tvLive } from "@/lib/tv";
@@ -1442,7 +1442,7 @@ async function ChalkTab({ accts, k }: { accts: AdminAccount[]; k: string }) {
               <input name="lift_prize" type="text" defaultValue={settings.liftPrize} />
             </div>
             <div className="field span4">
-              <label>Top Riser prize <em>top of the Chalkboard on 31 December</em></label>
+              <label>Top Riser prize <em>top of the Chalkboard on {seasonEndLabel(season)}</em></label>
               <input name="top_prize" type="text" defaultValue={settings.topPrize} />
             </div>
           </div>
