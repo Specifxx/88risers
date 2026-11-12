@@ -2528,6 +2528,20 @@ a.event-row:hover {
   background: #000;
   border: 1px solid var(--line);
 }
+.highlight-video {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 78vh;
+  margin: 0 auto;
+  border-radius: 12px;
+  background: #000;
+  border: 1px solid var(--line);
+}
+.highlight .video-frame.tall {
+  margin: 0 auto;
+}
 .video-frame.tall {
   aspect-ratio: 9 / 14;
   max-width: 420px;

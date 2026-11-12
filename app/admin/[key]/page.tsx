@@ -407,6 +407,14 @@ function PullerFields({ p, nextId }: { p?: Puller; nextId: number }) {
         <textarea name="bio" defaultValue={p?.bio ?? ""} rows={2} />
       </div>
       <div className="field span2">
+        <label>Highlight video <em>shown on their profile</em></label>
+        <input name="highlight_url" type="text" defaultValue={p?.highlight_url ?? ""} placeholder="YouTube / Instagram / .mp4 link" />
+      </div>
+      <div className="field span2">
+        <label>Highlight caption</label>
+        <input name="highlight_title" type="text" defaultValue={p?.highlight_title ?? ""} placeholder="e.g. 70kg Left Arm Champion · 2025 Nationals" />
+      </div>
+      <div className="field span2">
         <label>Photo <em>headshot</em></label>
         <ImageInput name="photo" max={1000} />
         {p?.photo_url ? (

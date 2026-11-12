@@ -152,22 +152,26 @@ export async function savePuller(form: FormData) {
         bool(form, "hidden"),
         str(form, "joined_on"),
       ];
+      const hl = str(form, "highlight_url");
+      if (hl && !videoEmbed(hl)) throw new Error("Highlight video: paste a YouTube, Instagram, TikTok, Google Drive or .mp4 link (or a site video like /video/name.mp4).");
+      const hlTitle = hl ? str(form, "highlight_title") : null;
       if (original) {
         await tx.query(
           `UPDATE pullers SET id = $1, name = $2, nickname = $3, title = $4, bio = $5, weight_class = $6,
              dominant_arm = $7, instagram = $8, hidden = $9, joined_on = coalesce($10::date, joined_on),
              photo_url = CASE WHEN $11::text IS NOT NULL THEN $11 WHEN $13 THEN NULL ELSE photo_url END,
-             card_url  = CASE WHEN $12::text IS NOT NULL THEN $12 WHEN $14 THEN NULL ELSE card_url END
+             card_url  = CASE WHEN $12::text IS NOT NULL THEN $12 WHEN $14 THEN NULL ELSE card_url END,
+             highlight_url = $16, highlight_title = $17
            WHERE id = $15`,
-          [id, ...fields, photo, card, bool(form, "remove_photo"), bool(form, "remove_card"), original],
+          [id, ...fields, photo, card, bool(form, "remove_photo"), bool(form, "remove_card"), original, hl, hlTitle],
         );
         if (id !== original) await tx.query(`UPDATE registrations SET puller_id = $1 WHERE puller_id = $2`, [id, original]);
         return `Saved #${String(id).padStart(3, "0")} ${name}.`;
       }
       await tx.query(
-        `INSERT INTO pullers (id, name, nickname, title, bio, weight_class, dominant_arm, instagram, hidden, joined_on, photo_url, card_url)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, coalesce($10::date, CURRENT_DATE), $11, $12)`,
-        [id, ...fields, photo, card],
+        `INSERT INTO pullers (id, name, nickname, title, bio, weight_class, dominant_arm, instagram, hidden, joined_on, photo_url, card_url, highlight_url, highlight_title)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, coalesce($10::date, CURRENT_DATE), $11, $12, $13, $14)`,
+        [id, ...fields, photo, card, hl, hlTitle],
       );
       return `Added ${name} as Riser #${String(id).padStart(3, "0")}.`;
     });

@@ -10,6 +10,8 @@ export interface Puller {
   bio: string | null;
   photo_url: string | null;
   card_url: string | null;
+  highlight_url: string | null;
+  highlight_title: string | null;
   weight_class: string | null;
   dominant_arm: string | null;
   instagram: string | null;
@@ -95,7 +97,7 @@ export const NEXT_ID_SQL = `(SELECT min(n)::int FROM generate_series(1, (SELECT 
   WHERE n <> ${RESERVED_ID} AND n NOT IN (SELECT id FROM pullers) AND n NOT IN (${HELD_IDS}))`;
 
 const PULLER_COLS = `
-  p.id, p.name, p.nickname, p.title, p.bio, p.photo_url, p.card_url, p.weight_class,
+  p.id, p.name, p.nickname, p.title, p.bio, p.photo_url, p.card_url, p.highlight_url, p.highlight_title, p.weight_class,
   p.dominant_arm, p.instagram, p.is_founder, p.hidden, p.elo, p.peak_elo, p.joined_on::text AS joined_on,
   (SELECT count(*)::int FROM matches m WHERE m.winner_id = p.id) AS wins,
   (SELECT count(*)::int FROM matches m WHERE m.loser_id = p.id) AS losses,

@@ -10,6 +10,7 @@ import { chalkOf, currentSeason, riserChalkOf } from "@/lib/chalk";
 import { medal, placeLabel, podiumChalk, resultsFor } from "@/lib/results";
 import { fmtShortDate } from "@/lib/schedule";
 import { formatId } from "@/lib/site";
+import { videoEmbed } from "@/lib/video";
 
 /** Served from cache; regenerated at most once a minute, or immediately after admin edits. */
 export const revalidate = 60;
@@ -149,6 +150,8 @@ export default async function PullerPage({ params }: PageProps<"/pullers/[id]">)
               </div>
             </div>
 
+            {p.highlight_url ? <Highlight url={p.highlight_url} title={p.highlight_title} /> : null}
+
             {results.length ? (
               <div className="panel">
                 <h2 className="panel-title">
@@ -229,5 +232,25 @@ export default async function PullerPage({ params }: PageProps<"/pullers/[id]">)
         </div>
       </div>
     </section>
+  );
+}
+
+/** A featured video at the top of a Riser's record (their best moment). */
+function Highlight({ url, title }: { url: string; title: string | null }) {
+  const e = videoEmbed(url);
+  if (!e) return null;
+  return (
+    <div className="panel highlight">
+      <h2 className="panel-title">
+        Highlight {title ? <small>{title}</small> : null}
+      </h2>
+      {e.kind === "video" ? (
+        <video className="highlight-video" src={e.src} poster={e.poster} controls playsInline preload="metadata" />
+      ) : (
+        <div className={`video-frame ${e.tall ? "tall" : ""}`}>
+          <iframe src={e.src} title={title ?? "Highlight video"} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen loading="lazy" />
+        </div>
+      )}
+    </div>
   );
 }
