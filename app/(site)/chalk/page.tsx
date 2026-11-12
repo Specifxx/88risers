@@ -135,7 +135,7 @@ export default async function ChalkPage() {
                 88RISERS with a wavy hamon, an 88 openwork tsuba, a flexing-arm habaki, gold lion menuki on a black-and-red wrapped
                 handle, and a red-and-gold lacquered scabbard. Limited edition serial and maker&rsquo;s mark. One of one.
               </p>
-              <p className="fine">Winner must be 18 or over. Crowned on {endLabel}; ties go to whoever got there first.</p>
+              <p className="fine">Winner must be 18 or over. Crowned on {endLabel}{season === 2026 ? <> and presented at the <Link href="/rhodes-open">Rhodes Open 2027</Link></> : null}; ties go to whoever got there first.</p>
             </div>
           </section>
 

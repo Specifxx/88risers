@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { OpenEntryForm } from "@/components/OpenEntryForm";
 import { OPEN, bracketCounts, classLabel, openEntries } from "@/lib/rhodesOpen";
@@ -10,7 +11,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "Rhodes Open 2027",
   description:
-    "Rhodes Open 2027 · Sunday 4 April 2027 at Rhodes Amphitheatre. Right and left arm, five weight classes each, ten champion cards and $500 cash in the Champion of Champions finals. Entries open (preliminary draft).",
+    "Rhodes Open 2027 · Sunday 4 April 2027 at Rhodes Amphitheatre. Right and left arm, five weight classes each, ten champion cards, $500 cash in the Champion of Champions finals, and the Chalk season's Top Riser presented with the 88 Risers katana. Entries open (preliminary draft).",
 };
 
 const TBC = <span className="open-tbc">TBC</span>;
@@ -108,6 +109,24 @@ export default async function RhodesOpenPage() {
                   </div>
                 </div>
                 <p className="open-note">Cash paid by bank transfer after the event. Format for the finals: {TBC}</p>
+              </div>
+
+              <div className="open-block open-katana">
+                <h2>Top Riser crowned</h2>
+                <p className="open-sub">Chalk season grand prize</p>
+                <Link href="/chalk" className="open-katana-art">
+                  <Image
+                    src="/chalk/katana-88.webp"
+                    alt="The 88 Risers katana"
+                    fill
+                    sizes="(max-width: 860px) 100vw, 560px"
+                  />
+                </Link>
+                <p>
+                  The Chalkboard season ends on Rhodes Open day, and whoever finishes #1 is presented with the{" "}
+                  <b>88 Risers katana</b> at the comp. Podiums on the day still count, so the race can go right to the
+                  last pull. <Link href="/chalk">See the Chalkboard →</Link>
+                </p>
               </div>
 
               <div className="open-block">

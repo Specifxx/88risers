@@ -9087,3 +9087,20 @@ b.gold {
   font: 400 36px / 1.1 var(--f-display);
   color: var(--gold-hi);
 }
+.open-katana-art {
+  position: relative;
+  display: block;
+  aspect-ratio: 2172 / 724;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(212, 42, 47, 0.45);
+  background: #000;
+}
+.open-katana-art img {
+  object-fit: contain;
+}
+.open-katana > p:not(.open-sub) {
+  margin: 0;
+  color: var(--muted);
+}
