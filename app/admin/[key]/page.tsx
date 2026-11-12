@@ -33,6 +33,7 @@ import {
   setGiveawayDate,
   openCheckin,
   setRequestedId,
+  setCoinPaid,
   addResult,
   deleteResult,
   linkPullerAccount,
@@ -266,8 +267,21 @@ function Registrations({
                     {r.status === "puller" ? `Riser ${formatId(r.puller_id!)}` : r.status}
                   </span>
                   {r.with_friend ? <span className="pill">With a friend{r.friend_name ? `: ${r.friend_name}` : ""}</span> : null}
-                  {r.requested_id && r.status !== "puller" ? (
-                    <span className="pill gold-pill">Wants {formatId(r.requested_id)} · $2 gold coin</span>
+                  {r.requested_id && r.status !== "puller" ? <span className="pill gold-pill">Wants {formatId(r.requested_id)}</span> : null}
+                  {r.requested_id ? (
+                    <form action={setCoinPaid} className="coin-paid">
+                      <input type="hidden" name="key" value={k} />
+                      <input type="hidden" name="registration_id" value={r.id} />
+                      <input type="hidden" name="paid" value={r.coin_paid_at ? "0" : "1"} />
+                      {r.coin_paid_at ? (
+                        <button className="pill paid-pill" title="Click to undo">$2 paid ✓</button>
+                      ) : (
+                        <>
+                          <span className="pill red">$2 owing</span>
+                          <button className="btn btn-sm btn-ghost">Mark paid</button>
+                        </>
+                      )}
+                    </form>
                   ) : null}
                 </div>
                 <div className="reg-meta">

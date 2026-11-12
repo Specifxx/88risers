@@ -758,6 +758,21 @@ export async function setRequestedId(form: FormData) {
   done(key, "registrations", n ? `Reserved #${String(n).padStart(3, "0")}.` : "Reservation cleared.");
 }
 
+/** Ticks off (or un-ticks) the $2 gold coin for someone who asked for a specific Riser number. */
+export async function setCoinPaid(form: FormData) {
+  const key = guard(form);
+  const regId = int(form, "registration_id");
+  const paid = str(form, "paid") === "1";
+  const db = await getDb();
+  const [r] = await db.query<{ name: string }>(
+    `UPDATE registrations SET coin_paid_at = ${paid ? "now()" : "NULL"}, updated_at = now()
+     WHERE id = $1 AND requested_id IS NOT NULL RETURNING name`,
+    [regId],
+  );
+  if (!r) done(key, "registrations", "Only people who asked for a number owe the $2.", true);
+  done(key, "registrations", paid ? `Marked ${r.name}'s $2 as paid.` : `${r.name}'s $2 is back to owing.`);
+}
+
 /** Connects the club's Instagram (Professional) account so our reels play directly on 88RisersTV. */
 export async function saveIgToken(form: FormData) {
   const key = guard(form);

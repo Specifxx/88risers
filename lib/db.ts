@@ -252,6 +252,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS chalk_tx_riser_ref ON chalk_tx (puller_id, ref
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS invited_by integer REFERENCES accounts(id) ON DELETE SET NULL;
 -- A Riser number someone asked for when registering ($2 gold coin donation).
 ALTER TABLE registrations ADD COLUMN IF NOT EXISTS requested_id integer;
+-- When an organiser ticked off that $2 as received (null = still owing).
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS coin_paid_at timestamptz;
 -- "I'm coming with a friend" on the join form.
 ALTER TABLE registrations ADD COLUMN IF NOT EXISTS with_friend boolean NOT NULL DEFAULT false;
 ALTER TABLE registrations ADD COLUMN IF NOT EXISTS friend_name text;
@@ -384,7 +386,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v43";
+const MIGRATION_MARKER = "founders_v44";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [

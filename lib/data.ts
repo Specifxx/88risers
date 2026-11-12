@@ -76,6 +76,7 @@ export interface Registration {
   notes: string | null;
   puller_id: number | null;
   requested_id: number | null;
+  coin_paid_at: Date | null;
   with_friend: boolean;
   friend_name: string | null;
   created_at: Date;
@@ -291,7 +292,7 @@ export async function listShopInterest() {
 export async function listRegistrations() {
   const d = await db();
   return d.query<Registration>(
-    `SELECT id, name, phone, instagram, photo_id::text AS photo_id, sms_consent, status, notes, puller_id, requested_id, with_friend, friend_name, created_at
+    `SELECT id, name, phone, instagram, photo_id::text AS photo_id, sms_consent, status, notes, puller_id, requested_id, coin_paid_at, with_friend, friend_name, created_at
      FROM registrations ORDER BY created_at DESC`,
   );
 }
