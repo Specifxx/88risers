@@ -46,7 +46,7 @@ export default async function EventsPage() {
           <Link href="/rhodes-open" className="open-promo">
             <span className="pill red">Entries open · draft</span>
             <b>Rhodes Open 2027</b>
-            <span>Sun 4 April 2027 · Rhodes Amphitheatre · right & left arm, five classes, ten champion cards</span>
+            <span>Sun 4 April 2027 · Rhodes Amphitheatre · right & left arm, five classes, $500 Champion of Champions</span>
             <i>Enter →</i>
           </Link>
 

@@ -10,7 +10,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "Rhodes Open 2027",
   description:
-    "Rhodes Open 2027 · Sunday 4 April 2027 at Rhodes Amphitheatre. Right and left arm, five weight classes each, ten champion cards. Entries open (preliminary draft).",
+    "Rhodes Open 2027 · Sunday 4 April 2027 at Rhodes Amphitheatre. Right and left arm, five weight classes each, ten champion cards and $500 cash in the Champion of Champions finals. Entries open (preliminary draft).",
 };
 
 const TBC = <span className="open-tbc">TBC</span>;
@@ -44,6 +44,10 @@ export default async function RhodesOpenPage() {
               <p className="lede">
                 Right arm. Left arm. Five weight classes each. <b>Ten champion cards.</b> Every puller leaves with a coin.
               </p>
+              <div className="open-cash">
+                <b>$500 cash</b>
+                <span>up for grabs in the Champion of Champions</span>
+              </div>
               <a href="#enter" className="btn btn-primary open-jump">
                 Enter now ↓
               </a>
@@ -86,6 +90,26 @@ export default async function RhodesOpenPage() {
                 </ul>
               </div>
 
+              <div className="open-block open-coc">
+                <h2>Champion of Champions</h2>
+                <p className="open-sub">Open weight · $500 cash</p>
+                <p>
+                  Every class winner goes again. The five right-arm champions pull off for the <b>Right-arm Absolute</b>, and
+                  the five left-arm champions for the <b>Left-arm Absolute</b>, no weight limits.
+                </p>
+                <div className="open-coc-prizes">
+                  <div>
+                    <span>Right-arm Absolute</span>
+                    <b>$250</b>
+                  </div>
+                  <div>
+                    <span>Left-arm Absolute</span>
+                    <b>$250</b>
+                  </div>
+                </div>
+                <p className="open-note">Cash paid by bank transfer after the event. Format for the finals: {TBC}</p>
+              </div>
+
               <div className="open-block">
                 <h2>Entry</h2>
                 <table className="open-prices">
@@ -126,6 +150,7 @@ export default async function RhodesOpenPage() {
                     88 Risers rules · Waiver signed at check-in · <Link href="/conduct">Code of Conduct</Link>
                   </li>
                   <li>Classes with fewer than 3 entrants merge into the next class up.</li>
+                  <li>Champion of Champions finals run after each arm&apos;s brackets: class winners only, open weight.</li>
                 </ul>
               </div>
 
