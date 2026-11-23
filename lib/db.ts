@@ -424,7 +424,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v55";
+const MIGRATION_MARKER = "founders_v56";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [
@@ -596,36 +596,18 @@ async function migrate(db: Db) {
       await tx.query(`INSERT INTO meta (key, value) VALUES ('admin_todos', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [JSON.stringify(list)]);
       await tx.query(`INSERT INTO meta (key, value) VALUES ('todo_interstate_seeded', now()::text)`);
     }
-    // To-dos: the 88 Risers Collective plan, for the founders' discussion (once).
-    const [collectiveTodo] = await tx.query(`SELECT 1 FROM meta WHERE key = 'todo_collective_seeded'`);
-    if (!collectiveTodo) {
+    // The five Collective to-dos were withdrawn: take them off the list (and never add them again).
+    const [collectiveGone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'todo_collective_removed'`);
+    if (!collectiveGone) {
       const [cur] = await tx.query<{ value: string }>(`SELECT value FROM meta WHERE key = 'admin_todos'`);
-      let list: unknown[] = [];
+      let list: { id?: string }[] = [];
       try {
         list = cur?.value ? JSON.parse(cur.value) : [];
       } catch {}
-      const add = (id: string, text: string) => list.push({ id, text, done: false, at: Date.now() });
-      add(
-        "collective-identity",
-        "Founders: 88 Risers Collective identity. Rhodes = founding Sydney Hall, other cities join as Halls (Melbourne Hall…). " +
-          "Same black/red/gold look, 88 knot and 八十八 everywhere; one national Riser ID line; open to anyone who honours the Code.",
-      );
-      add(
-        "collective-code",
-        "Founders: write the 88 Risers Code (short creed) and the rituals: bow at the table, red seal, guardian lion, Lunar New Year in every Hall.",
-      );
-      add(
-        "collective-partners",
-        "Founders: partner club terms. Partner gets collab jersey (their mark added, 88 identity kept), ~20% of Pass/merch from their members, " +
-          "invites, Moments coverage. 88 gets Riser IDs, 88 nights at their club, their pullers in 88 at Nationals.",
-      );
-      add("collective-spartans", "Pilot the Collective with Sydney Spartans (collab jersey already designed).");
-      add(
-        "collective-launch",
-        "Launch the Collective at Nationals: team in jerseys, name the first interstate captains; then open the first interstate Hall and plan State vs State.",
-      );
+      const drop = new Set(["collective-identity", "collective-code", "collective-partners", "collective-spartans", "collective-launch"]);
+      list = list.filter((t) => !drop.has(String(t?.id)));
       await tx.query(`INSERT INTO meta (key, value) VALUES ('admin_todos', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [JSON.stringify(list)]);
-      await tx.query(`INSERT INTO meta (key, value) VALUES ('todo_collective_seeded', now()::text)`);
+      await tx.query(`INSERT INTO meta (key, value) VALUES ('todo_collective_removed', now()::text)`);
     }
     const [katanaDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'top_prize_katana_v1'`);
     if (!katanaDone) {
