@@ -2,16 +2,16 @@
 
 import { getDb } from "@/lib/db";
 import { normalisePhone } from "@/lib/phone";
-import { MOMENT_EVENTS, MOMENT_ITEMS, SHIRT_SIZES, momentsTotal } from "@/lib/momentsConfig";
+import { MOMENTS_DEPOSIT, MOMENT_EVENTS, MOMENT_ITEMS, SHIRT_SIZES, momentsTotal } from "@/lib/momentsConfig";
 
 export type MomentState =
   | { status: "idle" }
   | { status: "error"; message: string; field?: "riser" | "name" | "phone" | "email" | "event" | "moment" | "items" | "shirt_size" | "delivery" | "consent" }
-  | { status: "ok"; name: string; total: number; count: number };
+  | { status: "ok"; name: string; total: number; count: number; id: number; deposit: number };
 
-/** Records an 88 Moments order. Payment is arranged afterwards, once the artwork is approved. */
+/** Records an 88 Moments booking. A $30 deposit (non-refundable) holds it; the balance is paid once the artwork is approved. */
 export async function orderMoments(_prev: MomentState, form: FormData): Promise<MomentState> {
-  if (String(form.get("company") ?? "").trim()) return { status: "ok", name: "", total: 0, count: 0 };
+  if (String(form.get("company") ?? "").trim()) return { status: "ok", name: "", total: 0, count: 0, id: 0, deposit: 0 };
   const s = (k: string) => String(form.get(k) ?? "").trim();
   const name = s("name").replace(/\s+/g, " ");
   const phone = normalisePhone(s("phone"));
@@ -38,7 +38,11 @@ export async function orderMoments(_prev: MomentState, form: FormData): Promise<
   if (items.includes("shirt") && !(SHIRT_SIZES as readonly string[]).includes(shirt)) return { status: "error", field: "shirt_size", message: "Pick a shirt size." };
   if (delivery !== "pickup" && delivery !== "post") return { status: "error", field: "delivery", message: "Pick up at a meet, or post?" };
   if (form.get("consent") !== "on")
-    return { status: "error", field: "consent", message: "Tick to confirm you're 18+ (or a parent is ordering) and happy for us to use your photos." };
+    return {
+      status: "error",
+      field: "consent",
+      message: `Tick to confirm you're 18+ (or a parent is ordering), happy for us to use your photos, and that the $${MOMENTS_DEPOSIT} deposit is non-refundable.`,
+    };
 
   const total = momentsTotal(items);
   try {
@@ -65,12 +69,12 @@ export async function orderMoments(_prev: MomentState, form: FormData): Promise<
         };
       riser = r.puller_id;
     }
-    await db.query(
+    const [row] = await db.query<{ id: number }>(
       `INSERT INTO moment_orders (name, phone, email, instagram, event, moment, items, shirt_size, total, delivery, notes, riser_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
       [name, phone, email, instagram, event === "Other event" ? `Other: ${eventOther}` : event, moment, items, shirt || null, total, delivery, notes, riser],
     );
-    return { status: "ok", name: name.split(" ")[0], total, count: items.length };
+    return { status: "ok", name: name.split(" ")[0], total, count: items.length, id: row.id, deposit: MOMENTS_DEPOSIT };
   } catch (err) {
     console.error("moments order failed", err);
     return { status: "error", message: "Something went wrong on our side. Try again, or DM us on Instagram." };

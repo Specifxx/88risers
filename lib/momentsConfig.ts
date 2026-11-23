@@ -14,6 +14,8 @@ export type MomentItemId = (typeof MOMENT_ITEMS)[number]["id"];
 export const MOMENTS_ITEMS_SUM = MOMENT_ITEMS.reduce((n, i) => n + i.price, 0);
 /** The full Risers Moment Package: all five pieces, bundle price. */
 export const MOMENTS_FULL_SET = 270;
+/** Paid when booking, to hold the camera for you. Non-refundable; it comes off the total. */
+export const MOMENTS_DEPOSIT = 30;
 export const SHIRT_SIZES = ["S", "M", "L", "XL", "2XL", "3XL"] as const;
 export const MOMENT_EVENTS = ["Nationals", "Rhodes Open 2027", "State titles", "Club supermatch", "Club meet / table time", "Other event"] as const;
 /** What a booking costs: the package price when all five pieces are picked, otherwise piece by piece. */

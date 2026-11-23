@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { MomentsForm } from "@/components/MomentsForm";
-import { MOMENTS_FULL_SET, MOMENTS_ITEMS_SUM, MOMENT_ITEMS } from "@/lib/momentsConfig";
+import { MOMENTS_DEPOSIT, MOMENTS_FULL_SET, MOMENTS_ITEMS_SUM, MOMENT_ITEMS } from "@/lib/momentsConfig";
 
 const FROM = Math.min(...MOMENT_ITEMS.map((i) => i.price));
 
@@ -44,6 +44,7 @@ export default function MomentsPage() {
               <b>${FROM}</b>
               <span>· full package</span>
               <b>${MOMENTS_FULL_SET}</b>
+              <span>· ${MOMENTS_DEPOSIT} deposit to book</span>
             </div>
             <a href="#order" className="btn btn-primary">
               Book your moment ↓
@@ -83,7 +84,8 @@ export default function MomentsPage() {
               <h2>How it works</h2>
               <ol className="mo-steps">
                 <li>
-                  <b>Book before the comp.</b> Tell us the event, your division and arm. Nothing to pay yet.
+                  <b>Book before the comp.</b> Tell us the event, your division and arm, and pay a ${MOMENTS_DEPOSIT} deposit to hold
+                  the camera for you (non-refundable; it comes off your total).
                 </li>
                 <li>
                   <b>We shoot you.</b> On the day, the camera is on you: warm-up, walk-out, every match, the result.
@@ -93,7 +95,7 @@ export default function MomentsPage() {
                   your words, then send you a preview.
                 </li>
                 <li>
-                  <b>Approve, pay, it&apos;s made.</b> Printed pieces are ready in about 2–3 weeks.
+                  <b>Approve, pay the balance, it&apos;s made.</b> Printed pieces are ready in about 2–3 weeks.
                 </li>
               </ol>
             </div>

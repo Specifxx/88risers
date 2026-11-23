@@ -791,7 +791,7 @@ export async function setMomentStatus(form: FormData) {
   const status = str(form, "status");
   const db = await getDb();
   if (status === "delete") await db.query(`DELETE FROM moment_orders WHERE id = $1`, [int(form, "id")]);
-  else if (status && ["new", "preview", "paid", "delivered"].includes(status))
+  else if (status && ["new", "deposit", "preview", "paid", "delivered"].includes(status))
     await db.query(`UPDATE moment_orders SET status = $2 WHERE id = $1`, [int(form, "id"), status]);
   done(key, "moments", status === "delete" ? "Order removed." : "Order updated.");
 }

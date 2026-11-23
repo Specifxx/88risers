@@ -2,7 +2,7 @@
 
 import { startTransition, useActionState, useState } from "react";
 import { orderMoments, type MomentState } from "@/app/(site)/moments/actions";
-import { MOMENTS_FULL_SET, MOMENTS_ITEMS_SUM, MOMENT_EVENTS, MOMENT_ITEMS, SHIRT_SIZES, momentsTotal } from "@/lib/momentsConfig";
+import { MOMENTS_DEPOSIT, MOMENTS_FULL_SET, MOMENTS_ITEMS_SUM, MOMENT_EVENTS, MOMENT_ITEMS, SHIRT_SIZES, momentsTotal } from "@/lib/momentsConfig";
 import { SITE } from "@/lib/site";
 import { Arrow, Check, Instagram } from "./Icons";
 
@@ -27,11 +27,16 @@ export function MomentsForm() {
           <div className="tick">
             <Check />
           </div>
-          <h3>You&apos;re booked{state.name ? `, ${state.name}` : ""}</h3>
+          <h3>Almost booked{state.name ? `, ${state.name}` : ""}</h3>
           <p>
-            {state.count} {state.count === 1 ? "piece" : "pieces"} · <b>${state.total}</b>. We&apos;ll find you on the day and keep the
-            camera on you. Afterwards we send a preview of your artwork, and you only pay once you&apos;re happy with it.
+            {state.count} {state.count === 1 ? "piece" : "pieces"} · <b>${state.total}</b>. Pay the <b>${state.deposit} deposit</b> to
+            lock in the camera for your comp. It&apos;s non-refundable and comes off your total, so the balance after you approve
+            your artwork is <b>${Math.max(0, state.total - state.deposit)}</b>.
           </p>
+          <a className="btn btn-primary submit" href={`/pay/moment/${state.id}`} target="_blank" rel="noreferrer">
+            Pay ${state.deposit} deposit <Arrow />
+          </a>
+          <p className="fine">Booking #{state.id}. Card or PayPal, through PayPal. Your booking is confirmed once the deposit arrives.</p>
           <a className="ig-card" href={SITE.instagramUrl} target="_blank" rel="noreferrer">
             <Instagram />
             <div>
@@ -54,7 +59,7 @@ export function MomentsForm() {
     <form className="form-card" onSubmit={submit} noValidate id="order">
       <div className="form-title">
         <h3>Book</h3>
-        <span>Before your comp · pay after you approve</span>
+        <span>${MOMENTS_DEPOSIT} deposit holds your spot</span>
       </div>
       {err && !err.field ? (
         <div className="form-error" role="alert">
@@ -185,7 +190,8 @@ export function MomentsForm() {
       <label className="check">
         <input type="checkbox" name="consent" />
         <span>
-          I&apos;m 18+ (or a parent ordering), and 88 Risers can turn my event photos into this artwork.
+          I&apos;m 18+ (or a parent ordering), 88 Risers can turn my event photos into this artwork, and I understand the $
+          {MOMENTS_DEPOSIT} deposit is non-refundable.
           {err?.field === "consent" ? <span className="field-error" style={{ display: "block" }}>{err.message}</span> : null}
         </span>
       </label>
@@ -195,11 +201,12 @@ export function MomentsForm() {
         <b>${total}</b>
       </div>
       <button className="btn btn-primary submit" type="submit" disabled={pending || !picked.length}>
-        {pending ? "Booking…" : "Book my moment"} {!pending ? <Arrow /> : null}
+        {pending ? "Booking…" : `Book · $${MOMENTS_DEPOSIT} deposit`} {!pending ? <Arrow /> : null}
       </button>
       <p className="fine">
-        Nothing to pay now. We shoot you at the comp, send a preview, and you pay once you approve it. Every booking includes the
-        high-res digital artwork. Printed pieces take about 2–3 weeks.
+        Book now and pay a ${MOMENTS_DEPOSIT} non-refundable deposit to hold the camera for you; it comes off your total. We shoot you
+        at the comp, send a preview, and you pay the balance once you approve it. Every booking includes the high-res digital
+        artwork. Printed pieces take about 2–3 weeks.
       </p>
     </form>
   );

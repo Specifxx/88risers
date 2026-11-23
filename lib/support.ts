@@ -23,6 +23,23 @@ export function paypalUrl(purpose: Purpose, amount?: number) {
   return `https://www.paypal.com/donate/?${q}`;
 }
 
+/**
+ * A PayPal payment (goods, not a donation) for something the club sells, e.g. an 88 Moments deposit.
+ * PayPal's standard "Buy Now" link: the buyer pays by card or PayPal, in AUD.
+ */
+export function paypalPaymentUrl(itemName: string, amount: number, ref: string) {
+  const q = new URLSearchParams({
+    cmd: "_xclick",
+    business: PAYPAL_EMAIL,
+    item_name: itemName,
+    item_number: ref,
+    amount: amount.toFixed(2),
+    currency_code: "AUD",
+    no_shipping: "1",
+  });
+  return `https://www.paypal.com/cgi-bin/webscr?${q}`;
+}
+
 /** The on-site link: /donate?for=funds&amount=20 */
 export const donateHref = (purpose: Purpose, amount?: number) =>
   `/donate?for=${purpose}${amount ? `&amount=${amount}` : ""}`;

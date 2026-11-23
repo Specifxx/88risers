@@ -1697,7 +1697,7 @@ type MomentOrder = {
   id: number; name: string; phone: string; email: string | null; instagram: string | null; event: string; moment: string;
   items: string[]; shirt_size: string | null; total: number; riser_id: number | null; delivery: string; notes: string | null; status: string; created_at: Date;
 };
-const MO_STATUS: Record<string, string> = { new: "New", preview: "Preview sent", paid: "Paid", delivered: "Delivered" };
+const MO_STATUS: Record<string, string> = { new: "Awaiting deposit", deposit: "Deposit paid", preview: "Preview sent", paid: "Paid in full", delivered: "Delivered" };
 
 async function Moments({ k }: { k: string }) {
   const db = await getDb();
@@ -1711,8 +1711,9 @@ async function Moments({ k }: { k: string }) {
           88 Moments <small>{orders.length} ORDERS · ${open.reduce((n, o) => n + o.total, 0)} OPEN</small>
         </h2>
         <p className="muted" style={{ marginTop: 0 }}>
-          Public page: <Link href="/moments" target="_blank">/moments ↗</Link>. Risers book before a comp so you know who to
-          follow with the camera. No payment is taken online: send the preview, then ask for payment once they approve.
+          Public page: <Link href="/moments" target="_blank">/moments ↗</Link>. Risers book before a comp and pay a $30
+          non-refundable deposit through PayPal (it shows as &ldquo;88 Moments deposit, booking #&rdquo;). Mark it here when it
+          arrives, then collect the balance once they approve the preview.
         </p>
       </div>
       {orders.length === 0 ? (
@@ -1737,7 +1738,7 @@ async function Moments({ k }: { k: string }) {
               {orders.map((o) => (
                 <tr key={o.id}>
                   <td>
-                    <b>{o.name}</b>
+                    <span className="muted">#{o.id}</span> <b>{o.name}</b>
                     {o.riser_id ? (
                       <>
                         {" "}
@@ -1766,7 +1767,11 @@ async function Moments({ k }: { k: string }) {
                     <br />
                     <span className="muted">{o.delivery === "post" ? "Post" : "Pick up at a meet"}</span>
                   </td>
-                  <td className="num">${o.total}</td>
+                  <td className="num">
+                    ${o.total}
+                    <br />
+                    <span className="muted">balance ${Math.max(0, o.total - 30)}</span>
+                  </td>
                   <td>
                     <a href={`tel:${o.phone}`}>{prettyPhone(o.phone)}</a>
                     {o.email ? (
