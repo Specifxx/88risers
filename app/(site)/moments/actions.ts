@@ -34,7 +34,6 @@ export async function orderMoments(_prev: MomentState, form: FormData): Promise<
   if (!(MOMENT_EVENTS as readonly string[]).includes(event)) return { status: "error", field: "event", message: "Pick the comp we should shoot you at." };
   if (event === "Other event" && eventOther.length < 2) return { status: "error", field: "event", message: "Tell us which event." };
   if (moment.length < 5) return { status: "error", field: "moment", message: "Tell us your division and arm, so we can find you on the day." };
-  if (!items.length) return { status: "error", field: "items", message: "Pick at least one piece." };
   if (items.includes("shirt") && !(SHIRT_SIZES as readonly string[]).includes(shirt)) return { status: "error", field: "shirt_size", message: "Pick a shirt size." };
   if (delivery !== "pickup" && delivery !== "post") return { status: "error", field: "delivery", message: "Pick up at a meet, or post?" };
   if (form.get("consent") !== "on")

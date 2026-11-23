@@ -9346,3 +9346,15 @@ b.gold {
     grid-template-columns: 1fr;
   }
 }
+
+.mo-items .mo-base {
+  cursor: default;
+  border-color: rgba(213, 182, 122, 0.6);
+  background: rgba(213, 182, 122, 0.08);
+}
+.mo-items .mo-item-name small {
+  display: block;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--muted);
+}

@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { MomentsForm } from "@/components/MomentsForm";
-import { MOMENTS_DEPOSIT, MOMENTS_FULL_SET, MOMENTS_ITEMS_SUM, MOMENT_ITEMS } from "@/lib/momentsConfig";
+import { MOMENTS_BASE, MOMENTS_DEPOSIT, MOMENTS_FULL_SET, MOMENTS_ITEMS_SUM, MOMENT_ITEMS } from "@/lib/momentsConfig";
 
-const FROM = Math.min(...MOMENT_ITEMS.map((i) => i.price));
 
 export const metadata: Metadata = {
   title: "88 Moments",
@@ -40,8 +39,8 @@ export default function MomentsPage() {
               <b>For registered Risers only.</b> Not a Riser yet? <Link href="/join">Register free →</Link>
             </p>
             <div className="mo-price-tag">
-              <span>Pieces from</span>
-              <b>${FROM}</b>
+              <span>Booking from</span>
+              <b>${MOMENTS_BASE}</b>
               <span>· full package</span>
               <b>${MOMENTS_FULL_SET}</b>
               <span>· ${MOMENTS_DEPOSIT} deposit to book</span>
@@ -101,29 +100,38 @@ export default function MomentsPage() {
             </div>
 
             <div className="open-block">
-              <h2>The pieces</h2>
-              <p className="open-sub">Pick any, or take the full package</p>
+              <h2>Pricing</h2>
+              <p className="open-sub">Book your moment, then add any printed pieces</p>
               <ul className="mo-list">
+                <li className="mo-set">
+                  <span>
+                    <b>Moment booking</b>
+                    <small>Camera on you at the comp · your sumi-e artwork · high-res digital file</small>
+                  </span>
+                  <i>${MOMENTS_BASE}</i>
+                </li>
                 {MOMENT_ITEMS.map((i) => (
                   <li key={i.id}>
                     <span>
                       <b>{i.name}</b>
                       <small>{i.blurb}</small>
                     </span>
-                    <i>${i.price}</i>
+                    <i>+${i.price}</i>
                   </li>
                 ))}
                 <li className="mo-set">
                   <span>
                     <b>The full Risers Moment Package</b>
                     <small>
-                      All five pieces of your moment · save ${MOMENTS_ITEMS_SUM - MOMENTS_FULL_SET}
+                      Booking + all five pieces · save ${MOMENTS_ITEMS_SUM - MOMENTS_FULL_SET}
                     </small>
                   </span>
                   <i>${MOMENTS_FULL_SET}</i>
                 </li>
               </ul>
-              <p className="open-note">Every booking includes the high-res digital artwork. Postage is extra; pick up at a meet is free.</p>
+              <p className="open-note">
+                The ${MOMENTS_DEPOSIT} deposit comes off your total. Postage is extra; pick up at a meet is free.
+              </p>
             </div>
           </div>
           <div className="open-form-col">
