@@ -424,7 +424,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v53";
+const MIGRATION_MARKER = "founders_v54";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [
@@ -575,6 +575,26 @@ async function migrate(db: Db) {
       });
       await tx.query(`INSERT INTO meta (key, value) VALUES ('admin_todos', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [JSON.stringify(list)]);
       await tx.query(`INSERT INTO meta (key, value) VALUES ('todo_zen_seeded', now()::text)`);
+    }
+    // To-do: talk through the interstate Risers idea with the founders (once).
+    const [interstateTodo] = await tx.query(`SELECT 1 FROM meta WHERE key = 'todo_interstate_seeded'`);
+    if (!interstateTodo) {
+      const [cur] = await tx.query<{ value: string }>(`SELECT value FROM meta WHERE key = 'admin_todos'`);
+      let list: unknown[] = [];
+      try {
+        list = cur?.value ? JSON.parse(cur.value) : [];
+      } catch {}
+      list.push({
+        id: "interstate-risers",
+        text:
+          "Discuss with the founding Risers: interstate Risers. 88 Risers as a national collective on top of their own clubs " +
+          "(permanent Riser ID + profile, national ranking from any comp, 88 Moments at Nationals, supermatch/Rhodes Open invites, " +
+          "online challenges). Money: Interstate Riser Pass ~$10–15/month or $99/year, Riser ID jersey, online coaching with Harry.",
+        done: false,
+        at: Date.now(),
+      });
+      await tx.query(`INSERT INTO meta (key, value) VALUES ('admin_todos', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [JSON.stringify(list)]);
+      await tx.query(`INSERT INTO meta (key, value) VALUES ('todo_interstate_seeded', now()::text)`);
     }
     const [katanaDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'top_prize_katana_v1'`);
     if (!katanaDone) {
