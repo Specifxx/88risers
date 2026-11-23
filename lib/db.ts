@@ -424,7 +424,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v50";
+const MIGRATION_MARKER = "founders_v52";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [
@@ -550,6 +550,14 @@ async function migrate(db: Db) {
       for (const [from, to] of [["-70kg", "-75kg"], ["-80kg", "-85kg"], ["-90kg", "-95kg"], ["-100kg", "-110kg"], ["+100kg", "+110kg"]])
         await tx.query(`UPDATE comp_entries SET weight_class = $2 WHERE comp = 'rhodes-open-2027' AND weight_class = $1`, [from, to]);
       await tx.query(`INSERT INTO meta (key, value) VALUES ('open_classes_v2', now()::text)`);
+    }
+    // The four-class change (-75/-90/-105/+105) was undone: move any entries it moved back to the five classes.
+    const [classes3] = await tx.query(`SELECT 1 FROM meta WHERE key = 'open_classes_v3'`);
+    const [classes3Undone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'open_classes_v3_undone'`);
+    if (classes3 && !classes3Undone) {
+      for (const [from, to] of [["-90kg", "-85kg"], ["-105kg", "-95kg"], ["+105kg", "+110kg"]])
+        await tx.query(`UPDATE comp_entries SET weight_class = $2 WHERE comp = 'rhodes-open-2027' AND weight_class = $1`, [from, to]);
+      await tx.query(`INSERT INTO meta (key, value) VALUES ('open_classes_v3_undone', now()::text)`);
     }
     const [katanaDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'top_prize_katana_v1'`);
     if (!katanaDone) {
