@@ -1711,8 +1711,8 @@ async function Moments({ k }: { k: string }) {
           88 Moments <small>{orders.length} ORDERS · ${open.reduce((n, o) => n + o.total, 0)} OPEN</small>
         </h2>
         <p className="muted" style={{ marginTop: 0 }}>
-          Public page: <Link href="/moments" target="_blank">/moments ↗</Link>. No payment is taken online: send the preview, then
-          ask for payment once they approve.
+          Public page: <Link href="/moments" target="_blank">/moments ↗</Link>. Risers book before a comp so you know who to
+          follow with the camera. No payment is taken online: send the preview, then ask for payment once they approve.
         </p>
       </div>
       {orders.length === 0 ? (
@@ -1726,7 +1726,7 @@ async function Moments({ k }: { k: string }) {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Event · moment</th>
+                <th>Event · how to find them</th>
                 <th>Pieces</th>
                 <th className="num">Total</th>
                 <th>Contact</th>

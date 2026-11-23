@@ -2,7 +2,7 @@
 
 import { startTransition, useActionState, useState } from "react";
 import { orderMoments, type MomentState } from "@/app/(site)/moments/actions";
-import { MOMENTS_FULL_SET, MOMENT_EVENTS, MOMENT_ITEMS, SHIRT_SIZES, momentsTotal } from "@/lib/momentsConfig";
+import { MOMENTS_FULL_SET, MOMENTS_ITEMS_SUM, MOMENT_EVENTS, MOMENT_ITEMS, SHIRT_SIZES, momentsTotal } from "@/lib/momentsConfig";
 import { SITE } from "@/lib/site";
 import { Arrow, Check, Instagram } from "./Icons";
 
@@ -27,10 +27,10 @@ export function MomentsForm() {
           <div className="tick">
             <Check />
           </div>
-          <h3>Order received{state.name ? `, ${state.name}` : ""}</h3>
+          <h3>You&apos;re booked{state.name ? `, ${state.name}` : ""}</h3>
           <p>
-            {state.count} {state.count === 1 ? "piece" : "pieces"} · <b>${state.total}</b>. We&apos;ll pick your best shots, send you a
-            preview of the artwork, and only ask you to pay once you&apos;re happy with it.
+            {state.count} {state.count === 1 ? "piece" : "pieces"} · <b>${state.total}</b>. We&apos;ll find you on the day and keep the
+            camera on you. Afterwards we send a preview of your artwork, and you only pay once you&apos;re happy with it.
           </p>
           <a className="ig-card" href={SITE.instagramUrl} target="_blank" rel="noreferrer">
             <Instagram />
@@ -53,8 +53,8 @@ export function MomentsForm() {
   return (
     <form className="form-card" onSubmit={submit} noValidate id="order">
       <div className="form-title">
-        <h3>Order</h3>
-        <span>Pay after you approve</span>
+        <h3>Book</h3>
+        <span>Before your comp · pay after you approve</span>
       </div>
       {err && !err.field ? (
         <div className="form-error" role="alert">
@@ -74,7 +74,7 @@ export function MomentsForm() {
           ))}
         </div>
         <button type="button" className="mo-all" onClick={() => setPicked(all ? ["framed"] : MOMENT_ITEMS.map((i) => i.id))}>
-          {all ? "Just the framed print" : `Full Risers Moment Package · $${MOMENTS_FULL_SET}`}
+          {all ? "Just the framed print" : `Full Risers Moment Package · $${MOMENTS_FULL_SET} (save $${MOMENTS_ITEMS_SUM - MOMENTS_FULL_SET})`}
         </button>
         {fieldErr("items")}
       </div>
@@ -95,10 +95,10 @@ export function MomentsForm() {
       ) : null}
 
       <div className="field" data-invalid={invalid("event")}>
-        <label htmlFor="m-event">Event</label>
+        <label htmlFor="m-event">Which comp should we shoot you at?</label>
         <select id="m-event" name="event" value={event} onChange={(e) => setEvent(e.target.value)}>
           <option value="" disabled>
-            Which event?
+            Pick the event
           </option>
           {MOMENT_EVENTS.map((ev) => (
             <option key={ev}>{ev}</option>
@@ -108,15 +108,15 @@ export function MomentsForm() {
         {fieldErr("event")}
       </div>
       <div className="field" data-invalid={invalid("moment")}>
-        <label htmlFor="m-moment">Your moment</label>
+        <label htmlFor="m-moment">Help us find you</label>
         <textarea
           id="m-moment"
           name="moment"
           rows={3}
           maxLength={600}
-          placeholder="Who you pulled, which arm, roughly when. The final? The comeback? The roar after the pin?"
+          placeholder="Division and arm(s), what you'll be wearing, anything you want captured (the walk-out, your roar, a rival)…"
         />
-        {fieldErr("moment") ?? <p className="field-hint">We shoot Risers' matches at 88 events and Nationals, and pick the best frames for you.</p>}
+        {fieldErr("moment") ?? <p className="field-hint">On the day the camera follows you: warm-up, every match, the result.</p>}
       </div>
 
       <div className="field" data-invalid={invalid("riser")}>
@@ -195,11 +195,11 @@ export function MomentsForm() {
         <b>${total}</b>
       </div>
       <button className="btn btn-primary submit" type="submit" disabled={pending || !picked.length}>
-        {pending ? "Sending…" : "Order my moment"} {!pending ? <Arrow /> : null}
+        {pending ? "Booking…" : "Book my moment"} {!pending ? <Arrow /> : null}
       </button>
       <p className="fine">
-        Nothing to pay now. We send a preview first; you pay once you approve it. Every order includes the high-res digital
-        artwork. Printed pieces take about 2–3 weeks.
+        Nothing to pay now. We shoot you at the comp, send a preview, and you pay once you approve it. Every booking includes the
+        high-res digital artwork. Printed pieces take about 2–3 weeks.
       </p>
     </form>
   );

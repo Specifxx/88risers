@@ -31,9 +31,9 @@ export async function orderMoments(_prev: MomentState, form: FormData): Promise<
   if (name.length < 2 || name.length > 80) return { status: "error", field: "name", message: "Tell us your full name." };
   if (!phone) return { status: "error", field: "phone", message: "That number doesn't look right. Try something like 0412 345 678." };
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { status: "error", field: "email", message: "That email doesn't look right." };
-  if (!(MOMENT_EVENTS as readonly string[]).includes(event)) return { status: "error", field: "event", message: "Pick the event." };
+  if (!(MOMENT_EVENTS as readonly string[]).includes(event)) return { status: "error", field: "event", message: "Pick the comp we should shoot you at." };
   if (event === "Other event" && eventOther.length < 2) return { status: "error", field: "event", message: "Tell us which event." };
-  if (moment.length < 5) return { status: "error", field: "moment", message: "Tell us which match or moment (who you pulled, roughly when)." };
+  if (moment.length < 5) return { status: "error", field: "moment", message: "Tell us your division and arm, so we can find you on the day." };
   if (!items.length) return { status: "error", field: "items", message: "Pick at least one piece." };
   if (items.includes("shirt") && !(SHIRT_SIZES as readonly string[]).includes(shirt)) return { status: "error", field: "shirt_size", message: "Pick a shirt size." };
   if (delivery !== "pickup" && delivery !== "post") return { status: "error", field: "delivery", message: "Pick up at a meet, or post?" };
