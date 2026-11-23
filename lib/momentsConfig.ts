@@ -4,7 +4,7 @@
  * pieces are add-ons, priced at roughly 1.6–1.8× what one-off production costs. Client-safe.
  */
 /** Camera coverage at the comp + your sumi-e artwork + the high-res digital file. Everyone pays this. */
-export const MOMENTS_BASE = 99;
+export const MOMENTS_BASE = 49;
 export const MOMENT_ITEMS = [
   { id: "framed", name: "Framed A3 print", blurb: "Archival print on textured paper, black frame, 88 Risers plaque", price: 120 },
   { id: "metal", name: "A3 metal print", blurb: "Brushed aluminium plate with stand-off mounts", price: 150 },
@@ -16,7 +16,7 @@ export type MomentItemId = (typeof MOMENT_ITEMS)[number]["id"];
 /** Booking + all five pieces priced one by one. */
 export const MOMENTS_ITEMS_SUM = MOMENTS_BASE + MOMENT_ITEMS.reduce((n, i) => n + i.price, 0);
 /** The full Risers Moment Package: booking + all five pieces, bundle price. */
-export const MOMENTS_FULL_SET = 599;
+export const MOMENTS_FULL_SET = 549;
 /** Paid when booking, to hold the camera for you. Non-refundable; it comes off the total. */
 export const MOMENTS_DEPOSIT = 30;
 export const SHIRT_SIZES = ["S", "M", "L", "XL", "2XL", "3XL"] as const;
