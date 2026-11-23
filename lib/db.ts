@@ -287,6 +287,8 @@ CREATE TABLE IF NOT EXISTS moment_orders (
   status      text NOT NULL DEFAULT 'new',
   created_at  timestamptz NOT NULL DEFAULT now()
 );
+-- 88 Moments is for registered Risers: the Riser ID (if they have one) the order was checked against.
+ALTER TABLE moment_orders ADD COLUMN IF NOT EXISTS riser_id integer;
 -- A featured video on a Riser's profile (link or /video/name.mp4), with a caption.
 ALTER TABLE pullers ADD COLUMN IF NOT EXISTS highlight_url text;
 ALTER TABLE pullers ADD COLUMN IF NOT EXISTS highlight_title text;
@@ -422,7 +424,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v48";
+const MIGRATION_MARKER = "founders_v49";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [

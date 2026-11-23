@@ -6,7 +6,7 @@ import { MOMENT_EVENTS, MOMENT_ITEMS, SHIRT_SIZES, momentsTotal } from "@/lib/mo
 
 export type MomentState =
   | { status: "idle" }
-  | { status: "error"; message: string; field?: "name" | "phone" | "email" | "event" | "moment" | "items" | "shirt_size" | "delivery" | "consent" }
+  | { status: "error"; message: string; field?: "riser" | "name" | "phone" | "email" | "event" | "moment" | "items" | "shirt_size" | "delivery" | "consent" }
   | { status: "ok"; name: string; total: number; count: number };
 
 /** Records an 88 Moments order. Payment is arranged afterwards, once the artwork is approved. */
@@ -25,6 +25,8 @@ export async function orderMoments(_prev: MomentState, form: FormData): Promise<
   const shirt = items.includes("shirt") ? s("shirt_size") : "";
   const delivery = s("delivery");
   const notes = s("notes").slice(0, 400) || null;
+  const riserRaw = s("riser_id").replace(/^#/, "");
+  const riserId = /^[0-9]{1,4}$/.test(riserRaw) ? Number(riserRaw) : null;
 
   if (name.length < 2 || name.length > 80) return { status: "error", field: "name", message: "Tell us your full name." };
   if (!phone) return { status: "error", field: "phone", message: "That number doesn't look right. Try something like 0412 345 678." };
@@ -41,10 +43,32 @@ export async function orderMoments(_prev: MomentState, form: FormData): Promise<
   const total = momentsTotal(items);
   try {
     const db = await getDb();
+    // Risers only: a real Riser ID, or the mobile they registered with (registered but no ID yet).
+    let riser: number | null = null;
+    if (riserRaw) {
+      if (riserId === null) return { status: "error", field: "riser", message: "Riser IDs are numbers like 017." };
+      const [p] = await db.query<{ id: number }>(`SELECT id FROM pullers WHERE id = $1`, [riserId]);
+      if (!p)
+        return {
+          status: "error",
+          field: "riser",
+          message: `There's no Riser #${String(riserId).padStart(3, "0")}. Check your number, or leave it blank and use the mobile you registered with.`,
+        };
+      riser = p.id;
+    } else {
+      const [r] = await db.query<{ puller_id: number | null }>(`SELECT puller_id FROM registrations WHERE phone = $1`, [phone]);
+      if (!r)
+        return {
+          status: "error",
+          field: "riser",
+          message: "88 Moments is for registered Risers. Add your Riser ID, or register first (it's free) with this mobile number.",
+        };
+      riser = r.puller_id;
+    }
     await db.query(
-      `INSERT INTO moment_orders (name, phone, email, instagram, event, moment, items, shirt_size, total, delivery, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-      [name, phone, email, instagram, event === "Other event" ? `Other: ${eventOther}` : event, moment, items, shirt || null, total, delivery, notes],
+      `INSERT INTO moment_orders (name, phone, email, instagram, event, moment, items, shirt_size, total, delivery, notes, riser_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [name, phone, email, instagram, event === "Other event" ? `Other: ${eventOther}` : event, moment, items, shirt || null, total, delivery, notes, riser],
     );
     return { status: "ok", name: name.split(" ")[0], total, count: items.length };
   } catch (err) {

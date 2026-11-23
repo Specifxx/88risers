@@ -14,7 +14,7 @@ const NAV = [
   { href: "/supermatch", label: "Supermatch" },
   { href: "/play", label: "Play" },
   { href: "/tv", label: "TV" },
-  { href: "/gallery", label: "Gallery" },
+  { href: "/moments", label: "Moments" },
   { href: "/shop", label: "Shop" },
 ];
 /** Phone menu: everything. */

@@ -9,5 +9,5 @@ export const MOMENT_ITEMS = [
 export type MomentItemId = (typeof MOMENT_ITEMS)[number]["id"];
 export const MOMENTS_FULL_SET = MOMENT_ITEMS.reduce((n, i) => n + i.price, 0); // $270
 export const SHIRT_SIZES = ["S", "M", "L", "XL", "2XL", "3XL"] as const;
-export const MOMENT_EVENTS = ["Rhodes Open 2027", "Club supermatch", "Club meet / table time", "Other event"] as const;
+export const MOMENT_EVENTS = ["Nationals", "Rhodes Open 2027", "State titles", "Club supermatch", "Club meet / table time", "Other event"] as const;
 export const momentsTotal = (ids: string[]) => MOMENT_ITEMS.filter((i) => ids.includes(i.id)).reduce((n, i) => n + i.price, 0);

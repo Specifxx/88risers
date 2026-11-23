@@ -1695,7 +1695,7 @@ async function RhodesOpen({ k, base }: { k: string; base: string }) {
 
 type MomentOrder = {
   id: number; name: string; phone: string; email: string | null; instagram: string | null; event: string; moment: string;
-  items: string[]; shirt_size: string | null; total: number; delivery: string; notes: string | null; status: string; created_at: Date;
+  items: string[]; shirt_size: string | null; total: number; riser_id: number | null; delivery: string; notes: string | null; status: string; created_at: Date;
 };
 const MO_STATUS: Record<string, string> = { new: "New", preview: "Preview sent", paid: "Paid", delivered: "Delivered" };
 
@@ -1738,6 +1738,14 @@ async function Moments({ k }: { k: string }) {
                 <tr key={o.id}>
                   <td>
                     <b>{o.name}</b>
+                    {o.riser_id ? (
+                      <>
+                        {" "}
+                        <Link href={`/pullers/${o.riser_id}`}>{formatId(o.riser_id)}</Link>
+                      </>
+                    ) : (
+                      <span className="muted"> (registered, no ID yet)</span>
+                    )}
                     <br />
                     <span className="muted">{fmtWhen(new Date(o.created_at))}</span>
                   </td>

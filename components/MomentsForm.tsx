@@ -116,9 +116,20 @@ export function MomentsForm() {
           maxLength={600}
           placeholder="Who you pulled, which arm, roughly when. The final? The comeback? The roar after the pin?"
         />
-        {fieldErr("moment") ?? <p className="field-hint">We shoot every match at 88 events and pick the best frames for you.</p>}
+        {fieldErr("moment") ?? <p className="field-hint">We shoot Risers' matches at 88 events and Nationals, and pick the best frames for you.</p>}
       </div>
 
+      <div className="field" data-invalid={invalid("riser")}>
+        <label htmlFor="m-riser">
+          Riser ID <em>Risers only</em>
+        </label>
+        <input id="m-riser" name="riser_id" type="text" inputMode="numeric" placeholder="e.g. 017" maxLength={5} />
+        {fieldErr("riser") ?? (
+          <p className="field-hint">
+            No ID yet? Leave it blank and use the mobile you <a href="/join">registered</a> with.
+          </p>
+        )}
+      </div>
       <div className="field" data-invalid={invalid("name")}>
         <label htmlFor="m-name">Full name</label>
         <input id="m-name" name="name" type="text" autoComplete="name" placeholder="Your name" maxLength={80} />
