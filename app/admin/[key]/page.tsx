@@ -21,6 +21,7 @@ import { SITE, formatId } from "@/lib/site";
 import { ARMS_LABEL, OPEN, bracketCounts, classLabel, openEntries } from "@/lib/rhodesOpen";
 import { MOMENT_ITEMS } from "@/lib/momentsConfig";
 import { getDb } from "@/lib/db";
+import { getTodos } from "@/lib/todos";
 import {
   deleteEvent,
   deleteInterest,
@@ -37,6 +38,9 @@ import {
   openCheckin,
   setRequestedId,
   deleteOpenEntry,
+  addTodo,
+  toggleTodo,
+  deleteTodo,
   setMomentStatus,
   setCoinPaid,
   addResult,
@@ -172,6 +176,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
       <main className="wrap admin-main">
         {msg ? <div className="flash ok">{msg}</div> : null}
         {err ? <div className="flash bad">{err}</div> : null}
+        <Todos k={k} tab={tab} />
         {resetLink ? (
           <div className="flash ok reset-flash">
             <b>Reset link for @{resetFor}</b>
@@ -1811,5 +1816,51 @@ async function Moments({ k }: { k: string }) {
         </div>
       )}
     </>
+  );
+}
+
+/* ─────────── To-do list ─────────── */
+
+async function Todos({ k, tab }: { k: string; tab: string }) {
+  const todos = await getTodos();
+  const open = todos.filter((t) => !t.done);
+  const hidden = (
+    <>
+      <input type="hidden" name="key" value={k} />
+      <input type="hidden" name="tab" value={tab} />
+    </>
+  );
+  return (
+    <details className="panel todo-panel" open={open.length > 0}>
+      <summary>
+        <b>To do</b> <span className="muted">{open.length ? `${open.length} open` : "all done"}</span>
+      </summary>
+      <ul className="todo-list">
+        {todos.map((t) => (
+          <li key={t.id} className={t.done ? "done" : undefined}>
+            <form action={toggleTodo}>
+              {hidden}
+              <input type="hidden" name="id" value={t.id} />
+              <button className="todo-tick" aria-label={t.done ? "Mark not done" : "Mark done"}>
+                {t.done ? "✓" : ""}
+              </button>
+            </form>
+            <span className="todo-text">{t.text}</span>
+            <form action={deleteTodo}>
+              {hidden}
+              <input type="hidden" name="id" value={t.id} />
+              <button className="todo-x" aria-label="Remove">
+                ×
+              </button>
+            </form>
+          </li>
+        ))}
+      </ul>
+      <form action={addTodo} className="todo-add">
+        {hidden}
+        <input name="text" className="input" placeholder="Add a to-do (e.g. call the venue)" maxLength={300} />
+        <button className="btn btn-sm btn-ghost">Add</button>
+      </form>
+    </details>
   );
 }

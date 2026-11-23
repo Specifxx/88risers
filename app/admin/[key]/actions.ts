@@ -796,6 +796,34 @@ export async function setMomentStatus(form: FormData) {
   done(key, "moments", status === "delete" ? "Order removed." : "Order updated.");
 }
 
+/* ─────────── To-do list (top of HQ) ─────────── */
+
+const backTo = (f: FormData) => (str(f, "tab") ?? "registrations") as Tab;
+
+export async function addTodo(form: FormData) {
+  const key = guard(form);
+  const text = str(form, "text");
+  const { getTodos, newTodo, saveTodos } = await import("@/lib/todos");
+  if (text) await saveTodos([...(await getTodos()), newTodo(text)]);
+  done(key, backTo(form), text ? "Added to the to-do list." : "Type something to add.", !text);
+}
+
+export async function toggleTodo(form: FormData) {
+  const key = guard(form);
+  const id = str(form, "id");
+  const { getTodos, saveTodos } = await import("@/lib/todos");
+  await saveTodos((await getTodos()).map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+  done(key, backTo(form), "To-do updated.");
+}
+
+export async function deleteTodo(form: FormData) {
+  const key = guard(form);
+  const id = str(form, "id");
+  const { getTodos, saveTodos } = await import("@/lib/todos");
+  await saveTodos((await getTodos()).filter((t) => t.id !== id));
+  done(key, backTo(form), "To-do removed.");
+}
+
 /** Connects the club's Instagram (Professional) account so our reels play directly on 88RisersTV. */
 export async function saveIgToken(form: FormData) {
   const key = guard(form);

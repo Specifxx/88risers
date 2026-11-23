@@ -424,7 +424,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v52";
+const MIGRATION_MARKER = "founders_v53";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [
@@ -558,6 +558,23 @@ async function migrate(db: Db) {
       for (const [from, to] of [["-90kg", "-85kg"], ["-105kg", "-95kg"], ["+105kg", "+110kg"]])
         await tx.query(`UPDATE comp_entries SET weight_class = $2 WHERE comp = 'rhodes-open-2027' AND weight_class = $1`, [from, to]);
       await tx.query(`INSERT INTO meta (key, value) VALUES ('open_classes_v3_undone', now()::text)`);
+    }
+    // First item on the admin to-do list (once, so ticking or removing it sticks).
+    const [zenTodo] = await tx.query(`SELECT 1 FROM meta WHERE key = 'todo_zen_seeded'`);
+    if (!zenTodo) {
+      const [cur] = await tx.query<{ value: string }>(`SELECT value FROM meta WHERE key = 'admin_todos'`);
+      let list: unknown[] = [];
+      try {
+        list = cur?.value ? JSON.parse(cur.value) : [];
+      } catch {}
+      list.push({
+        id: "zen-massage",
+        text: "Reach out to Japanese Zen Platinum (massage) about a 20% off partnership for 88 Risers",
+        done: false,
+        at: Date.now(),
+      });
+      await tx.query(`INSERT INTO meta (key, value) VALUES ('admin_todos', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [JSON.stringify(list)]);
+      await tx.query(`INSERT INTO meta (key, value) VALUES ('todo_zen_seeded', now()::text)`);
     }
     const [katanaDone] = await tx.query(`SELECT 1 FROM meta WHERE key = 'top_prize_katana_v1'`);
     if (!katanaDone) {

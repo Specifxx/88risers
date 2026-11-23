@@ -9358,3 +9358,73 @@ b.gold {
   font-size: 12px;
   color: var(--muted);
 }
+
+/* admin to-do list */
+.todo-panel {
+  margin-bottom: 18px;
+  padding: 14px 18px;
+}
+.todo-panel summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+.todo-panel summary b {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 13px;
+  color: var(--gold-hi);
+}
+.todo-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.todo-list li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+.todo-list form {
+  margin: 0;
+}
+.todo-tick {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid var(--line-strong);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--bone);
+  cursor: pointer;
+  line-height: 1;
+}
+.todo-list li.done .todo-tick {
+  background: var(--red);
+  border-color: var(--red);
+}
+.todo-list li.done .todo-text {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.todo-x {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+}
+.todo-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.todo-add .input {
+  flex: 1;
+  min-height: 0;
+  padding: 8px 12px;
+}
