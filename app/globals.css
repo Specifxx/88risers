@@ -9358,9 +9358,3 @@ b.gold {
   font-size: 12px;
   color: var(--muted);
 }
-
-.open-coc-prizes small {
-  display: block;
-  font-size: 12px;
-  color: var(--muted);
-}

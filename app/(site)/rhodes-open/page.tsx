@@ -11,7 +11,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "Rhodes Open 2027",
   description:
-    "Rhodes Open 2027 · Sunday 4 April 2027 at Rhodes Amphitheatre. Right and left arm, four weight classes each, 24 heavy medals, eight champion cards, $500 cash and tungsten in the Champion of Champions finals, and the Chalk season's Top Riser presented with the 88 Risers katana. Entries open (preliminary draft).",
+    "Rhodes Open 2027 · Sunday 4 April 2027 at Rhodes Amphitheatre. Right and left arm, five weight classes each, ten champion cards, $500 cash in the Champion of Champions finals, and the Chalk season's Top Riser presented with the 88 Risers katana. Entries open (preliminary draft).",
 };
 
 const TBC = <span className="open-tbc">TBC</span>;
@@ -43,7 +43,7 @@ export default async function RhodesOpenPage() {
                 {OPEN.date} · {OPEN.venue} · Start {TBC}
               </p>
               <p className="lede">
-                Right arm. Left arm. Four weight classes each. <b>24 heavy medals. Eight champion cards.</b> Every puller leaves with a coin.
+                Right arm. Left arm. Five weight classes each. <b>Ten champion cards.</b> Every puller leaves with a coin.
               </p>
               <div className="open-cash">
                 <b>$500 cash</b>
@@ -68,49 +68,44 @@ export default async function RhodesOpenPage() {
 
               <div className="open-block">
                 <h2>Prizes</h2>
-                <p className="open-sub">Every division, both arms · 8 divisions</p>
+                <p className="open-sub">Every division, both arms</p>
                 <ul className="open-prizes">
                   <li>
                     <i>🥇</i>
                     <span>
-                      <b>Heavy cast 88 gold medal</b> + custom cased 88 Risers Champion Card + supplement pack +{" "}
-                      <Link href="/moments">88 Moments</Link> artwork of your winning pull
+                      <b>Custom cased 88 Risers Champion Card</b> + supplement pack
                     </span>
                   </li>
                   <li>
                     <i>🥈</i>
                     <span>
-                      <b>Heavy cast 88 silver medal</b> + Rhodes Open shirt + supplement pack
+                      <b>Rhodes Open shirt</b> + supplement pack
                     </span>
                   </li>
                   <li>
                     <i>🥉</i>
                     <span>
-                      <b>Heavy cast 88 bronze medal</b> + supplement pack
+                      <b>Supplement pack</b>
                     </span>
                   </li>
                 </ul>
-                <p className="open-note">Every entrant also gets the limited Rhodes Open 2027 collectible coin.</p>
               </div>
 
               <div className="open-block open-coc">
                 <h2>Champion of Champions</h2>
-                <p className="open-sub">Open weight · $500 cash · tungsten</p>
+                <p className="open-sub">Open weight · $500 cash</p>
                 <p>
-                  Every class winner goes again. The four right-arm champions pull off for the <b>Right-arm Absolute</b>, and
-                  the four left-arm champions for the <b>Left-arm Absolute</b>, no weight limits. Each Absolute champion takes
-                  home <b>$250 and an engraved tungsten 88 cube</b>: about 2.5 kg that fits in your palm.
+                  Every class winner goes again. The five right-arm champions pull off for the <b>Right-arm Absolute</b>, and
+                  the five left-arm champions for the <b>Left-arm Absolute</b>, no weight limits.
                 </p>
                 <div className="open-coc-prizes">
                   <div>
                     <span>Right-arm Absolute</span>
                     <b>$250</b>
-                    <small>+ tungsten 88 cube</small>
                   </div>
                   <div>
                     <span>Left-arm Absolute</span>
                     <b>$250</b>
-                    <small>+ tungsten 88 cube</small>
                   </div>
                 </div>
                 <p className="open-note">Cash paid by bank transfer after the event. Format for the finals: {TBC}</p>
