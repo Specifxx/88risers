@@ -62,7 +62,7 @@ export default async function RhodesOpenPage() {
                   ))}
                 </div>
                 <p className="open-note">
-                  Weigh-ins: {TBC} · Allowance: {TBC}
+                  Weigh-ins: <b>{OPEN.weighIns}</b> · Time and allowance: {TBC}
                 </p>
               </div>
 

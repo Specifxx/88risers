@@ -5,7 +5,9 @@ export const OPEN = {
   title: "Rhodes Open 2027",
   date: "Sunday 4 April 2027",
   venue: "Rhodes Amphitheatre",
-  classes: ["-70kg", "-80kg", "-90kg", "-100kg", "+100kg"] as const,
+  classes: ["-75kg", "-85kg", "-95kg", "-110kg", "+110kg"] as const,
+  /** Weigh-ins happen at the venue on the day. */
+  weighIns: "On the day, at the venue",
 };
 export type OpenClass = (typeof OPEN.classes)[number];
 export type OpenArms = "right" | "left" | "both";
