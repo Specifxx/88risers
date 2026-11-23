@@ -17,7 +17,7 @@ import { createResetToken, hashPassword } from "@/lib/auth";
 import { grant, itemById } from "@/lib/coins";
 import { fmtOdds, oddsOf, payoutAt } from "@/lib/odds";
 
-type Tab = "registrations" | "pullers" | "matches" | "events" | "tv" | "shop" | "coins" | "chalk" | "open";
+type Tab = "registrations" | "pullers" | "matches" | "events" | "tv" | "shop" | "coins" | "chalk" | "open" | "moments";
 
 const str = (f: FormData, k: string) => {
   const v = f.get(k);
@@ -783,6 +783,17 @@ export async function deleteOpenEntry(form: FormData) {
   const db = await getDb();
   const [r] = await db.query<{ name: string }>(`DELETE FROM comp_entries WHERE id = $1 RETURNING name`, [int(form, "id")]);
   done(key, "open", r ? `Removed ${r.name}'s entry.` : "Entry already removed.");
+}
+
+/** 88 Moments: move an order along (new → preview sent → paid → delivered), or remove it. */
+export async function setMomentStatus(form: FormData) {
+  const key = guard(form);
+  const status = str(form, "status");
+  const db = await getDb();
+  if (status === "delete") await db.query(`DELETE FROM moment_orders WHERE id = $1`, [int(form, "id")]);
+  else if (status && ["new", "preview", "paid", "delivered"].includes(status))
+    await db.query(`UPDATE moment_orders SET status = $2 WHERE id = $1`, [int(form, "id"), status]);
+  done(key, "moments", status === "delete" ? "Order removed." : "Order updated.");
 }
 
 /** Connects the club's Instagram (Professional) account so our reels play directly on 88RisersTV. */

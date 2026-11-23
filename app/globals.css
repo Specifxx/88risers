@@ -9104,3 +9104,178 @@ b.gold {
   margin: 0;
   color: var(--muted);
 }
+
+/* ─────────── 88 Moments ─────────── */
+.mo-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: clamp(28px, 5vw, 72px);
+  align-items: center;
+}
+.mo-page h1 {
+  font-size: clamp(56px, 8vw, 120px);
+}
+.mo-art {
+  position: relative;
+  display: block;
+  aspect-ratio: 1199 / 1312;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  cursor: zoom-in;
+}
+.mo-art img {
+  object-fit: cover;
+}
+.mo-price-tag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  margin: 6px 0 22px;
+  color: var(--muted);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.mo-price-tag b {
+  font: 400 clamp(30px, 3.6vw, 42px) / 1 var(--f-display);
+  color: var(--gold-hi);
+}
+.mo-collection {
+  position: relative;
+  aspect-ratio: 1536 / 1024;
+  margin: clamp(40px, 6vw, 72px) 0;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.mo-collection img {
+  object-fit: cover;
+}
+.mo-grid {
+  margin-top: 0;
+}
+.mo-list,
+.mo-steps {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.mo-list {
+  list-style: none;
+}
+.mo-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.mo-list small {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+}
+.mo-list i {
+  font: 400 28px / 1 var(--f-display);
+  font-style: normal;
+  color: var(--gold-hi);
+}
+.mo-list .mo-set {
+  border-color: rgba(213, 182, 122, 0.6);
+  background: rgba(213, 182, 122, 0.08);
+}
+.mo-steps {
+  padding-left: 20px;
+  color: var(--muted);
+}
+.mo-steps b {
+  color: var(--bone);
+}
+.mo-items {
+  display: grid;
+  gap: 8px;
+}
+.mo-items label {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.mo-items label.on {
+  border-color: var(--red);
+  background: rgba(212, 42, 47, 0.12);
+}
+.mo-items input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--red);
+  margin: 0;
+}
+.mo-items b {
+  color: var(--gold-hi);
+}
+.mo-all {
+  margin-top: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--gold-hi);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.mo-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.mo-seg {
+  grid-template-columns: 1fr 1fr;
+}
+.mo-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 4px 0 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.mo-total span {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.mo-total b {
+  font: 400 40px / 1 var(--f-display);
+  color: var(--gold-hi);
+}
+@media (max-width: 860px) {
+  .mo-hero {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 420px) {
+  .mo-two {
+    grid-template-columns: 1fr;
+  }
+}
+.field .mo-items label {
+  margin: 0;
+  font: 600 15px/1.3 var(--f-body);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--bone);
+}

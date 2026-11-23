@@ -97,6 +97,9 @@ export default async function SupermatchPage() {
           <a className="link-arrow" href="#past-supermatches" style={{ marginTop: 14 }}>
             Watch past supermatches <span>↓</span>
           </a>
+          <Link className="link-arrow" href="/moments" style={{ marginTop: 10, marginLeft: 18 }}>
+            Your moment as sumi-e art <span>→</span>
+          </Link>
         </div>
       </section>
 

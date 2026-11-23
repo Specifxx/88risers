@@ -19,6 +19,8 @@ import { PRODUCTS } from "@/lib/shop";
 import { type LiveState, tvLive } from "@/lib/tv";
 import { SITE, formatId } from "@/lib/site";
 import { ARMS_LABEL, OPEN, bracketCounts, classLabel, openEntries } from "@/lib/rhodesOpen";
+import { MOMENT_ITEMS } from "@/lib/momentsConfig";
+import { getDb } from "@/lib/db";
 import {
   deleteEvent,
   deleteInterest,
@@ -35,6 +37,7 @@ import {
   openCheckin,
   setRequestedId,
   deleteOpenEntry,
+  setMomentStatus,
   setCoinPaid,
   addResult,
   deleteResult,
@@ -82,6 +85,7 @@ const TABS = [
   ["chalk", "Chalk"],
   ["logs", "Training logs"],
   ["open", "Rhodes Open"],
+  ["moments", "88 Moments"],
 ] as const;
 type Tab = (typeof TABS)[number][0];
 
@@ -185,6 +189,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
         {tab === "shop" ? <Shop interest={interest} k={k} /> : null}
         {tab === "chalk" ? <ChalkTab accts={accts} k={k} /> : null}
         {tab === "open" ? <RhodesOpen k={k} base={base} /> : null}
+        {tab === "moments" ? <Moments k={k} /> : null}
         {tab === "logs" ? <TrainingLogs base={base} who={typeof sp.who === "string" ? sp.who : null} /> : null}
         {tab === "coins" ? <Coins sms={sms} accts={accts} redeems={redeems} pullers={pullers} backers={backers} giveaway={giveaway} k={k} /> : null}
 
@@ -1674,6 +1679,116 @@ async function RhodesOpen({ k, base }: { k: string; base: string }) {
                       <input type="hidden" name="key" value={k} />
                       <input type="hidden" name="id" value={e.id} />
                       <ConfirmButton message={`Remove ${e.name}'s Rhodes Open entry?`}>Remove</ConfirmButton>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ─────────── 88 Moments ─────────── */
+
+type MomentOrder = {
+  id: number; name: string; phone: string; email: string | null; instagram: string | null; event: string; moment: string;
+  items: string[]; shirt_size: string | null; total: number; delivery: string; notes: string | null; status: string; created_at: Date;
+};
+const MO_STATUS: Record<string, string> = { new: "New", preview: "Preview sent", paid: "Paid", delivered: "Delivered" };
+
+async function Moments({ k }: { k: string }) {
+  const db = await getDb();
+  const orders = await db.query<MomentOrder>(`SELECT * FROM moment_orders ORDER BY created_at DESC`);
+  const open = orders.filter((o) => o.status !== "delivered");
+  const itemName = (id: string) => MOMENT_ITEMS.find((i) => i.id === id)?.name ?? id;
+  return (
+    <>
+      <div className="panel">
+        <h2 className="panel-title">
+          88 Moments <small>{orders.length} ORDERS · ${open.reduce((n, o) => n + o.total, 0)} OPEN</small>
+        </h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Public page: <Link href="/moments" target="_blank">/moments ↗</Link>. No payment is taken online: send the preview, then
+          ask for payment once they approve.
+        </p>
+      </div>
+      {orders.length === 0 ? (
+        <div className="panel empty">
+          <b>No orders yet</b>
+          Share 88risers.com/moments after your next event.
+        </div>
+      ) : (
+        <div className="panel" style={{ overflowX: "auto" }}>
+          <table className="sm-backers">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Event · moment</th>
+                <th>Pieces</th>
+                <th className="num">Total</th>
+                <th>Contact</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((o) => (
+                <tr key={o.id}>
+                  <td>
+                    <b>{o.name}</b>
+                    <br />
+                    <span className="muted">{fmtWhen(new Date(o.created_at))}</span>
+                  </td>
+                  <td style={{ maxWidth: 280 }}>
+                    <b>{o.event}</b>
+                    <br />
+                    <span className="muted">{o.moment}</span>
+                    {o.notes ? (
+                      <>
+                        <br />
+                        <i className="muted">{o.notes}</i>
+                      </>
+                    ) : null}
+                  </td>
+                  <td>
+                    {o.items.map(itemName).join(", ")}
+                    {o.shirt_size ? ` (shirt ${o.shirt_size})` : ""}
+                    <br />
+                    <span className="muted">{o.delivery === "post" ? "Post" : "Pick up at a meet"}</span>
+                  </td>
+                  <td className="num">${o.total}</td>
+                  <td>
+                    <a href={`tel:${o.phone}`}>{prettyPhone(o.phone)}</a>
+                    {o.email ? (
+                      <>
+                        <br />
+                        <a href={`mailto:${o.email}`}>{o.email}</a>
+                      </>
+                    ) : null}
+                    {o.instagram ? (
+                      <>
+                        <br />
+                        <a href={`https://www.instagram.com/${o.instagram}/`} target="_blank" rel="noreferrer">
+                          @{o.instagram}
+                        </a>
+                      </>
+                    ) : null}
+                  </td>
+                  <td>
+                    <form action={setMomentStatus} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <input type="hidden" name="key" value={k} />
+                      <input type="hidden" name="id" value={o.id} />
+                      <select name="status" defaultValue={o.status} className="input" style={{ minHeight: 0, padding: "6px 8px" }}>
+                        {Object.entries(MO_STATUS).map(([v, l]) => (
+                          <option key={v} value={v}>
+                            {l}
+                          </option>
+                        ))}
+                        <option value="delete">Remove order</option>
+                      </select>
+                      <button className="btn btn-sm btn-ghost">Save</button>
                     </form>
                   </td>
                 </tr>

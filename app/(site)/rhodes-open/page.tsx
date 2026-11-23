@@ -197,6 +197,9 @@ export default async function RhodesOpenPage() {
               </div>
 
               <p className="open-note">
+                Every match is shot on camera. Turn yours into sumi-e artwork with <Link href="/moments">88 Moments →</Link>
+              </p>
+              <p className="open-note">
                 Questions?{" "}
                 <a href={SITE.instagramUrl} target="_blank" rel="noreferrer">
                   DM @{SITE.instagramHandle}

@@ -1,0 +1,102 @@
+import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { MomentsForm } from "@/components/MomentsForm";
+import { MOMENTS_FULL_SET, MOMENT_ITEMS } from "@/lib/momentsConfig";
+
+export const metadata: Metadata = {
+  title: "88 Moments",
+  description: `Your biggest arm wrestling moment, shot at an 88 Risers event and turned into sumi-e ink artwork: framed prints, metal prints, scrolls, shirts and crystal. Up to $${MOMENTS_FULL_SET} for the full set.`,
+  openGraph: { images: ["/moments/opa-artwork.webp"] },
+};
+
+export default function MomentsPage() {
+  return (
+    <section className="page-hero mo-page" style={{ paddingBottom: 90 }}>
+      <div className="wrap">
+        <p className="crumbs">
+          <Link href="/">Home</Link> / 88 Moments
+        </p>
+        <div className="mo-hero">
+          <div>
+            <p className="eyebrow">Event camera · sumi-e ink artwork</p>
+            <h1 className="display">
+              88 <span className="gold-text">Moments.</span>
+            </h1>
+            <p className="lede">
+              We shoot every match at 88 Risers tournaments, supermatches and meets. Pick your moment (the pin, the
+              comeback, the roar) and we turn it into a <b>sumi-e ink artwork</b>, made for your wall.
+            </p>
+            <div className="mo-price-tag">
+              <span>Pieces from</span>
+              <b>$30</b>
+              <span>· the full set</span>
+              <b>${MOMENTS_FULL_SET}</b>
+            </div>
+            <a href="#order" className="btn btn-primary">
+              Order your moment ↓
+            </a>
+          </div>
+          <a className="mo-art" href="/moments/opa-artwork.webp" target="_blank" rel="noreferrer" title="Open full size">
+            <Image src="/moments/opa-artwork.webp" alt="Sumi-e ink artwork of two arm wrestlers locked up at an 88 Risers table, with OPA! in brush script" fill sizes="(max-width: 860px) 100vw, 520px" priority />
+          </a>
+        </div>
+
+        <div className="mo-collection">
+          <Image src="/moments/opa-collection.webp" alt="The OPA! collection: framed print, hanging scroll, metal print, printed shirt and crystal cube" fill sizes="(max-width: 1240px) 100vw, 1200px" />
+        </div>
+
+        <div className="join-grid mo-grid">
+          <div>
+            <div className="open-block">
+              <h2>The pieces</h2>
+              <p className="open-sub">Pick any, or take the full set</p>
+              <ul className="mo-list">
+                {MOMENT_ITEMS.map((i) => (
+                  <li key={i.id}>
+                    <span>
+                      <b>{i.name}</b>
+                      <small>{i.blurb}</small>
+                    </span>
+                    <i>${i.price}</i>
+                  </li>
+                ))}
+                <li className="mo-set">
+                  <span>
+                    <b>The full set</b>
+                    <small>All five pieces of the same moment</small>
+                  </span>
+                  <i>${MOMENTS_FULL_SET}</i>
+                </li>
+              </ul>
+              <p className="open-note">Every order includes the high-res digital artwork. Postage is extra; pick up at a meet is free.</p>
+            </div>
+
+            <div className="open-block">
+              <h2>How it works</h2>
+              <ol className="mo-steps">
+                <li>
+                  <b>Pull at an 88 event.</b> We film and photograph every match.
+                </li>
+                <li>
+                  <b>Order your moment.</b> Tell us the match; nothing to pay yet.
+                </li>
+                <li>
+                  <b>Approve the artwork.</b> We pick the best frame, ink it in our sumi-e style with the red seal and your words,
+                  and send you a preview.
+                </li>
+                <li>
+                  <b>Pay, then it&apos;s made.</b> Printed pieces are ready in about 2–3 weeks, signed and numbered.
+                </li>
+              </ol>
+            </div>
+
+          </div>
+          <div className="open-form-col">
+            <MomentsForm />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
