@@ -74,7 +74,7 @@ export function MomentsForm() {
           ))}
         </div>
         <button type="button" className="mo-all" onClick={() => setPicked(all ? ["framed"] : MOMENT_ITEMS.map((i) => i.id))}>
-          {all ? "Just the framed print" : `The full set · $${MOMENTS_FULL_SET}`}
+          {all ? "Just the framed print" : `Full Risers Moment Package · $${MOMENTS_FULL_SET}`}
         </button>
         {fieldErr("items")}
       </div>

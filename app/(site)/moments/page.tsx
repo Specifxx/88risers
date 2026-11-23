@@ -55,9 +55,9 @@ export default function MomentsPage() {
         <div className="mo-series">
           <div className="mo-series-head">
             <h2>
-              The Moment <span className="gold-text">Series</span>
+              Example <span className="gold-text">moments</span>
             </h2>
-            <p className="open-sub">Every piece signed and numbered</p>
+            <p className="open-sub">What a Risers Moment Package can look like</p>
           </div>
           {SERIES.map((m) => (
             <article key={m.no} className="mo-moment">
@@ -66,7 +66,7 @@ export default function MomentsPage() {
               </a>
               <div className="mo-moment-body">
                 <p className="mo-moment-no">
-                  Moment {m.no} / 88
+                  Example {m.no}
                 </p>
                 <h3>{m.title}</h3>
                 <a className="mo-moment-set" href={m.set} target="_blank" rel="noreferrer" title="Open full size">
@@ -94,7 +94,7 @@ export default function MomentsPage() {
                 ))}
                 <li className="mo-set">
                   <span>
-                    <b>The full set</b>
+                    <b>The full Risers Moment Package</b>
                     <small>All five pieces of the same moment</small>
                   </span>
                   <i>${MOMENTS_FULL_SET}</i>
@@ -117,7 +117,7 @@ export default function MomentsPage() {
                   and send you a preview.
                 </li>
                 <li>
-                  <b>Pay, then it&apos;s made.</b> Printed pieces are ready in about 2–3 weeks, signed and numbered.
+                  <b>Pay, then it&apos;s made.</b> Printed pieces are ready in about 2–3 weeks.
                 </li>
               </ol>
             </div>
