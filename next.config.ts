@@ -20,6 +20,8 @@ const nextConfig: NextConfig = {
       // Photos are resized in the browser first; this is headroom for the multipart envelope.
       bodySizeLimit: "6mb",
     },
+    // Upgraded by `next upgrade --agent=security` (16.4.2 → 16.4.6).
+    agentUpgrade: "security",
   },
 };
 
