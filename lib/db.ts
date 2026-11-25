@@ -936,7 +936,9 @@ export const dbHealth: {
 
 /** Error text without connection strings or passwords. */
 export function scrubDbError(err: unknown) {
-  return (err instanceof Error ? `${err.name}: ${err.message}` : String(err))
+  // Minified production builds shorten class names to a letter or two; leave those off.
+  const name = err instanceof Error && err.name.length > 2 && err.name !== "Error" ? `${err.name}: ` : "";
+  return (err instanceof Error ? `${name}${err.message}` : String(err))
     .replace(/postgres(ql)?:\/\/\S+/gi, "postgres://[hidden]")
     .replace(/password=\S+/gi, "password=[hidden]")
     .slice(0, 600);

@@ -293,10 +293,21 @@ export async function listShopInterest() {
 
 export async function listRegistrations() {
   const d = await db();
-  return d.query<Registration>(
-    `SELECT id, name, phone, instagram, photo_id::text AS photo_id, sms_consent, status, notes, puller_id, requested_id, coin_paid_at, with_friend, friend_name, created_at
-     FROM registrations ORDER BY created_at DESC`,
-  );
+  try {
+    return await d.query<Registration>(
+      `SELECT id, name, phone, instagram, photo_id::text AS photo_id, sms_consent, status, notes, puller_id, requested_id, coin_paid_at, with_friend, friend_name, created_at
+       FROM registrations ORDER BY created_at DESC`,
+    );
+  } catch (err) {
+    // A newer column is missing because its setup step couldn't run (e.g. the database was
+    // full and refusing writes). Show the sign-ups anyway with those fields left blank.
+    if ((err as { code?: string })?.code !== "42703") throw err;
+    return d.query<Registration>(
+      `SELECT id, name, phone, instagram, photo_id::text AS photo_id, sms_consent, status, notes, puller_id,
+              NULL::integer AS requested_id, NULL::timestamptz AS coin_paid_at, false AS with_friend, NULL::text AS friend_name, created_at
+       FROM registrations ORDER BY created_at DESC`,
+    );
+  }
 }
 
 export async function getPhoto(id: string) {

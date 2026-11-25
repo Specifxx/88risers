@@ -1,5 +1,6 @@
 import { isAdminKey } from "@/lib/admin";
 import { MIGRATION_TARGET, dbHealth, getDb, scrubDbError } from "@/lib/db";
+import { fmtBytes, storageReport } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,18 @@ export async function GET(req: Request) {
   } catch (e) {
     out.connected = false;
     out.error = scrubDbError(e);
+  }
+  try {
+    const r = await storageReport();
+    out.storage = {
+      writable: r.writable,
+      writeError: r.writeError,
+      data: fmtBytes(r.dbBytes),
+      photos: `${r.photos.count} (${fmtBytes(r.photos.bytes)}), ${r.photos.unused} unused (${fmtBytes(r.photos.unusedBytes)})`,
+      largestTables: r.tables.slice(0, 5).map((t) => `${t.name}: ${fmtBytes(t.bytes)}`),
+    };
+  } catch (e) {
+    out.storageError = scrubDbError(e);
   }
   out.migrationError = dbHealth.migrationError;
   out.connectError = dbHealth.connectError;

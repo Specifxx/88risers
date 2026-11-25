@@ -6,6 +6,7 @@ import { sendClubMail } from "@/lib/mail";
 import { normalisePhone, prettyPhone } from "@/lib/phone";
 import { productById } from "@/lib/shop";
 import { savePhoto } from "@/lib/photos";
+import { deletePhotoIfUnused } from "@/lib/storage";
 
 export type JoinState =
   | { status: "idle" }
@@ -55,6 +56,7 @@ export async function register(_prev: JoinState, form: FormData): Promise<JoinSt
           } as const;
       }
 
+      const [prev] = await tx.query<{ photo_id: string | null }>(`SELECT photo_id::text AS photo_id FROM registrations WHERE phone = $1`, [phone]);
       const [row] = await tx.query<{ inserted: boolean }>(
         `INSERT INTO registrations (name, phone, instagram, photo_id, sms_consent, requested_id, with_friend, friend_name)
          VALUES ($1, $2, $3, $4, true, $5, $6, $7)
@@ -70,6 +72,8 @@ export async function register(_prev: JoinState, form: FormData): Promise<JoinSt
          RETURNING (xmax = 0) AS inserted`,
         [name, phone, instagram, photo.id, requested, withFriend, friendName],
       );
+      // Registering again replaces the photo; drop the old one unless a Riser profile uses it.
+      if (prev?.photo_id) await deletePhotoIfUnused(tx, prev.photo_id);
       return { status: "ok", name: name.split(" ")[0], updated: !row.inserted, requested } as const;
     });
   } catch (err) {

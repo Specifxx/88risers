@@ -6,6 +6,7 @@ import { assertAdmin } from "@/lib/admin";
 import { NEXT_ID_SQL, PICK_MAX, PICK_MIN, recomputeElo } from "@/lib/data";
 import { getDb, type Db } from "@/lib/db";
 import { savePhoto, photoUrl } from "@/lib/photos";
+import { cleanUpStorage, deletePhotoIfUnused, fmtBytes } from "@/lib/storage";
 import { fromSydneyInput } from "@/lib/schedule";
 import { setGiveawayDrawAt } from "@/lib/giveaway";
 import { awardResultsChalk } from "@/lib/results";
@@ -17,7 +18,7 @@ import { createResetToken, hashPassword } from "@/lib/auth";
 import { grant, itemById } from "@/lib/coins";
 import { fmtOdds, oddsOf, payoutAt } from "@/lib/odds";
 
-type Tab = "registrations" | "pullers" | "matches" | "events" | "tv" | "shop" | "coins" | "chalk" | "open" | "moments";
+type Tab = "registrations" | "pullers" | "matches" | "events" | "tv" | "shop" | "coins" | "chalk" | "open" | "moments" | "storage";
 
 const str = (f: FormData, k: string) => {
   const v = f.get(k);
@@ -156,6 +157,10 @@ export async function savePuller(form: FormData) {
       if (hl && !videoEmbed(hl)) throw new Error("Highlight video: paste a YouTube, Instagram, TikTok, Google Drive or .mp4 link (or a site video like /video/name.mp4).");
       const hlTitle = hl ? str(form, "highlight_title") : null;
       if (original) {
+        const [prev] = await tx.query<{ photo_url: string | null; card_url: string | null }>(
+          `SELECT photo_url, card_url FROM pullers WHERE id = $1`,
+          [original],
+        );
         await tx.query(
           `UPDATE pullers SET id = $1, name = $2, nickname = $3, title = $4, bio = $5, weight_class = $6,
              dominant_arm = $7, instagram = $8, hidden = $9, joined_on = coalesce($10::date, joined_on),
@@ -166,6 +171,9 @@ export async function savePuller(form: FormData) {
           [id, ...fields, photo, card, bool(form, "remove_photo"), bool(form, "remove_card"), original, hl, hlTitle],
         );
         if (id !== original) await tx.query(`UPDATE registrations SET puller_id = $1 WHERE puller_id = $2`, [id, original]);
+        // A replaced or removed upload would otherwise sit in the database forever.
+        if (photo || bool(form, "remove_photo")) await deletePhotoIfUnused(tx, prev?.photo_url);
+        if (card || bool(form, "remove_card")) await deletePhotoIfUnused(tx, prev?.card_url);
         return `Saved #${String(id).padStart(3, "0")} ${name}.`;
       }
       await tx.query(
@@ -839,4 +847,21 @@ export async function disconnectIg(form: FormData) {
   await disconnectInstagram();
   revalidatePath("/tv");
   done(key, "tv", "Instagram disconnected. Reels fall back to Instagram's own embed.");
+}
+
+/* ─────────── Database storage ─────────── */
+
+export async function cleanStorage(form: FormData) {
+  const key = guard(form);
+  let message: string;
+  try {
+    const r = await cleanUpStorage();
+    message =
+      `Cleaned up: ${r.photos} unused photo${r.photos === 1 ? "" : "s"} (${fmtBytes(r.freedBytes)}), ` +
+      `${r.sessions} expired login${r.sessions === 1 ? "" : "s"}, ${r.resets} old reset link${r.resets === 1 ? "" : "s"}, ` +
+      `${r.loginAttempts} old sign-in attempt${r.loginAttempts === 1 ? "" : "s"}.`;
+  } catch (err) {
+    done(key, "storage", `Cleanup failed. If the database is still over its limit, free space in Neon first. (${friendly(err)})`, true);
+  }
+  done(key, "storage", message);
 }

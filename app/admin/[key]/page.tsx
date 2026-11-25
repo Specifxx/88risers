@@ -1,7 +1,7 @@
 import { fmtOdds, oddsOf, payoutAt } from "@/lib/odds";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, unstable_rethrow } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
 import { logAuthors, logRows } from "@/lib/trainlog";
 import { type IgStatus, igStatus } from "@/lib/instagram";
@@ -20,7 +20,8 @@ import { type LiveState, tvLive } from "@/lib/tv";
 import { SITE, formatId } from "@/lib/site";
 import { ARMS_LABEL, OPEN, bracketCounts, classLabel, openEntries } from "@/lib/rhodesOpen";
 import { MOMENT_ITEMS } from "@/lib/momentsConfig";
-import { getDb } from "@/lib/db";
+import { getDb, scrubDbError } from "@/lib/db";
+import { fmtBytes, storageReport } from "@/lib/storage";
 import { getTodos } from "@/lib/todos";
 import {
   deleteEvent,
@@ -67,6 +68,7 @@ import {
   sendTestEmail,
   setInterestDone,
   setRegistrationStatus,
+  cleanStorage,
 } from "./actions";
 import { ConfirmButton, CopyButton, ImageInput } from "./ui";
 
@@ -90,6 +92,7 @@ const TABS = [
   ["logs", "Training logs"],
   ["open", "Rhodes Open"],
   ["moments", "88 Moments"],
+  ["storage", "Database"],
 ] as const;
 type Tab = (typeof TABS)[number][0];
 
@@ -109,21 +112,34 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
   const k = decodeURIComponent(key);
   const base = `/admin/${encodeURIComponent(k)}`;
 
+  // Each section loads on its own: one failing query (say, the database is full and a newer
+  // column never got added) must not take the whole dashboard down with it.
+  const failed: string[] = [];
+  const safe = async <T,>(label: string, p: Promise<T>, fallback: T): Promise<T> => {
+    try {
+      return await p;
+    } catch (e) {
+      unstable_rethrow(e);
+      console.error(`admin: ${label} failed`, e);
+      failed.push(`${label}: ${scrubDbError(e)}`);
+      return fallback;
+    }
+  };
   const [stats, regs, pullers, matches, events, reels, interest, sms, accts, redeems, backers, giveaway, results, live] = await Promise.all([
-    getClubStats(),
-    listRegistrations(),
-    listPullers({ includeHidden: true }),
-    listRecentMatches(200),
-    listEvents("all"),
-    listReels({ includeHidden: true }),
-    listShopInterest(),
-    listSupermatches(),
-    adminAccounts(),
-    adminRedemptions(),
-    listBackers(),
-    getGiveaway(),
-    allResults(),
-    tvLive(),
+    safe("Club stats", getClubStats(), { members: 0, matches: 0, next_id: 0, taken: [], unavailable: [], held: [] }),
+    safe("Registrations", listRegistrations(), []),
+    safe("Pullers", listPullers({ includeHidden: true }), []),
+    safe("Matches", listRecentMatches(200), []),
+    safe("Events", listEvents("all"), []),
+    safe("88RisersTV", listReels({ includeHidden: true }), []),
+    safe("Shop", listShopInterest(), []),
+    safe("Supermatches", listSupermatches(), []),
+    safe("Accounts", adminAccounts(), []),
+    safe("Redemptions", adminRedemptions(), []),
+    safe("Backers", listBackers(), []),
+    safe("Giveaway", getGiveaway(), { drawAt: "", entries: 0, entrants: 0, mine: 0, lastWinner: null } as unknown as Giveaway),
+    safe("Results", allResults(), []),
+    safe("Live", tvLive(), { url: null, mode: "auto", title: null, event: null, onAir: false } as unknown as LiveState),
   ]);
   const newRegs = regs.filter((r) => r.status === "new").length;
   const newInterest = interest.filter((r) => !r.done).length;
@@ -176,7 +192,18 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
       <main className="wrap admin-main">
         {msg ? <div className="flash ok">{msg}</div> : null}
         {err ? <div className="flash bad">{err}</div> : null}
-        <Todos k={k} tab={tab} />
+        {failed.length ? (
+          <div className="flash bad">
+            <b>Some sections couldn&apos;t load.</b> The database may be out of storage.{" "}
+            <Link href={`${base}?tab=storage`}>Open the Database tab</Link> to check.
+            <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 13 }}>
+              {failed.map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {await guarded("To-do list", () => Todos({ k, tab }))}
         {resetLink ? (
           <div className="flash ok reset-flash">
             <b>Reset link for @{resetFor}</b>
@@ -190,13 +217,14 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
         {tab === "pullers" ? <Pullers pullers={pullers} accts={accts} results={results} k={k} nextId={stats.next_id} /> : null}
         {tab === "matches" ? <Matches matches={matches} pullers={pullers} events={events} k={k} /> : null}
         {tab === "events" ? <Events events={events} k={k} /> : null}
-        {tab === "tv" ? <Tv reels={reels} live={live} k={k} ig={await igStatus()} /> : null}
+        {tab === "tv" ? await guarded("88RisersTV", async () => <Tv reels={reels} live={live} k={k} ig={await igStatus()} />) : null}
         {tab === "shop" ? <Shop interest={interest} k={k} /> : null}
-        {tab === "chalk" ? <ChalkTab accts={accts} k={k} /> : null}
-        {tab === "open" ? <RhodesOpen k={k} base={base} /> : null}
-        {tab === "moments" ? <Moments k={k} /> : null}
-        {tab === "logs" ? <TrainingLogs base={base} who={typeof sp.who === "string" ? sp.who : null} /> : null}
+        {tab === "chalk" ? await guarded("Chalk", () => ChalkTab({ accts, k })) : null}
+        {tab === "open" ? await guarded("Rhodes Open", () => RhodesOpen({ k, base })) : null}
+        {tab === "moments" ? await guarded("88 Moments", () => Moments({ k })) : null}
+        {tab === "logs" ? await guarded("Training logs", () => TrainingLogs({ base, who: typeof sp.who === "string" ? sp.who : null })) : null}
         {tab === "coins" ? <Coins sms={sms} accts={accts} redeems={redeems} pullers={pullers} backers={backers} giveaway={giveaway} k={k} /> : null}
+        {tab === "storage" ? await guarded("Database", () => Storage({ k })) : null}
 
         <p className="fine" style={{ marginTop: 60 }}>
           Anyone with this link can manage the club, so share it only with organisers. To change the link, set a new
@@ -430,7 +458,7 @@ function PullerFields({ p, nextId }: { p?: Puller; nextId: number }) {
       </div>
       <div className="field span2">
         <label>Photo <em>headshot</em></label>
-        <ImageInput name="photo" max={1000} />
+        <ImageInput name="photo" max={900} />
         {p?.photo_url ? (
           <label className="check" style={{ margin: "8px 0 0" }}>
             <input type="checkbox" name="remove_photo" /> <span>Remove current photo</span>
@@ -439,7 +467,7 @@ function PullerFields({ p, nextId }: { p?: Puller; nextId: number }) {
       </div>
       <div className="field span2">
         <label>Champion card image <em>2:3 portrait</em></label>
-        <ImageInput name="card" max={1400} />
+        <ImageInput name="card" max={1200} />
         {p?.card_url ? (
           <label className="check" style={{ margin: "8px 0 0" }}>
             <input type="checkbox" name="remove_card" /> <span>Remove current card</span>
@@ -1862,5 +1890,111 @@ async function Todos({ k, tab }: { k: string; tab: string }) {
         <button className="btn btn-sm btn-ghost">Add</button>
       </form>
     </details>
+  );
+}
+
+/** Renders a section, or an inline error instead of breaking the whole dashboard. */
+async function guarded(label: string, render: () => React.ReactNode | Promise<React.ReactNode>) {
+  try {
+    return await render();
+  } catch (e) {
+    unstable_rethrow(e);
+    console.error(`admin: ${label} failed`, e);
+    return (
+      <div className="flash bad">
+        <b>{label} couldn&apos;t load.</b> {scrubDbError(e)}
+      </div>
+    );
+  }
+}
+
+/* ─────────── Database storage ─────────── */
+
+async function Storage({ k }: { k: string }) {
+  const r = await storageReport();
+  const reclaimable = r.photos.unused + r.expired.sessions + r.expired.resets + r.expired.loginAttempts;
+  return (
+    <>
+      <div className="admin-head">
+        <div>
+          <h1>Database</h1>
+          <p className="muted">How much space the club&apos;s data uses, and a cleanup for things nothing needs any more.</p>
+        </div>
+      </div>
+
+      {r.writable ? (
+        <div className="flash ok">
+          <b>Writing works.</b> The database has room for sign-ups and admin changes.
+        </div>
+      ) : (
+        <div className="flash bad">
+          <b>The database is refusing writes.</b> Neon blocks every change, deletes included, once the project is over its
+          storage limit, so sign-ups and admin edits fail until space is freed in Neon (steps below).
+          <div style={{ fontSize: 13, marginTop: 6 }}>{r.writeError}</div>
+        </div>
+      )}
+
+      <div className="panel">
+        <h2 className="panel-title">
+          Space used <small>{fmtBytes(r.dbBytes)} OF DATA</small>
+        </h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Photos: {r.photos.count} stored, {fmtBytes(r.photos.bytes)}. {r.photos.unused} of them ({fmtBytes(r.photos.unusedBytes)}) aren&apos;t
+          used by any sign-up or Riser profile. Expired logins and old reset links: {r.expired.sessions + r.expired.resets + r.expired.loginAttempts}.
+        </p>
+        <table className="storage-table">
+          <thead>
+            <tr>
+              <th>Table</th>
+              <th>Rows</th>
+              <th>Size</th>
+            </tr>
+          </thead>
+          <tbody>
+            {r.tables.map((t) => (
+              <tr key={t.name}>
+                <td>{t.name}</td>
+                <td>{t.rows.toLocaleString("en-AU")}</td>
+                <td>{fmtBytes(t.bytes)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <form action={cleanStorage} style={{ marginTop: 16 }}>
+          <input type="hidden" name="key" value={k} />
+          <ConfirmButton
+            message="Delete unused photos, expired logins and old reset links? Photos on sign-ups and Riser profiles are kept."
+            className="btn btn-primary btn-sm"
+          >
+            Clean up {reclaimable ? `(${reclaimable} item${reclaimable === 1 ? "" : "s"})` : ""}
+          </ConfirmButton>
+        </form>
+        {!r.writable ? <p className="fine">Cleanup only works once Neon accepts writes again.</p> : null}
+      </div>
+
+      <div className="panel">
+        <h2 className="panel-title">If Neon says the storage is full</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          The size above is only the live data. Neon&apos;s free plan also counts every database branch and up to 6 hours
+          of change history, which only show in the Neon console. In Neon (from Vercel: Storage → the database → Open in Neon):
+        </p>
+        <ol className="muted" style={{ paddingLeft: 20 }}>
+          <li>
+            <b>Branches:</b> delete every branch except the main/production one. The Vercel integration makes one per
+            preview deployment and they keep old data alive.
+          </li>
+          <li>
+            <b>Settings → History window:</b> lower it (for example to 1 hour).
+          </li>
+          <li>
+            Come back here, check that writing works, then press <b>Clean up</b>.
+          </li>
+          <li>
+            Still full? Upgrade the Neon project to the <b>Launch</b> plan. It&apos;s pay-as-you-go storage at about $0.35
+            per GB a month, so this site&apos;s data costs well under a dollar.
+          </li>
+        </ol>
+      </div>
+    </>
   );
 }
