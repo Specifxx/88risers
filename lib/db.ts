@@ -908,12 +908,38 @@ export function getDb(): Promise<Db> {
         throw new Error("DATABASE_URL is not set. Connect a Postgres database in Vercel → Storage.");
       }
       const db = resilient(url ? await connectPostgres(url) : await connectPglite());
-      await migrate(db);
+      try {
+        await migrate(db);
+        dbHealth.migrationError = null;
+      } catch (err) {
+        // A failed setup step must not take the whole site down: the schema from earlier
+        // releases is still there, so keep serving and try the migration again on the next
+        // cold start. The error is kept for /api/db-status (admin key only).
+        dbHealth.migrationError = { message: scrubDbError(err), at: new Date().toISOString() };
+        console.error("migration failed", err);
+      }
       return db;
     })().catch((err) => {
       globalForDb.__risersDb = undefined;
+      dbHealth.connectError = { message: scrubDbError(err), at: new Date().toISOString() };
       throw err;
     });
   }
   return globalForDb.__risersDb;
 }
+
+/** What went wrong last on this server instance, for the admin-only status check. */
+export const dbHealth: {
+  migrationError: { message: string; at: string } | null;
+  connectError: { message: string; at: string } | null;
+} = { migrationError: null, connectError: null };
+
+/** Error text without connection strings or passwords. */
+export function scrubDbError(err: unknown) {
+  return (err instanceof Error ? `${err.name}: ${err.message}` : String(err))
+    .replace(/postgres(ql)?:\/\/\S+/gi, "postgres://[hidden]")
+    .replace(/password=\S+/gi, "password=[hidden]")
+    .slice(0, 600);
+}
+
+export const MIGRATION_TARGET = () => MIGRATION_MARKER;
