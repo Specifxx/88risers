@@ -16,8 +16,8 @@ The dead cannot rise on their own any more. Anything that dies unattended sinks 
 | Old Monks | **The First 88**, the original Risers. |
 | Wukong, the prayer machine | **Wukong**, unchanged: a machine built to say the rite for everyone, with a piece of the Lion's flame caged inside it. |
 | Wukhan / Iron Ring / Compression Ring | **Rhodes**, inside **the Ring** (Wukong's staff, bent into a circle). |
-| Rot-born monsters | **The Sunken**: the dead who were never risen. |
-| Compression suits and tea bags | **Lanterns** (below). |
+| Rot-born monsters | **The Pinned**: the dead who were never risen, pinned by the darkness. |
+| Compression suits and tea bags | **Chalk and straps** (below). |
 | Four Houses | Four Houses, same jobs (below). |
 | Mecca / Porcelain Saints | **The Undying**. |
 | Buddhist Crusade | **The Pilgrimage**. The last one left 134 years ago. |
@@ -35,7 +35,7 @@ Three layers: **the Still** above (nothingness, completion, rest), the living wo
 4. The world grows. The 88 are overwhelmed. Instead of teaching more people, they build Wukong around a stolen ember of the Lion's flame, have him say the rite for everyone, and stop doing it themselves. This is their sin: they outsourced the one job that was theirs.
 5. **The Tragedy of the Boy.** A child asks Wukong: "If the Lion is God, why does it let this happen? Go and make it fix it." Wukong obeys and climbs the Stairway to confront the Lion. The throne is empty. The Lion is not up there; it is spread through every living thing, and a piece of it is locked inside him. The Stairway gives way and Wukong falls.
 6. **The Fall.** Wukong is broken. He can no longer reach the whole world. With what he has left he bends his staff into the Ring and protects the ground inside it, repeating the only order he still understands: *Protect the Ring.* Outside it, the dead sink.
-7. The Boy died in the fall, unrisen. He was the first of the Sunken.
+7. The Boy died in the fall, unrisen. He was the first of the Pinned.
 
 ## Why 88, and what the power is for
 
@@ -57,7 +57,7 @@ The founders are Risers #001 to #008, in the order the club already uses:
 | --- | --- | --- | --- |
 | 001 | Harry Lu | Head Riser. Sends you out. | The Rite of Rising |
 | 002 | George Lu | Keeper of the Register | Where to look; lore |
-| 003 | Phillip Nguyen | Captain of the wall | Fighting the Sunken |
+| 003 | Phillip Nguyen | Captain of the wall | Fighting the Pinned |
 | 004 | Bhavya Sharma | Healer | Tending the dying |
 | 005 | Kelvin Gian | Warden of the Ring gate | Survival outside |
 | 006 | Tommy Cao | Trader | Travel, barter, persuasion |
@@ -68,11 +68,15 @@ These role assignments are placeholders. Each founder should write their own per
 
 **Every recruit widens the Ring.** That is the open-world unlock: no level gates, just safe ground growing outward from the village, and Rhodes growing with it.
 
-## The Sunken, the rite and lanterns
+## The Pinned, chalk, straps and the rite
 
-- **The Sunken** can be killed, but a killed Sunken is still in the ground and comes back. This is the in-world reason enemies respawn.
-- To end one for good a Riser says the **Rite of Rising** over it. The rite only works if the dead is willing to go. In play this is a conversation: the Sunken still half-remembers who it was, and you have to find out what is keeping it here.
-- **Lanterns.** If someone dies with no Riser near, their essence can be caught in a lantern and carried to one. Lanterns are scarce outside the Ring, and who gets one is politics.
+- **The Pinned** can be killed, but a killed Pinned is still in the ground and comes back. This is the in-world reason enemies respawn.
+- To end one for good, a Riser has to raise it. This takes three steps, in the moments after it is defeated and before the darkness pulls it back under:
+  1. **Chalk.** Throw chalk over the fallen body. The spirit inside, invisible until now, takes shape in the dust: you see who it was.
+  2. **Strap.** Bind the spirit with a Riser's strap. This holds it in place against the pull of the dark. A strap does not hold forever; it buys time.
+  3. **The Rite of Rising.** Say the rite before the strap gives. The spirit rises instead of being pinned again.
+- The rite only works if the dead is willing to go. In play, the strap's hold is your timer and the rite is a conversation: the spirit half-remembers who it was, and you have to find out what is keeping it here. Stronger Pinned strain the strap harder, so better straps mean more time.
+- **The dying.** The same tools work on a person at the moment of death. Anyone can throw chalk and tie a strap, which holds the spirit until a Riser arrives to say the rite. So chalk and straps are what ordinary people need most, they are scarce outside the Ring, and who gets them is politics.
 
 ## The Four Houses (joinable factions)
 
@@ -80,16 +84,16 @@ Each began as a job the Ring needed and hardened into a class.
 
 | House | Does | Creed | What you learn about it |
 | --- | --- | --- | --- |
-| **Wall** | Soldiers and guards. Keep the Sunken out. | *Nothing rotten crosses the Ring.* | Some Sunken remember being people. |
-| **Mercy** | Healers. Bring lanterns to the sick, the poor, the dying. | *No one dies alone.* | Mercy without trust looks like conquest. |
-| **Trade** | Merchants, envoys, lantern-makers. | *A lantern unlit saves no one.* | A clean death has become something you buy. |
+| **Wall** | Soldiers and guards. Keep the Pinned out. | *Nothing rotten crosses the Ring.* | Some Pinned remember being people. |
+| **Mercy** | Healers. Bring chalk and straps to the sick, the poor, the dying. | *No one dies alone.* | Mercy without trust looks like conquest. |
+| **Trade** | Merchants, envoys, strap-makers. | *A strap untied saves no one.* | A clean death has become something you buy. |
 | **Funeral** | Undertakers. Carry the dangerous dead. | *Carry the dead, or become them.* | They have always known what Wukong is. |
 
 ## The Pilgrimage (main quest)
 
-**Act I. Rhodes.** Learn the rite. Raise your first Sunken just outside the gate. Get the Register: eighty blank lines and no directions beyond what people tell you.
+**Act I. Rhodes.** Learn the rite. Raise your first Pinned just outside the gate. Get the Register: eighty blank lines and no directions beyond what people tell you.
 
-**Act II. The island.** The outer settlements do not want you. They remember the last pilgrims. They ask why Rhodes wants their dead, why lanterns cost what they cost, and why the Ring stayed shut for 134 years. They have their own death customs: some burn, some worship their Sunken ancestors, some hide. Recruits are found here, one at a time, and each one is a person with a reason to say no.
+**Act II. The island.** The outer settlements do not want you. They remember the last pilgrims. They ask why Rhodes wants their dead, why straps cost what they cost, and why the Ring stayed shut for 134 years. They have their own death customs: some burn, some worship their Pinned ancestors, some hide. Recruits are found here, one at a time, and each one is a person with a reason to say no.
 
 **Act III. Gornn.** The dragon tells you the truth, and it is mostly true: Wukong is why the suffering continues. His answer is to go back and destroy the machine now. The last Pilgrimage took that advice and died at the Ring. If you take it too, the Ring drops with too few Risers to replace it, and the Under takes everything.
 
@@ -113,7 +117,7 @@ Ending 3 needs all 88. With fewer, shutting him down saves only as much of the i
 
 - **Every NPC is an individual.** Each has a persona sheet (history, voice, values, what they want, what they are afraid of), a private memory of what the player and other NPCs have said and done to them, a disposition towards the player in the Morrowind sense, and a small set of drives that decide what they do when the player is not around. The persona and memory condition a shared language model; the per-NPC part is the state, which is theirs alone and persists.
 - **Recruitment is persuasion, not a quest flag.** Each of the 80 has someone they lost who never rose. They join when that is resolved, and how you resolve it is open. There is no dialogue option labelled "recruit".
-- **The Sunken are NPCs too.** A Sunken runs on a degraded copy of the person it was: gaps in memory, one fixation. The rite is a conversation with that. A village's monster is somebody's father, and the village's NPCs remember him.
+- **The Pinned are NPCs too.** A Pinned runs on a degraded copy of the person it was: gaps in memory, one fixation. Chalk shows you that person, and the rite is a conversation with them. A village's monster is somebody's father, and the village's NPCs remember him.
 - **Directions, not markers.** NPCs tell you where things are from what they actually know, and they can be wrong, out of date, or lying.
 - **Wukong is the one scripted mind in the game.** Everyone else improvises. He has three lines and repeats them.
 - **Founders write themselves.** Their sheets come from the real eight.
