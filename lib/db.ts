@@ -929,9 +929,7 @@ export function getDb(): Promise<Db> {
       // a half-finished branch must never migrate or write to the live database.
       // Set PREVIEW_DATABASE_URL to give previews a separate Postgres; otherwise they get a
       // throwaway in-memory database with the seed data.
-      const url = isPreview()
-        ? process.env.PREVIEW_DATABASE_URL
-        : process.env.DATABASE_URL || process.env.POSTGRES_URL;
+      const url = isPreview() ? process.env.PREVIEW_DATABASE_URL : liveDatabaseUrl();
       if (!url && process.env.VERCEL && !isPreview()) {
         throw new Error("DATABASE_URL is not set. Connect a Postgres database in Vercel → Storage.");
       }
@@ -973,3 +971,19 @@ export function scrubDbError(err: unknown) {
 }
 
 export const MIGRATION_TARGET = () => MIGRATION_MARKER;
+
+/**
+ * The live database. RISERS_DB_URL is the database connected through Vercel's Neon integration
+ * with the "RISERS_DB" prefix; it wins over the older DATABASE_URL so the site can move to a new
+ * database without deleting the old connection (which the import below reads from).
+ */
+export const liveDatabaseUrl = () => process.env.RISERS_DB_URL || process.env.DATABASE_URL || process.env.POSTGRES_URL;
+
+/** The previous database, to import from: OLD_DATABASE_URL, or DATABASE_URL once RISERS_DB_URL replaced it. */
+export function oldDatabaseUrl(): string | null {
+  const named = process.env.OLD_DATABASE_URL || process.env.OLD_DATABASE;
+  if (named) return named;
+  const live = liveDatabaseUrl();
+  const prev = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  return prev && live && prev !== live ? prev : null;
+}

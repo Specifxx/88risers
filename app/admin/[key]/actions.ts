@@ -851,6 +851,21 @@ export async function disconnectIg(form: FormData) {
 
 /* ─────────── Database storage ─────────── */
 
+/** Copies everything from the previous database into the live one (moving to a new database). */
+export async function importOldDatabase(form: FormData) {
+  const key = guard(form);
+  let message: string;
+  try {
+    const { importFromOldDatabase } = await import("@/lib/dbImport");
+    const r = await importFromOldDatabase();
+    const rows = r.tables.reduce((n, t) => n + t.rows, 0);
+    message = `Imported ${rows.toLocaleString("en-AU")} rows from ${r.tables.length} tables.${r.skipped.length ? ` Skipped (not in the new database): ${r.skipped.join(", ")}.` : ""}`;
+  } catch (err) {
+    done(key, "storage", `Import failed: ${friendly(err)}. Nothing in the old database was changed; you can try again.`, true);
+  }
+  done(key, "storage", message);
+}
+
 /** Moves photos out of the database into Vercel Blob, one batch per click. */
 export async function movePhotos(form: FormData) {
   const key = guard(form);

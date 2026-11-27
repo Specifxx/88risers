@@ -20,7 +20,7 @@ import { type LiveState, tvLive } from "@/lib/tv";
 import { SITE, formatId } from "@/lib/site";
 import { ARMS_LABEL, OPEN, bracketCounts, classLabel, openEntries } from "@/lib/rhodesOpen";
 import { MOMENT_ITEMS } from "@/lib/momentsConfig";
-import { getDb, scrubDbError } from "@/lib/db";
+import { getDb, oldDatabaseUrl, scrubDbError } from "@/lib/db";
 import { fmtBytes, storageReport } from "@/lib/storage";
 import { photoCounts } from "@/lib/photos";
 import { blobEnabled } from "@/lib/blob";
@@ -72,6 +72,7 @@ import {
   setRegistrationStatus,
   cleanStorage,
   movePhotos,
+  importOldDatabase,
 } from "./actions";
 import { ConfirmButton, CopyButton, ImageInput } from "./ui";
 
@@ -1974,6 +1975,25 @@ async function Storage({ k }: { k: string }) {
         </form>
         {!r.writable ? <p className="fine">Cleanup only works once Neon accepts writes again.</p> : null}
       </div>
+
+      {oldDatabaseUrl() ? (
+        <div className="panel">
+          <h2 className="panel-title">
+            Move to the new database <small>OLD DATABASE FOUND</small>
+          </h2>
+          <p className="muted" style={{ marginTop: 0 }}>
+            The site now runs on the new database. Import copies everything from the old one: Risers, accounts, Chalk, scores,
+            training logs, entries, orders, photos and settings. The old database is only read, never changed, and pressing it
+            again is safe.
+          </p>
+          <form action={importOldDatabase}>
+            <input type="hidden" name="key" value={k} />
+            <ConfirmButton message="Copy everything from the old database into the new one? Old data replaces the new database's starter rows." className="btn btn-primary btn-sm">
+              Import from old database
+            </ConfirmButton>
+          </form>
+        </div>
+      ) : null}
 
       <PhotoStorage k={k} />
 

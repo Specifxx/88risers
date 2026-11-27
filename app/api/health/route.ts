@@ -1,10 +1,10 @@
-import { getDb } from "@/lib/db";
+import { getDb, liveDatabaseUrl } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 /** Uptime check: which region served this, where the database lives, and how quick it answers. */
 export async function GET() {
-  const host = (process.env.DATABASE_URL || process.env.POSTGRES_URL || "").match(/@([^/:?]+)/)?.[1] ?? "";
+  const host = (liveDatabaseUrl() || "").match(/@([^/:?]+)/)?.[1] ?? "";
   // Neon hosts look like ep-name-123-pooler.<region>.aws.neon.tech; report only the region part.
   const dbRegion = host.match(/\.([a-z]{2}-[a-z]+-\d)\./)?.[1] ?? (host ? "unknown" : "local");
   const t0 = performance.now();

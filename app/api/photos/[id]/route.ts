@@ -21,8 +21,8 @@ export async function GET(req: Request, ctx: RouteContext<"/api/photos/[id]">) {
     if (photo.is_public)
       return new Response(null, { status: 308, headers: { Location: photo.blob_url, "Cache-Control": headers["Cache-Control"] } });
     // Private photos: fetch here so their storage address is never revealed.
-    const res = await fetch(photo.blob_url, { cache: "no-store" });
-    if (!res.ok || !res.body) return new Response("Not found", { status: 404 });
+    const res = await fetch(photo.blob_url, { cache: "no-store" }).catch(() => null);
+    if (!res?.ok || !res.body) return new Response("Not found", { status: 404 });
     return new Response(res.body, { headers });
   }
   if (!photo.data) return new Response("Not found", { status: 404 });
