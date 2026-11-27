@@ -3,17 +3,17 @@ import { randomBytes } from "node:crypto";
 import { getDb } from "./db";
 import { sendClubMail } from "./mail";
 import { normalisePhone } from "./phone";
+import { COMMISSION_SUMMARY } from "./shop";
 import { SITE } from "./site";
 
 /**
  * Affiliates: anyone can sign up for a code (no account needed). Buyers who use it get
- * AFFILIATE_DISCOUNT off the items (not postage), and the affiliate earns AFFILIATE_COMMISSION of
- * what was paid for those items. Commission counts once the order is paid; the club pays it out
+ * AFFILIATE_DISCOUNT off the items (not postage), and the affiliate earns a flat commission per
+ * item (set on each product in lib/shop: $7 per tee, $10 per jersey). Commission counts once the order is paid; the club pays it out
  * monthly. Each affiliate gets a private dashboard link (/affiliates?t=…), emailed to them.
  * An affiliate can't use their own code (matched on their email or mobile).
  */
 export const AFFILIATE_DISCOUNT = 0.1;
-export const AFFILIATE_COMMISSION = 0.2;
 
 export type Affiliate = {
   id: number;
@@ -63,7 +63,7 @@ async function emailDashboard(a: Affiliate) {
         `Your affiliate code is ${a.code}.`,
         `Share this link (it fills your code in): ${shareUrl(a)}`,
         "",
-        `Buyers get ${AFFILIATE_DISCOUNT * 100}% off, and you earn ${AFFILIATE_COMMISSION * 100}% of what they pay for the items.`,
+        `Buyers get ${AFFILIATE_DISCOUNT * 100}% off, and you earn ${COMMISSION_SUMMARY} they buy.`,
         `See your sales and commission any time (keep this link private): ${dashboardUrl(a)}`,
         "",
         "Commission is paid monthly to this PayPal email for paid, un-refunded orders.",

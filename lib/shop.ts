@@ -11,8 +11,11 @@ export interface Product {
   image?: { src: string; w: number; h: number; bg?: string };
   /** Full concept sheet shown in the viewer. */
   sheet?: { src: string; w: number; h: number };
-  /** On sale: price in AUD, and whether the buyer adds a name, nickname and Riser no. Otherwise "register interest". */
-  buy?: { price: number; personalise: boolean };
+  /**
+   * On sale: price in AUD, whether the buyer adds a name, nickname and Riser no., and the flat
+   * affiliate commission (AUD) per item sold with a code. Otherwise "register interest".
+   */
+  buy?: { price: number; personalise: boolean; commission: number };
 }
 
 export const SIZES = ["S", "M", "L", "XL", "2XL", "3XL"] as const;
@@ -67,7 +70,7 @@ export const PRODUCTS: Product[] = [
     details: ["Raglan or flat sleeve", "Lightweight, breathable compression fabric", "Sizes S – 3XL"],
     image: { src: "/shop/tee.jpg", w: 1100, h: 715, bg: "#fff" },
     sheet: { src: "/shop/tee-sheet.jpg", w: 1519, h: 927 },
-    buy: { price: 52, personalise: false },
+    buy: { price: 52, personalise: false, commission: 7 },
   },
   {
     id: "jersey",
@@ -79,7 +82,7 @@ export const PRODUCTS: Product[] = [
     details: ["Raglan or flat sleeve", "Your name, nickname and Riser no.", "Performance fabric: breathable, quick-dry, 4-way stretch", "Made to order · sizes S – 3XL"],
     image: { src: "/shop/jersey-v2.webp", w: 1199, h: 700, bg: "#0e0d0c" },
     sheet: { src: "/shop/jersey-v2-sheet.webp", w: 1199, h: 1312 },
-    buy: { price: 71, personalise: true },
+    buy: { price: 71, personalise: true, commission: 10 },
   },
   {
     id: "handle",
@@ -94,3 +97,8 @@ export const PRODUCTS: Product[] = [
 ];
 
 export const productById = (id: string) => PRODUCTS.find((p) => p.id === id) ?? null;
+
+/** "$7 per tee, $10 per jersey" style summary of affiliate commission, from the products on sale. */
+export const COMMISSION_SUMMARY = PRODUCTS.filter((p) => p.buy)
+  .map((p) => `$${p.buy!.commission} per ${p.id === "tee" ? "tee" : p.id === "jersey" ? "jersey" : p.name.toLowerCase()}`)
+  .join(", ");

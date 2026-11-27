@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AffiliateJoin, AffiliateResend } from "@/components/AffiliateJoin";
 import { CopyText } from "@/components/CopyText";
-import { AFFILIATE_COMMISSION, AFFILIATE_DISCOUNT, affiliateByToken, affiliateStats, shareUrl } from "@/lib/affiliates";
-import { money } from "@/lib/shop";
+import { AFFILIATE_DISCOUNT, affiliateByToken, affiliateStats, shareUrl } from "@/lib/affiliates";
+import { COMMISSION_SUMMARY, money } from "@/lib/shop";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Affiliates",
-  description: `Share your 88 Risers code: your people get ${AFFILIATE_DISCOUNT * 100}% off club gear and you earn ${AFFILIATE_COMMISSION * 100}% commission on every item. Anyone can join.`,
+  description: `Share your 88 Risers code: your people get ${AFFILIATE_DISCOUNT * 100}% off club gear and you earn ${COMMISSION_SUMMARY} sold. Anyone can join.`,
 };
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
@@ -29,7 +29,7 @@ export default async function AffiliatesPage({ searchParams }: PageProps<"/affil
           </h1>
           <p className="lede">
             Get your own code for the 88 Risers shop. Anyone who uses it gets <b>{pct(AFFILIATE_DISCOUNT)} off</b>, and you earn{" "}
-            <b>{pct(AFFILIATE_COMMISSION)} commission</b> on every item they buy. Anyone can join.
+            <b>{COMMISSION_SUMMARY}</b> they buy. Anyone can join.
           </p>
           <ol className="join-steps">
             <li>
@@ -46,8 +46,8 @@ export default async function AffiliatesPage({ searchParams }: PageProps<"/affil
             </li>
           </ol>
           <p className="fine">
-            Commission is {pct(AFFILIATE_COMMISSION)} of what the buyer pays for the items after their discount (postage not included), on
-            orders that are paid and not refunded. You can&apos;t use your own code.
+            Commission is a flat {COMMISSION_SUMMARY} sold with your code, on orders that are paid and not refunded. You can&apos;t use
+            your own code.
           </p>
           {!aff ? (
             <div style={{ marginTop: 28 }}>

@@ -1,6 +1,6 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
-import { AFFILIATE_COMMISSION, AFFILIATE_DISCOUNT, affiliateByCode, cleanCode } from "./affiliates";
+import { AFFILIATE_DISCOUNT, affiliateByCode, cleanCode } from "./affiliates";
 import { getDb } from "./db";
 import { sendClubMail } from "./mail";
 import { normalisePhone, prettyPhone } from "./phone";
@@ -128,7 +128,7 @@ export async function createShopOrder(input: CheckoutInput) {
   const v = validateCheckout(input);
   if ("error" in v) return { error: v.error };
   const o = v.order;
-  const promo = await applyCode(input.code, o.email, o.phone, o.subtotal);
+  const promo = await applyCode(input.code, o.email, o.phone, o.subtotal, o.lines);
   if ("error" in promo) return { error: promo.error };
   const total = o.subtotal - promo.discount + o.shipping;
   const items = o.lines.reduce((n, l) => n + l.qty, 0);
@@ -152,17 +152,17 @@ export async function createShopOrder(input: CheckoutInput) {
 }
 
 /**
- * An affiliate code: AFFILIATE_DISCOUNT off the items for the buyer, AFFILIATE_COMMISSION of what
- * they then pay for the items to the affiliate. Not usable on your own code.
+ * An affiliate code: AFFILIATE_DISCOUNT off the items for the buyer, and a flat commission per item
+ * (each product's buy.commission) to the affiliate. Not usable on your own code.
  */
-export async function applyCode(raw: string | undefined, email: string, phone: string | null, subtotal: number) {
+export async function applyCode(raw: string | undefined, email: string, phone: string | null, subtotal: number, lines: CartLine[]) {
   const code = cleanCode(raw);
   if (!code) return { code: null, affiliate: null, discount: 0, commission: 0 };
   const a = await affiliateByCode(code);
   if (!a) return { error: `${code} isn't a valid code.` };
   if (a.payout_email === email.toLowerCase() || (phone && a.phone === phone)) return { error: "You can't use your own affiliate code." };
   const discount = Math.round(subtotal * AFFILIATE_DISCOUNT);
-  const commission = Math.round((subtotal - discount) * AFFILIATE_COMMISSION);
+  const commission = lines.reduce((n, l) => n + cents(PRODUCTS.find((p) => p.id === l.product)?.buy?.commission ?? 0) * l.qty, 0);
   return { code, affiliate: a.id, discount, commission };
 }
 

@@ -2170,7 +2170,8 @@ async function ShopOrders({ k }: { k: string }) {
 /* ─────────── Affiliates ─────────── */
 
 async function Affiliates({ k }: { k: string }) {
-  const { affiliateLedger, AFFILIATE_COMMISSION, AFFILIATE_DISCOUNT } = await import("@/lib/affiliates");
+  const { affiliateLedger, AFFILIATE_DISCOUNT } = await import("@/lib/affiliates");
+  const { COMMISSION_SUMMARY } = await import("@/lib/shop");
   const { dollars } = await import("@/lib/shopOrders");
   const rows = await affiliateLedger();
   const owed = rows.reduce((n, r) => n + r.owed, 0);
@@ -2180,8 +2181,7 @@ async function Affiliates({ k }: { k: string }) {
         Affiliates <small>{rows.length} SIGNED UP · {dollars(owed)} OWED</small>
       </h2>
       <p className="muted" style={{ marginTop: 0 }}>
-        Codes give buyers {Math.round(AFFILIATE_DISCOUNT * 100)}% off; affiliates earn {Math.round(AFFILIATE_COMMISSION * 100)}% of what&apos;s paid
-        for the items. Once a month, send each affiliate what they&apos;re owed by PayPal (to the email below), then press Mark paid.
+        Codes give buyers {Math.round(AFFILIATE_DISCOUNT * 100)}% off; affiliates earn {COMMISSION_SUMMARY}. Once a month, send each affiliate what they&apos;re owed by PayPal (to the email below), then press Mark paid.
         Sign-up page: <Link href="/affiliates" target="_blank">/affiliates ↗</Link>
       </p>
       {rows.length === 0 ? (

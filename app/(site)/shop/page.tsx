@@ -21,7 +21,7 @@ export default function ShopPage() {
           </h1>
           <div className="btn-row" style={{ marginTop: 18 }}>
             <Link href="/affiliates" className="btn btn-sm btn-primary">
-              Become an affiliate: earn 20% commission →
+              Become an affiliate: earn $7 a tee, $10 a jersey →
             </Link>
           </div>
           <Link href="/support#sponsor" className="btn btn-sm btn-ghost shop-sponsor-link">
