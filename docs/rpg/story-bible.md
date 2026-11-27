@@ -10,7 +10,7 @@ The dead cannot rise on their own any more. Anything that dies unattended sinks 
 
 | Source (Body Tea draft) | 88 Risers |
 | --- | --- |
-| Four-Eyed Phoenix, wings torn off | **The Winged Lion**. Life comes down from its flame; the dead used to rise through its wings. The lion on the crest has no wings. This is why. |
+| Four-Eyed Phoenix, wings torn off | **The Winged Lion**. Life comes down from its flame; the dead used to rise through its wings. It now lies on the island, wingless and turned to stone. The lion on the crest has no wings. This is why. |
 | Gornn, the First Dragon | **Gornn**, unchanged. Mightiest of species, jealous that the Lion chose weak, clever mankind as its sacred species. He tore the wings off. |
 | Samsara Prayer / Final Steep | **The Rite of Rising**: words said over the dying. |
 | Old Monks | **The First 88**, the original Risers. |
@@ -30,12 +30,16 @@ Names dropped on purpose: the previous crusaders (Annie, Ryze, Rengar, Kha'Zix, 
 Three layers: **the Still** above (nothingness, completion, rest), the living world in the middle, and **the Under** below (not punishment, just death that was never finished).
 
 1. The Winged Lion governs the whole cycle. Life descends from its flame; the dead rise through its wings and pass to the Still. Nothing rots.
-2. Gornn tears the wings off. Life still comes down. Death no longer goes up.
+2. Gornn tears the wings off. Life still comes down. Death no longer goes up. The Lion falls out of the heavens and lands on the island, wingless but still alive, its flame burning low in its chest.
 3. Mankind is taught the Rite of Rising: a way to say "Lion, gather this one", one death at a time. Those who say it are the Risers. At their height there are 88, enough to cover the world.
-4. The world grows. The 88 are overwhelmed. Instead of teaching more people, they build Wukhan around a stolen ember of the Lion's flame, have him say the rite for everyone, and stop doing it themselves. This is their sin: they outsourced the one job that was theirs.
+4. The world grows. The 88 are overwhelmed. Instead of teaching more people, they go to the fallen Lion, take the ember from its chest, and build Wukhan around it to say the rite for everyone. They stop doing it themselves. Without its ember the Lion turns to stone. This is their sin: they outsourced the one job that was theirs, and they put out their god to do it.
 5. **Gornn comes back.** The dragon who tore off the Lion's wings sees a machine shaped like a monkey doing the sacred work he wanted for dragons, and he comes to destroy it. Wukhan fights him and drives him off, but takes damage he cannot repair.
 6. **The Fall.** Wukhan is broken. He can no longer reach the whole world. With what he has left he bends his staff into the Ring and protects the ground inside it, repeating the only order he still understands: *Protect the Ring.* Outside it, the dead sink. Nobody in Rhodes knows what broke him; the fight is remembered only as a great evil that Wukhan defeated.
 7. Gornn survived, wounded, somewhere on the island.
+
+### Where the Lion is
+
+Rhodes teaches that the Lion is in the heavens, watching. It is not. It is a stone statue far outside the Ring, in the country of the Undying, curled around its Egg. The Undying guard it and know exactly what it is. To everyone else who has seen it, it is a very old carving of a lion with broken shoulders.
 
 ## Why 88, and what the power is for
 
@@ -43,7 +47,7 @@ Wukhan was built to replace exactly 88 people. So 88 Risers can carry what he ca
 
 The Ring never changes size. It is Wukhan's staff, and it protects Rhodes and nothing else. But a Riser keeps the ground around *them* safe, wherever they are: deaths near a Riser rise instead of sinking. Recruits stay in their own settlements, so each one becomes a small safe place outside the Ring. One recruit is one safe town. **At 88, there are enough safe places to cover the island, and Wukhan is no longer needed.**
 
-That matters because of what is inside him. The Lion's ember is still caged in his core, and it is the last piece of the Lion that could gather the dead on its own. It cannot be freed while he is running, and he cannot be switched off while the Ring depends on him: everyone inside would die unrisen. With 88 Risers holding the island, he can finally be stopped and the ember released.
+That matters because of what is inside him. The Lion's ember is still caged in his core, and it is the only thing that can wake the stone Lion. It cannot be freed while he is running, and he cannot be switched off while the Ring depends on him: everyone inside would die unrisen. With 88 Risers holding the island, he can finally be stopped and the ember released.
 
 ### Why people believe it
 
@@ -103,7 +107,7 @@ Each began as a job the Ring needed and hardened into a class.
 
 **Act III. Gornn.** The dragon tells you the truth, and it is mostly true: Wukhan is why the suffering continues. His answer is to go back and destroy the machine now. What he leaves out is that he is the one who broke it, and that he is sending you to finish what he could not. The last Pilgrimage took his advice and died at the Ring. If you take it too, the Ring drops with too few Risers to replace it, and the Under takes everything.
 
-**Act IV. The Undying.** A half-machine people who live beside the Lion's Egg and are rebuilt every time they die. They know more history than Rhodes does. Their offer: give them one Riser (you), and over 10,000 years they will replace you piece by piece until you are the new Wukhan. One person praying forever; everyone else saved. They are not villains. They are compassion reduced to arithmetic.
+**Act IV. The Undying.** A half-machine people who are rebuilt every time they die. They live around the stone Lion and its Egg, and guard both. Here you learn where the Lion has been all along, and that the first 88 took its ember. They know more history than Rhodes does. Their offer: give them one Riser (you), and over 10,000 years they will replace you piece by piece until you are the new Wukhan. One person praying forever; everyone else saved. They are not villains. They are compassion reduced to arithmetic.
 
 **Act V. The Ring closes.** You come home with the truth and the Houses reject it, because a world that does not need Wukhan does not need them either. You fight through your own civilisation, with however many Risers you brought.
 
@@ -113,7 +117,7 @@ Each began as a job the Ring needed and hardened into a class.
 
 1. **Destroy him** (Gornn's). Without 88 Risers to take over, the Ring falls.
 2. **Replace him** (the Undying's). You become the next machine. The world is saved and nothing is learned.
-3. **Relieve him.** With 88 Risers holding the island, you shut Wukhan down and free the ember. Wukhan's last words: *"The Ring is carried."* The Ring opens. The 88 go home and teach the rite to anyone who will learn it. People still die. Now every people can raise their own.
+3. **Relieve him.** With 88 Risers holding the island, you shut Wukhan down and take the ember out. Wukhan's last words: *"The Ring is carried."* The Ring opens. You carry the ember back across the island to the stone Lion and return it. The Lion wakes. It has no wings and never will again; the Risers are its wings now. The 88 go home and teach the rite to anyone who will learn it. People still die. Now every people can raise their own.
 
 Ending 3 needs all 88. With fewer, shutting him down saves only as much of the island as your Risers can cover. The count is the difficulty slider.
 
