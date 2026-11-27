@@ -977,7 +977,12 @@ export const MIGRATION_TARGET = () => MIGRATION_MARKER;
  * with the "RISERS_DB" prefix; it wins over the older DATABASE_URL so the site can move to a new
  * database without deleting the old connection (which the import below reads from).
  */
-export const liveDatabaseUrl = () => process.env.RISERS_DB_URL || process.env.DATABASE_URL || process.env.POSTGRES_URL;
+export const liveDatabaseUrl = () =>
+  process.env.RISERS_DB_URL ||
+  process.env.RISERS_DB_DATABASE_URL ||
+  process.env.RISERS_DB_POSTGRES_URL ||
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL;
 
 /** The previous database, to import from: OLD_DATABASE_URL, or DATABASE_URL once RISERS_DB_URL replaced it. */
 export function oldDatabaseUrl(): string | null {
