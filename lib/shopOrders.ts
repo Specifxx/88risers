@@ -230,6 +230,14 @@ export async function markShopOrderPaid(id: number, pay: { txn: string | null; p
     [id, pay.txn, pay.payer],
   );
   if (!o) return false;
+  // Self-referral check at payment time: if the PayPal account that paid belongs to the affiliate
+  // whose code was used, no commission (the buyer keeps the discount; the order stands).
+  if (o.affiliate_id && o.commission_cents && pay.payer) {
+    const [aff] = await db.query<{ payout_email: string }>(`SELECT payout_email FROM affiliates WHERE id = $1`, [o.affiliate_id]);
+    if (aff && aff.payout_email === pay.payer.trim().toLowerCase()) {
+      await db.query(`UPDATE shop_orders SET commission_cents = 0, notes = trim(coalesce(notes, '') || ' [No commission: paid from the affiliate''s own PayPal]') WHERE id = $1`, [id]);
+    }
+  }
   try {
     await sendReceipts(o);
   } catch (e) {
