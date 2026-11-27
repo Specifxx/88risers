@@ -827,8 +827,8 @@ export async function toggleTodo(form: FormData) {
 export async function deleteTodo(form: FormData) {
   const key = guard(form);
   const id = str(form, "id");
-  const { getTodos, saveTodos } = await import("@/lib/todos");
-  await saveTodos((await getTodos()).filter((t) => t.id !== id));
+  const { removeTodo } = await import("@/lib/todos");
+  if (id) await removeTodo(id);
   done(key, backTo(form), "To-do removed.");
 }
 
