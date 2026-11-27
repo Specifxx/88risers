@@ -65,10 +65,10 @@ export function ShopGrid({ products }: { products: Product[] }) {
                   className="product-media"
                   style={{ background: p.image.bg }}
                   onClick={() => art && view(p)}
-                  aria-label={`View the ${p.name} concept`}
+                  aria-label={`View the ${p.name} design`}
                 >
-                  <Image src={p.image.src} alt={`${p.name} concept`} fill sizes="(max-width: 720px) 100vw, 400px" />
-                  <span className="product-zoom">View concept</span>
+                  <Image src={p.image.src} alt={p.name} fill sizes="(max-width: 720px) 100vw, 400px" />
+                  <span className="product-zoom">View design</span>
                 </button>
               ) : (
                 <div className="product-media product-ph" aria-hidden>
@@ -144,7 +144,7 @@ export function ShopGrid({ products }: { products: Product[] }) {
       <dialog
         ref={dialog}
         className="lightbox"
-        aria-label="Product concept"
+        aria-label="Product design"
         onClick={(e) => {
           if (e.target === e.currentTarget) dialog.current?.close();
         }}
@@ -155,12 +155,12 @@ export function ShopGrid({ products }: { products: Product[] }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={(open.sheet ?? open.image)!.src}
-              alt={`${open.name} concept sheet`}
+              alt={`${open.name} design`}
               width={(open.sheet ?? open.image)!.w}
               height={(open.sheet ?? open.image)!.h}
             />
             <figcaption>
-              <b>{open.name}</b> · {open.price} · Concept
+              <b>{open.name}</b> · {open.price}
             </figcaption>
           </figure>
         ) : null}

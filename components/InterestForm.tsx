@@ -48,7 +48,7 @@ export function InterestForm({ product, onClose }: { product: Product; onClose: 
           {product.name} · {product.price}
         </span>
       </div>
-      <p className="interest-lede">It&apos;s a concept for now, with nothing to buy or pay. Leave your name and number and we&apos;ll text you if it drops.</p>
+      <p className="interest-lede">It&apos;s not on sale yet, so there&apos;s nothing to buy or pay. Leave your name and number and we&apos;ll text you if it drops.</p>
 
       {err && !err.field ? (
         <div className="form-error" role="alert">
