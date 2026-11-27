@@ -130,6 +130,16 @@ Ending 3 needs all 88. With fewer, shutting him down saves only as much of the i
 
 **The 88th Riser.** You recruit 79. The last blank line in the Register is yours, and you are not offered it until the other 87 are filled. This keeps the club's own line ("we're looking for the 88th Riser") as the last beat of the game.
 
+## Player freedom
+
+The rule the game is built on: you can do anything, and the world answers. The Pilgrimage is offered, never required.
+
+- **Nobody is protected.** Any character can be robbed, lied to, attacked or killed, including founders and possible recruits.
+- **Murder has a built-in consequence.** Whoever you kill sinks like anyone else and comes back as one of the Pinned, unless somebody raises them. You can end up saying the rite over your own victim, and they remember you.
+- **The 88 can be lost.** Each line in the Register belongs to one person. If that person dies unrecruited, the line stays blank and the full "relieve him" ending is gone for that playthrough. The game tells you, and carries on.
+- **Crime is local.** Theft, grave-robbing and stealing straps or chalk are judged by whoever saw it and whoever they tell. Reputation travels by word of mouth between settlements, at the speed people travel.
+- **You can ignore the story.** Trade straps, rise in a House, hunt the Pinned for pay, work for Gornn, live among the Undying, or never leave Rhodes. The island keeps going either way.
+
 ## NPC minds
 
 - **Every NPC is an individual.** Each has a persona sheet (history, voice, values, what they want, what they are afraid of), a private memory of what the player and other NPCs have said and done to them, a disposition towards the player in the Morrowind sense, and a small set of drives that decide what they do when the player is not around. The persona and memory condition a shared language model; the per-NPC part is the state, which is theirs alone and persists.
