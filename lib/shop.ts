@@ -1,4 +1,4 @@
-/** Concept shop products. Shared by the shop page and the register-interest action. */
+/** Shop products. Items with `buy` can be ordered and paid for; the rest take registrations of interest. Client-safe. */
 export interface Product {
   id: string;
   name: string;
@@ -11,29 +11,75 @@ export interface Product {
   image?: { src: string; w: number; h: number; bg?: string };
   /** Full concept sheet shown in the viewer. */
   sheet?: { src: string; w: number; h: number };
+  /** On sale: price in AUD, and whether the buyer adds a name, nickname and Riser no. Otherwise "register interest". */
+  buy?: { price: number; personalise: boolean };
+}
+
+export const SIZES = ["S", "M", "L", "XL", "2XL", "3XL"] as const;
+export const SLEEVES = ["Raglan", "Flat"] as const;
+
+/** One cart line, as the buyer chose it. */
+export type CartLine = {
+  product: string;
+  size: string;
+  sleeve: string;
+  qty: number;
+  name?: string;
+  nickname?: string;
+  riserNo?: string;
+};
+
+/**
+ * Australia Post prepaid Parcel Post satchels (from 1 July 2026, any address in Australia, up to
+ * 5 kg), posted from Doonside. Chosen by how many items are in the order.
+ */
+export const SATCHELS = [
+  { name: "small satchel", upTo: 1, price: 12.05 },
+  { name: "medium satchel", upTo: 3, price: 16.4 },
+  { name: "large satchel", upTo: 8, price: 20.7 },
+] as const;
+
+export function shippingFor(items: number): { label: string; price: number } {
+  if (items <= 0) return { label: "", price: 0 };
+  const fit = SATCHELS.find((s) => items <= s.upTo);
+  if (fit) return { label: `Australia Post ${fit.name}`, price: fit.price };
+  const large = SATCHELS[SATCHELS.length - 1];
+  const n = Math.ceil(items / large.upTo);
+  return { label: `${n} x Australia Post large satchels`, price: Math.round(n * large.price * 100) / 100 };
+}
+
+export const money = (n: number) => `$${n.toFixed(2).replace(/\.00$/, "")}`;
+
+export function lineLabel(l: CartLine) {
+  const p = PRODUCTS.find((x) => x.id === l.product);
+  const bits = [l.size, `${l.sleeve} sleeve`];
+  if (p?.buy?.personalise) bits.push([l.name, l.nickname ? `"${l.nickname}"` : "", l.riserNo ? `#${l.riserNo}` : ""].filter(Boolean).join(" "));
+  return `${p?.name ?? l.product} (${bits.filter(Boolean).join(", ")})`;
 }
 
 export const PRODUCTS: Product[] = [
   {
     id: "tee",
-    name: "Club Tee",
+    name: "Club Compression Tee",
     kind: "Apparel",
-    price: "$64.95",
-    blurb: "Black sublimated raglan with gold piping, red brush accents and the red-ring crest on the chest.",
-    details: ["88 mark on the left sleeve, Supp Station on the right", "Lightweight, breathable training fabric", "Sizes S – 3XL"],
+    price: "$52",
+    blurb: "Black sublimated compression tee with gold piping, red brush accents and the red-ring crest on the chest.",
+    details: ["Raglan or flat sleeve", "Lightweight, breathable compression fabric", "Sizes S – 3XL"],
     image: { src: "/shop/tee.jpg", w: 1100, h: 715, bg: "#fff" },
     sheet: { src: "/shop/tee-sheet.jpg", w: 1519, h: 927 },
+    buy: { price: 52, personalise: false },
   },
   {
     id: "jersey",
     name: "Competition Jersey",
     kind: "Apparel",
-    price: "$88.88",
+    price: "$71",
     badge: "Customised",
-    blurb: "The tournament kit. Your name and number across the back, dragons on the lower back and 上腕相撲 down the spine.",
-    details: ["Name and number of your choice (your Riser ID looks good)", "Premium sublimated competition fabric, raglan fit", "Made to order · sizes S – 3XL"],
+    blurb: "The tournament kit. Your name, nickname and Riser number on the back, dragons on the lower back and 上腕相撲 down the spine.",
+    details: ["Raglan or flat sleeve", "Your name, nickname and Riser no.", "Made to order · sizes S – 3XL"],
     image: { src: "/shop/jersey.jpg", w: 892, h: 598, bg: "#141210" },
     sheet: { src: "/shop/jersey-sheet.jpg", w: 1536, h: 1024 },
+    buy: { price: 71, personalise: true },
   },
   {
     id: "handle",
@@ -44,31 +90,6 @@ export const PRODUCTS: Product[] = [
     details: ["Ergonomic contour for cable and band work", "Anodised aluminium alloy end caps", "Steel D-ring attachment"],
     image: { src: "/shop/handle.jpg", w: 678, h: 650, bg: "#0e0d0c" },
     sheet: { src: "/shop/handle-sheet.jpg", w: 1536, h: 1024 },
-  },
-  {
-    id: "belt",
-    name: "Riser Belt",
-    kind: "Apparel",
-    price: "$44.95",
-    blurb: "Heavy cotton martial-arts style belt with RISERS embroidered in gold and your Riser ID on the tail.",
-    details: ["Black with gold thread", "Embroidered Riser ID", "Sizes 2 – 6"],
-  },
-  {
-    id: "bottle",
-    name: "Shaker Bottle",
-    kind: "Training",
-    price: "$29.95",
-    blurb: "Matte black 700 ml shaker with the gold crest. For the energy drinks we don't hand out free.",
-    details: ["Leak-proof flip cap", "Mixing ball included", "BPA free"],
-  },
-  {
-    id: "patch",
-    name: "Woven Patch",
-    kind: "Accessories",
-    price: "$14.95",
-    blurb: "Gold-on-black RISERS woven patch with the cloud linework and 八十八 seal. Sew it on your bag or jacket.",
-    details: ["Merrowed edge", "Iron-on backing", "10 × 4 cm"],
-    image: { src: "/gallery/patch.jpg", w: 494, h: 189, bg: "#0e0d0c" },
   },
 ];
 

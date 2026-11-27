@@ -1,12 +1,39 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState } from "react";
-import type { Product } from "@/lib/shop";
+import { useEffect, useRef, useState } from "react";
+import { type CartLine, type Product, money } from "@/lib/shop";
 import { InterestForm } from "./InterestForm";
+import { AddToCart, Checkout } from "./ShopCart";
 
-/** Concept products: no checkout, just a way to register interest. */
+const CART_KEY = "88cart";
+
+/** Products on sale go in the cart (checkout below the grid); the rest take registrations of interest. */
 export function ShopGrid({ products }: { products: Product[] }) {
+  const [cart, setCartState] = useState<CartLine[]>([]);
+  const [adding, setAdding] = useState<Product | null>(null);
+  const [addKey, setAddKey] = useState(0);
+  const [added, setAdded] = useState<string | null>(null);
+  const addDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
+      if (Array.isArray(saved)) setCartState(saved);
+    } catch {}
+  }, []);
+  const setCart = (lines: CartLine[]) => {
+    setCartState(lines);
+    try {
+      localStorage.setItem(CART_KEY, JSON.stringify(lines));
+    } catch {}
+  };
+  const buy = (p: Product) => {
+    setAdding(p);
+    setAddKey((k) => k + 1);
+    addDialog.current?.showModal();
+  };
+  const cartCount = cart.reduce((n, l) => n + l.qty, 0);
+  const cartTotal = cart.reduce((n, l) => n + (products.find((p) => p.id === l.product)?.buy?.price ?? 0) * l.qty, 0);
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState<Product | null>(null);
   const interestDialog = useRef<HTMLDialogElement>(null);
@@ -62,14 +89,57 @@ export function ShopGrid({ products }: { products: Product[] }) {
                     <li key={d}>{d}</li>
                   ))}
                 </ul>
-                <button type="button" className="btn btn-primary product-cta" onClick={() => ask(p)}>
-                  Register interest
-                </button>
+                {p.buy ? (
+                  <button type="button" className="btn btn-primary product-cta" onClick={() => buy(p)}>
+                    Add to cart
+                  </button>
+                ) : (
+                  <button type="button" className="btn btn-ghost product-cta" onClick={() => ask(p)}>
+                    Register interest
+                  </button>
+                )}
               </div>
             </article>
           );
         })}
       </div>
+
+      {added ? (
+        <p className="cart-added" role="status">
+          Added {added}. <a href="#cart">Check out ↓</a>
+        </p>
+      ) : null}
+      <Checkout lines={cart} setLines={setCart} />
+      {cartCount ? (
+        <a className="cart-bar" href="#cart">
+          Cart · {cartCount} item{cartCount === 1 ? "" : "s"} · {money(cartTotal)} <span>Check out →</span>
+        </a>
+      ) : null}
+
+      <dialog
+        ref={addDialog}
+        className="interest-dialog"
+        aria-label="Add to cart"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) addDialog.current?.close();
+        }}
+        onClose={() => setAdding(null)}
+      >
+        {adding ? (
+          <AddToCart
+            key={addKey}
+            product={adding}
+            onAdd={(line) => {
+              setCart([...cart, line]);
+              setAdded(adding.name);
+              addDialog.current?.close();
+            }}
+          />
+        ) : null}
+        <button type="button" className="lightbox-btn lightbox-close" onClick={() => addDialog.current?.close()} aria-label="Close">
+          ×
+        </button>
+      </dialog>
 
       <dialog
         ref={dialog}

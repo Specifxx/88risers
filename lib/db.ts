@@ -111,6 +111,29 @@ CREATE TABLE IF NOT EXISTS tv_reels (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
+-- Shop orders, paid through PayPal. Money is kept in cents. status: pending → paid → sent/collected (or cancelled).
+CREATE TABLE IF NOT EXISTS shop_orders (
+  id              serial PRIMARY KEY,
+  token           text NOT NULL,
+  name            text NOT NULL,
+  email           text NOT NULL,
+  phone           text NOT NULL,
+  items           text NOT NULL,
+  delivery        text NOT NULL,
+  address         text,
+  shipping_label  text,
+  subtotal_cents  integer NOT NULL,
+  shipping_cents  integer NOT NULL,
+  total_cents     integer NOT NULL,
+  status          text NOT NULL DEFAULT 'pending',
+  paypal_txn      text UNIQUE,
+  payer_email     text,
+  paid_at         timestamptz,
+  receipts_sent   boolean NOT NULL DEFAULT false,
+  notes           text,
+  created_at      timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS shop_interest (
   id          serial PRIMARY KEY,
   product     text NOT NULL,
@@ -428,7 +451,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v59";
+const MIGRATION_MARKER = "founders_v60";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [

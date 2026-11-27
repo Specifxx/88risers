@@ -849,6 +849,40 @@ export async function disconnectIg(form: FormData) {
   done(key, "tv", "Instagram disconnected. Reels fall back to Instagram's own embed.");
 }
 
+/* ─────────── Shop orders ─────────── */
+
+/** Moves an order along. Marking it paid by hand (e.g. paid in cash) also sends the receipts. */
+export async function setShopOrderStatus(form: FormData) {
+  const key = guard(form);
+  const id = int(form, "id");
+  const status = str(form, "status");
+  if (!id || !status || !["pending", "paid", "sent", "collected", "cancelled"].includes(status)) done(key, "shop", "Pick a status.", true);
+  const { getShopOrder, markShopOrderPaid } = await import("@/lib/shopOrders");
+  const o = await getShopOrder(id!);
+  if (!o) done(key, "shop", "Order not found.", true);
+  if (status === "paid" && o!.status === "pending") {
+    await markShopOrderPaid(id!, { txn: null, payer: null });
+    done(key, "shop", `Order #${id} marked paid; receipts sent if email is set up.`);
+  }
+  const db = await getDb();
+  await db.query(`UPDATE shop_orders SET status = $2 WHERE id = $1`, [id, status]);
+  done(key, "shop", `Order #${id} is now ${status}.`);
+}
+
+export async function resendShopReceipt(form: FormData) {
+  const key = guard(form);
+  const { getShopOrder, sendReceipts } = await import("@/lib/shopOrders");
+  const o = await getShopOrder(int(form, "id") ?? 0);
+  if (!o) done(key, "shop", "Order not found.", true);
+  let sent = false;
+  try {
+    sent = await sendReceipts(o!);
+  } catch (e) {
+    done(key, "shop", `Couldn't send: ${friendly(e)}`, true);
+  }
+  done(key, "shop", sent ? `Receipts for order #${o!.id} sent.` : "Email isn't set up yet (see the email panel).", !sent);
+}
+
 /* ─────────── Database storage ─────────── */
 
 /** Copies everything from the previous database into the live one (moving to a new database). */

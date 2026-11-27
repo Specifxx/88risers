@@ -5,7 +5,7 @@ import { PRODUCTS } from "@/lib/shop";
 
 export const metadata: Metadata = {
   title: "Shop",
-  description: "Concept 88 Risers gear: club tees, customised competition jerseys, grip handles and more. Register interest for the first drop.",
+  description: "88 Risers gear: the Club Compression Tee and the customised Competition Jersey (raglan or flat sleeve). Pickup at a meet or posted Australia-wide.",
 };
 
 export default function ShopPage() {
@@ -20,11 +20,11 @@ export default function ShopPage() {
             Rep the <span className="gold-text">table.</span>
           </h1>
           <p className="lede">
-            Club tees, customised competition jerseys and training gear. The shop isn&apos;t open yet: these are
-            concepts, and prices may change. Register interest with your name and number and we&apos;ll text you when the first drop lands.
+            The Club Compression Tee and the customised Competition Jersey are on sale now: raglan or flat sleeve, pick up at a
+            meet or posted anywhere in Australia. Pay securely through PayPal (card or PayPal account).
           </p>
           <p className="shop-note">
-            <span>Concept shop</span> No orders or payments are taken on this page.
+            <span>Now open</span> More gear is coming: register interest in the handle and we&apos;ll text you when it lands.
           </p>
           <Link href="/support#sponsor" className="btn btn-sm btn-ghost shop-sponsor-link">
             Put your brand on our jerseys: become a sponsor →

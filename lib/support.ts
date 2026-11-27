@@ -27,7 +27,12 @@ export function paypalUrl(purpose: Purpose, amount?: number) {
  * A PayPal payment (goods, not a donation) for something the club sells, e.g. an 88 Moments deposit.
  * PayPal's standard "Buy Now" link: the buyer pays by card or PayPal, in AUD.
  */
-export function paypalPaymentUrl(itemName: string, amount: number, ref: string) {
+export function paypalPaymentUrl(
+  itemName: string,
+  amount: number,
+  ref: string,
+  extra: { notifyUrl?: string; returnUrl?: string; cancelUrl?: string; custom?: string } = {},
+) {
   const q = new URLSearchParams({
     cmd: "_xclick",
     business: PAYPAL_EMAIL,
@@ -36,10 +41,22 @@ export function paypalPaymentUrl(itemName: string, amount: number, ref: string) 
     amount: amount.toFixed(2),
     currency_code: "AUD",
     no_shipping: "1",
+    invoice: ref,
+    charset: "utf-8",
   });
+  if (extra.notifyUrl) q.set("notify_url", extra.notifyUrl);
+  if (extra.returnUrl) q.set("return", extra.returnUrl);
+  if (extra.cancelUrl) q.set("cancel_return", extra.cancelUrl);
+  if (extra.custom) q.set("custom", extra.custom);
   return `https://www.paypal.com/cgi-bin/webscr?${q}`;
 }
 
 /** The on-site link: /donate?for=funds&amount=20 */
 export const donateHref = (purpose: Purpose, amount?: number) =>
   `/donate?for=${purpose}${amount ? `&amount=${amount}` : ""}`;
+
+/** Addresses a genuine payment to the club may be addressed to (PayPal reports the receiving account). */
+export function paypalReceivers(): Set<string> {
+  const extra = (process.env.PAYPAL_RECEIVER_EMAILS || "").split(/[,\s]+/);
+  return new Set([PAYPAL_EMAIL, "88risers@gmail.com", ...extra].map((e) => e.trim().toLowerCase()).filter(Boolean));
+}

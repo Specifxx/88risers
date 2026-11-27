@@ -71,6 +71,8 @@ import {
   setInterestDone,
   setRegistrationStatus,
   cleanStorage,
+  setShopOrderStatus,
+  resendShopReceipt,
   movePhotos,
   importOldDatabase,
 } from "./actions";
@@ -959,7 +961,7 @@ function Tv({ reels, live, k, ig }: { reels: Reel[]; live: LiveState; k: string;
   );
 }
 
-function Shop({ interest, k }: { interest: ShopInterest[]; k: string }) {
+async function Shop({ interest, k }: { interest: ShopInterest[]; k: string }) {
   const name = (id: string) => PRODUCTS.find((p) => p.id === id)?.name ?? id;
   const counts = PRODUCTS.map((p) => ({ p, n: interest.filter((r) => r.product === p.id).length }));
   return (
@@ -974,6 +976,8 @@ function Shop({ interest, k }: { interest: ShopInterest[]; k: string }) {
         </div>
       </div>
       <MailPanel k={k} />
+      {await guarded("Orders", () => ShopOrders({ k }))}
+      <h2 className="panel-title" style={{ marginTop: 28 }}>Registered interest</h2>
       <div className="panel interest-counts">
         {counts.map(({ p, n }) => (
           <div key={p.id}>
@@ -2048,6 +2052,109 @@ async function PhotoStorage({ k }: { k: string }) {
           </ConfirmButton>
         </form>
       ) : null}
+    </div>
+  );
+}
+
+/* ─────────── Shop orders ─────────── */
+
+const ORDER_STATUS: Record<string, string> = {
+  pending: "Awaiting payment",
+  paid: "Paid · to send",
+  sent: "Posted",
+  collected: "Picked up",
+  cancelled: "Cancelled",
+};
+
+async function ShopOrders({ k }: { k: string }) {
+  const { orderLines, dollars } = await import("@/lib/shopOrders");
+  const { lineLabel } = await import("@/lib/shop");
+  const db = await getDb();
+  const orders = await db.query<import("@/lib/shopOrders").ShopOrder>(`SELECT * FROM shop_orders ORDER BY created_at DESC LIMIT 200`);
+  const toSend = orders.filter((o) => o.status === "paid");
+  const paidTotal = orders.filter((o) => ["paid", "sent", "collected"].includes(o.status)).reduce((n, o) => n + o.total_cents, 0);
+  return (
+    <div className="panel">
+      <h2 className="panel-title">
+        Orders <small>{toSend.length} TO SEND · {dollars(paidTotal)} PAID</small>
+      </h2>
+      <p className="muted" style={{ marginTop: 0 }}>
+        Orders turn &ldquo;Paid&rdquo; by themselves when PayPal confirms the payment, and the buyer and 88risers@gmail.com get a
+        receipt. &ldquo;Awaiting payment&rdquo; means they started checkout but haven&apos;t paid (yet).
+      </p>
+      {orders.length === 0 ? (
+        <p className="muted">No orders yet.</p>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <table className="sm-backers">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Items</th>
+                <th>Delivery</th>
+                <th className="num">Total</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((o) => (
+                <tr key={o.id} style={o.status === "pending" || o.status === "cancelled" ? { opacity: 0.6 } : undefined}>
+                  <td>
+                    <b>#{o.id}</b> {o.name}
+                    <br />
+                    <a href={`mailto:${o.email}`}>{o.email}</a>
+                    <br />
+                    <a href={`tel:${o.phone}`}>{prettyPhone(o.phone)}</a>
+                    <br />
+                    <span className="muted">{fmtWhen(new Date(o.created_at))}</span>
+                  </td>
+                  <td style={{ maxWidth: 320 }}>
+                    {orderLines(o).map((l, i) => (
+                      <div key={i}>
+                        {l.qty} × {lineLabel(l)}
+                      </div>
+                    ))}
+                    {o.notes ? <i className="muted">“{o.notes}”</i> : null}
+                  </td>
+                  <td style={{ whiteSpace: "pre-line", maxWidth: 220 }}>
+                    {o.delivery === "post" ? `${o.shipping_label}\n${o.address}` : "Pickup at a meet"}
+                  </td>
+                  <td className="num">
+                    {dollars(o.total_cents)}
+                    {o.paypal_txn ? (
+                      <>
+                        <br />
+                        <span className="muted" style={{ fontSize: 11 }}>{o.paypal_txn}</span>
+                      </>
+                    ) : null}
+                  </td>
+                  <td>
+                    <form action={setShopOrderStatus} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <input type="hidden" name="key" value={k} />
+                      <input type="hidden" name="id" value={o.id} />
+                      <select name="status" defaultValue={o.status} className="input" style={{ minHeight: 0, padding: "6px 8px" }}>
+                        {Object.entries(ORDER_STATUS).map(([v, l]) => (
+                          <option key={v} value={v}>
+                            {l}
+                          </option>
+                        ))}
+                      </select>
+                      <button className="btn btn-sm btn-ghost">Save</button>
+                    </form>
+                    {o.status !== "pending" && o.status !== "cancelled" ? (
+                      <form action={resendShopReceipt} style={{ marginTop: 6 }}>
+                        <input type="hidden" name="key" value={k} />
+                        <input type="hidden" name="id" value={o.id} />
+                        <button className="btn btn-sm btn-ghost">{o.receipts_sent ? "Resend receipt" : "Send receipt"}</button>
+                      </form>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

@@ -24,7 +24,7 @@ export function mailStatus() {
   };
 }
 
-export async function sendClubMail(msg: { subject: string; text: string; replyTo?: string }) {
+export async function sendClubMail(msg: { subject: string; text: string; replyTo?: string; to?: string }) {
   if (!mailConfigured()) return false;
   const user = process.env.GMAIL_USER!.trim();
   const transport = nodemailer.createTransport({
@@ -33,7 +33,7 @@ export async function sendClubMail(msg: { subject: string; text: string; replyTo
   });
   await transport.sendMail({
     from: `"${SITE.name} website" <${user}>`,
-    to: process.env.MAIL_TO?.trim() || SITE.email,
+    to: msg.to || process.env.MAIL_TO?.trim() || SITE.email,
     subject: msg.subject,
     text: msg.text,
     replyTo: msg.replyTo,
