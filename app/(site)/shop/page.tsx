@@ -17,15 +17,8 @@ export default function ShopPage() {
             <Link href="/">Home</Link> / Shop
           </p>
           <h1 className="display">
-            Rep the <span className="gold-text">table.</span>
+            Rep <span className="gold-text">88Risers.</span>
           </h1>
-          <p className="lede">
-            The Club Compression Tee and the customised Competition Jersey are on sale now: raglan or flat sleeve, pick up at a
-            meet or posted anywhere in Australia. Pay securely through PayPal (card or PayPal account).
-          </p>
-          <p className="shop-note">
-            <span>Now open</span> More gear is coming: register interest in the handle and we&apos;ll text you when it lands.
-          </p>
           <Link href="/support#sponsor" className="btn btn-sm btn-ghost shop-sponsor-link">
             Put your brand on our jerseys: become a sponsor →
           </Link>
