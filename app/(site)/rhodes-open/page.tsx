@@ -141,14 +141,7 @@ export default async function RhodesOpenPage() {
                   </thead>
                   <tbody>
                     <tr>
-                      <th>
-                        Early bird <small>until {TBC}</small>
-                      </th>
-                      <td>$35</td>
-                      <td>$50</td>
-                    </tr>
-                    <tr>
-                      <th>Standard</th>
+                      <th>Entry</th>
                       <td>$40</td>
                       <td>$55</td>
                     </tr>

@@ -26,7 +26,7 @@ export function OpenEntryForm() {
           <h3>{state.updated ? "Entry updated" : `You're on the list${state.name ? `, ${state.name}` : ""}`}</h3>
           <p>
             {ARMS_LABEL[state.arms]} · {classLabel(state.weightClass)}. Nothing to pay yet: we&apos;ll text you once the
-            details are locked in, with how to pay and the early bird price.
+            details are locked in, with how to pay.
           </p>
           <p className="fine">Entered the wrong thing? Fill the form in again with the same mobile number and it updates.</p>
           <a className="ig-card" href={SITE.instagramUrl} target="_blank" rel="noreferrer">
