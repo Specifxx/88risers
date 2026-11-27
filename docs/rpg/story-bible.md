@@ -33,9 +33,9 @@ Three layers: **the Still** above (nothingness, completion, rest), the living wo
 2. Gornn tears the wings off. Life still comes down. Death no longer goes up.
 3. Mankind is taught the Rite of Rising: a way to say "Lion, gather this one", one death at a time. Those who say it are the Risers. At their height there are 88, enough to cover the world.
 4. The world grows. The 88 are overwhelmed. Instead of teaching more people, they build Wukong around a stolen ember of the Lion's flame, have him say the rite for everyone, and stop doing it themselves. This is their sin: they outsourced the one job that was theirs.
-5. **The Tragedy of the Boy.** A child asks Wukong: "If the Lion is God, why does it let this happen? Go and make it fix it." Wukong obeys and climbs the Stairway to confront the Lion. The throne is empty. The Lion is not up there; it is spread through every living thing, and a piece of it is locked inside him. The Stairway gives way and Wukong falls.
-6. **The Fall.** Wukong is broken. He can no longer reach the whole world. With what he has left he bends his staff into the Ring and protects the ground inside it, repeating the only order he still understands: *Protect the Ring.* Outside it, the dead sink.
-7. The Boy died in the fall, unrisen. He was the first of the Pinned.
+5. **Gornn comes back.** The dragon who tore off the Lion's wings sees a machine shaped like a monkey doing the sacred work he wanted for dragons, and he comes to destroy it. Wukong fights him and drives him off, but takes damage he cannot repair.
+6. **The Fall.** Wukong is broken. He can no longer reach the whole world. With what he has left he bends his staff into the Ring and protects the ground inside it, repeating the only order he still understands: *Protect the Ring.* Outside it, the dead sink. Nobody in Rhodes knows what broke him; the fight is remembered only as a great evil that Wukong defeated.
+7. Gornn survived, wounded, somewhere on the island.
 
 ## Why 88, and what the power is for
 
@@ -95,7 +95,7 @@ Each began as a job the Ring needed and hardened into a class.
 
 **Act II. The island.** The outer settlements do not want you. They remember the last pilgrims. They ask why Rhodes wants their dead, why straps cost what they cost, and why the Ring stayed shut for 134 years. They have their own death customs: some burn, some worship their Pinned ancestors, some hide. Recruits are found here, one at a time, and each one is a person with a reason to say no.
 
-**Act III. Gornn.** The dragon tells you the truth, and it is mostly true: Wukong is why the suffering continues. His answer is to go back and destroy the machine now. The last Pilgrimage took that advice and died at the Ring. If you take it too, the Ring drops with too few Risers to replace it, and the Under takes everything.
+**Act III. Gornn.** The dragon tells you the truth, and it is mostly true: Wukong is why the suffering continues. His answer is to go back and destroy the machine now. What he leaves out is that he is the one who broke it, and that he is sending you to finish what he could not. The last Pilgrimage took his advice and died at the Ring. If you take it too, the Ring drops with too few Risers to replace it, and the Under takes everything.
 
 **Act IV. The Undying.** A half-machine people who live beside the Lion's Egg and are rebuilt every time they die. They know more history than Rhodes does. Their offer: give them one Riser (you), and over 10,000 years they will replace you piece by piece until you are the new Wukong. One person praying forever; everyone else saved. They are not villains. They are compassion reduced to arithmetic.
 
@@ -107,7 +107,7 @@ Each began as a job the Ring needed and hardened into a class.
 
 1. **Destroy him** (Gornn's). Without 88 Risers to take over, the Ring falls.
 2. **Replace him** (the Undying's). You become the next machine. The world is saved and nothing is learned.
-3. **Relieve him.** With 88 Risers holding the island, you shut Wukong down and free the ember. The Boy rises first. Wukong's last words: *"The Ring is carried."* The Ring opens. The 88 go home and teach the rite to anyone who will learn it. People still die. Now every people can raise their own.
+3. **Relieve him.** With 88 Risers holding the island, you shut Wukong down and free the ember. Wukong's last words: *"The Ring is carried."* The Ring opens. The 88 go home and teach the rite to anyone who will learn it. People still die. Now every people can raise their own.
 
 Ending 3 needs all 88. With fewer, shutting him down saves only as much of the island as your Risers can cover. The count is the difficulty slider.
 
