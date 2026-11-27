@@ -228,6 +228,13 @@ export default async function Home() {
             <div className="grid88">
               {Array.from({ length: 88 }, (_, i) => i + 1).map((n) => {
                 const p = pullers.find((f) => f.id === n);
+                if (taken.has(n) && !p)
+                  // a Riser from the old database, back on 1 December: shown as taken, no name or link yet
+                  return (
+                    <span key={n} className="cell taken" title={`Riser ${formatId(n)}`}>
+                      {String(n).padStart(2, "0")}
+                    </span>
+                  );
                 if (taken.has(n))
                   return (
                     <Link key={n} href={`/pullers/${n}`} className="cell taken" title={p?.name ?? `Riser ${formatId(n)}`}>
