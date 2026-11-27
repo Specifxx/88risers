@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { assertAdmin } from "@/lib/admin";
 import { NEXT_ID_SQL, PICK_MAX, PICK_MIN, recomputeElo } from "@/lib/data";
 import { getDb, type Db } from "@/lib/db";
-import { savePhoto, photoUrl } from "@/lib/photos";
+import { deletePhotos, movePhotosToBlob, savePhoto, photoUrl } from "@/lib/photos";
 import { cleanUpStorage, deletePhotoIfUnused, fmtBytes } from "@/lib/storage";
 import { fromSydneyInput } from "@/lib/schedule";
 import { setGiveawayDrawAt } from "@/lib/giveaway";
@@ -123,7 +123,7 @@ export async function deleteRegistration(form: FormData) {
       [int(form, "registration_id")],
     );
     // Keep the photo if it became a public puller photo.
-    if (reg?.photo_id && !reg.puller_id) await tx.query(`DELETE FROM photos WHERE id = $1`, [reg.photo_id]);
+    if (reg?.photo_id && !reg.puller_id) await deletePhotos(tx, [reg.photo_id]);
   });
   done(key, "registrations", "Registration deleted.");
 }
@@ -850,6 +850,22 @@ export async function disconnectIg(form: FormData) {
 }
 
 /* ─────────── Database storage ─────────── */
+
+/** Moves photos out of the database into Vercel Blob, one batch per click. */
+export async function movePhotos(form: FormData) {
+  const key = guard(form);
+  let message: string;
+  try {
+    const db = await getDb();
+    const r = await movePhotosToBlob(db);
+    message = r.left
+      ? `Moved ${r.moved} photo${r.moved === 1 ? "" : "s"} to file storage. ${r.left} to go: press the button again.`
+      : `All photos are in file storage (${r.moved} moved this time).`;
+  } catch (err) {
+    done(key, "storage", `Moving photos failed. (${friendly(err)})`, true);
+  }
+  done(key, "storage", message);
+}
 
 export async function cleanStorage(form: FormData) {
   const key = guard(form);

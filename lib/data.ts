@@ -313,8 +313,8 @@ export async function listRegistrations() {
 export async function getPhoto(id: string) {
   const d = await getDb();
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
-  const [p] = await d.query<{ mime: string; data: Uint8Array; is_public: boolean }>(
-    `SELECT mime, data, is_public FROM photos WHERE id = $1`,
+  const [p] = await d.query<{ mime: string; data: Uint8Array | null; blob_url: string | null; is_public: boolean }>(
+    `SELECT mime, data, blob_url, is_public FROM photos WHERE id = $1`,
     [id],
   );
   return p ?? null;

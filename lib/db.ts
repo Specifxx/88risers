@@ -27,6 +27,10 @@ CREATE TABLE IF NOT EXISTS photos (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
+-- Photo files now live in Vercel Blob; the row keeps the address (data stays for older photos).
+ALTER TABLE photos ALTER COLUMN data DROP NOT NULL;
+ALTER TABLE photos ADD COLUMN IF NOT EXISTS blob_url text;
+
 CREATE TABLE IF NOT EXISTS registrations (
   id           serial PRIMARY KEY,
   name         text NOT NULL,
@@ -424,7 +428,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v57";
+const MIGRATION_MARKER = "founders_v58";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [

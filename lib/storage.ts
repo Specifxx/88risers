@@ -1,4 +1,5 @@
 import "server-only";
+import { deletePhotos } from "./photos";
 import { getDb, scrubDbError, type Db } from "./db";
 
 /**
@@ -52,7 +53,7 @@ async function usedPhotoIds(db: Db): Promise<Set<string>> {
 
 async function unusedPhotos(db: Db) {
   const used = await usedPhotoIds(db);
-  const all = await db.query<{ id: string; bytes: number }>(`SELECT id::text AS id, octet_length(data)::int AS bytes FROM photos`);
+  const all = await db.query<{ id: string; bytes: number }>(`SELECT id::text AS id, coalesce(octet_length(data), 0)::int AS bytes FROM photos`);
   return all.filter((p) => !used.has(p.id.toLowerCase()));
 }
 
@@ -66,7 +67,7 @@ export async function storageReport(): Promise<StorageReport> {
        WHERE c.relkind = 'r' AND n.nspname = 'public'
        ORDER BY pg_total_relation_size(c.oid) DESC LIMIT 10`,
     ),
-    db.query<{ count: number; bytes: string }>(`SELECT count(*)::int AS count, coalesce(sum(octet_length(data)), 0)::text AS bytes FROM photos`),
+    db.query<{ count: number; bytes: string }>(`SELECT count(*)::int AS count, coalesce(sum(coalesce(octet_length(data), 0)), 0)::text AS bytes FROM photos`),
     db.query<{ sessions: number; resets: number; login_attempts: number }>(
       `SELECT (SELECT count(*)::int FROM sessions WHERE expires_at < now()) AS sessions,
               (SELECT count(*)::int FROM password_resets WHERE expires_at < now() OR used_at IS NOT NULL) AS resets,
@@ -97,8 +98,7 @@ export async function cleanUpStorage() {
   let photos = 0;
   for (let i = 0; i < unused.length; i += 200) {
     const ids = unused.slice(i, i + 200).map((p) => p.id);
-    const r = await db.query(`DELETE FROM photos WHERE id = ANY($1::uuid[]) RETURNING 1`, [ids]);
-    photos += r.length;
+    photos += await deletePhotos(db, ids);
   }
   const [s] = await db.query<{ n: number }>(`WITH d AS (DELETE FROM sessions WHERE expires_at < now() RETURNING 1) SELECT count(*)::int AS n FROM d`);
   const [p] = await db.query<{ n: number }>(
@@ -124,7 +124,7 @@ export async function deletePhotoIfUnused(db: Db, idOrUrl: string | null | undef
   const id = idOrUrl?.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0];
   if (!id) return;
   const used = await usedPhotoIds(db);
-  if (!used.has(id.toLowerCase())) await db.query(`DELETE FROM photos WHERE id = $1`, [id]);
+  if (!used.has(id.toLowerCase())) await deletePhotos(db, [id]);
 }
 
 export const fmtBytes = (n: number) =>

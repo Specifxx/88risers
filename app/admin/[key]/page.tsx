@@ -22,6 +22,8 @@ import { ARMS_LABEL, OPEN, bracketCounts, classLabel, openEntries } from "@/lib/
 import { MOMENT_ITEMS } from "@/lib/momentsConfig";
 import { getDb, scrubDbError } from "@/lib/db";
 import { fmtBytes, storageReport } from "@/lib/storage";
+import { photoCounts } from "@/lib/photos";
+import { blobEnabled } from "@/lib/blob";
 import { getTodos } from "@/lib/todos";
 import {
   deleteEvent,
@@ -69,6 +71,7 @@ import {
   setInterestDone,
   setRegistrationStatus,
   cleanStorage,
+  movePhotos,
 } from "./actions";
 import { ConfirmButton, CopyButton, ImageInput } from "./ui";
 
@@ -1972,6 +1975,8 @@ async function Storage({ k }: { k: string }) {
         {!r.writable ? <p className="fine">Cleanup only works once Neon accepts writes again.</p> : null}
       </div>
 
+      <PhotoStorage k={k} />
+
       <div className="panel">
         <h2 className="panel-title">If Neon says the storage is full</h2>
         <p className="muted" style={{ marginTop: 0 }}>
@@ -1996,5 +2001,33 @@ async function Storage({ k }: { k: string }) {
         </ol>
       </div>
     </>
+  );
+}
+
+/** Where photo files live: the database (old) or Vercel Blob (file storage), with the move button. */
+async function PhotoStorage({ k }: { k: string }) {
+  const db = await getDb();
+  const c = await photoCounts(db);
+  const connected = blobEnabled();
+  return (
+    <div className="panel">
+      <h2 className="panel-title">
+        Photo storage <small>{connected ? "VERCEL BLOB CONNECTED" : "BLOB NOT CONNECTED"}</small>
+      </h2>
+      <p className="muted" style={{ marginTop: 0 }}>
+        {c.inBlob} photo{c.inBlob === 1 ? "" : "s"} in file storage (Vercel Blob), {c.inDb} still inside the database.{" "}
+        {connected
+          ? "New uploads already go to file storage."
+          : "Create a Blob store in Vercel (Storage → Create → Blob) and connect it to this project; new uploads then go there automatically."}
+      </p>
+      {connected && c.inDb > 0 ? (
+        <form action={movePhotos}>
+          <input type="hidden" name="key" value={k} />
+          <ConfirmButton message={`Move ${c.inDb} photo${c.inDb === 1 ? "" : "s"} out of the database into file storage? Nothing changes on the site.`} className="btn btn-primary btn-sm">
+            Move photos to file storage ({Math.min(40, c.inDb)} per click)
+          </ConfirmButton>
+        </form>
+      ) : null}
+    </div>
   );
 }
