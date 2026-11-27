@@ -309,7 +309,7 @@ export function Checkout({ lines, setLines }: { lines: CartLine[]; setLines: (l:
         </button>
         <p className="fine">
           Pay by card or PayPal account. Your receipt is emailed from 88risers@gmail.com once the payment goes through. By paying you agree to our{" "}
-          <a href="/terms#shop">Terms &amp; Refunds</a> (personalised items can&apos;t be returned for change of mind) and{" "}
+          <a href="/terms#shop">Terms &amp; Refunds</a> (no change-of-mind returns, so check your size) and{" "}
           <a href="/privacy">Privacy policy</a>.
         </p>
       </form>

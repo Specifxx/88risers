@@ -53,8 +53,8 @@ const SECTIONS: { id: string; title: string; points: React.ReactNode[] }[] = [
     title: "Refunds and returns",
     points: [
       "If an item is faulty, damaged, or not what we described, contact us within a reasonable time and we'll repair, replace or refund it, as the Australian Consumer Law requires. We pay the return postage for faulty items.",
-      "Change of mind: for standard items in unworn, original condition, ask within 14 days and we'll exchange the size or refund the item (you pay the return postage; original postage isn't refunded).",
-      "Personalised items (with your name, nickname or number) can't be returned for change of mind, but they're still covered if faulty or printed differently from what you ordered.",
+      "We don't offer refunds or returns for change of mind (for example, if you change your mind or pick the wrong size), so please check the size guide and your details before you pay.",
+      "Personalised items (with your name, nickname or number) are still covered if they're faulty or printed differently from what you ordered.",
       "Refunds go back through PayPal to how you paid.",
     ],
   },
