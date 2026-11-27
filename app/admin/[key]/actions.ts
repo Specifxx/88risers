@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertAdmin } from "@/lib/admin";
-import { NEXT_ID_SQL, PICK_MAX, PICK_MIN, recomputeElo } from "@/lib/data";
+import { NEXT_ID_SQL, PICK_MAX, PICK_MIN, RESTORE_HELD_IDS, recomputeElo } from "@/lib/data";
 import { getDb, type Db } from "@/lib/db";
 import { deletePhotos, movePhotosToBlob, savePhoto, photoUrl } from "@/lib/photos";
 import { cleanUpStorage, deletePhotoIfUnused, fmtBytes } from "@/lib/storage";
@@ -756,6 +756,8 @@ export async function setRequestedId(form: FormData) {
   const regId = int(form, "registration_id");
   const n = int(form, "requested_id");
   if (n !== null && (n < PICK_MIN || n > PICK_MAX)) done(key, "registrations", `Reserved numbers are #${PICK_MIN}–#${PICK_MAX}.`, true);
+  if (n !== null && RESTORE_HELD_IDS.includes(n))
+    done(key, "registrations", `#${String(n).padStart(3, "0")} belongs to a Riser being restored from the old database.`, true);
   const db = await getDb();
   if (n !== null) {
     const [clash] = await db.query(

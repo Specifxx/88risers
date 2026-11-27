@@ -1,6 +1,6 @@
 "use server";
 
-import { PICK_MAX, PICK_MIN } from "@/lib/data";
+import { PICK_MAX, PICK_MIN, RESTORE_HELD_IDS } from "@/lib/data";
 import { getDb } from "@/lib/db";
 import { sendClubMail } from "@/lib/mail";
 import { normalisePhone, prettyPhone } from "@/lib/phone";
@@ -48,7 +48,7 @@ export async function register(_prev: JoinState, form: FormData): Promise<JoinSt
            SELECT 1 FROM registrations WHERE requested_id = $1 AND puller_id IS NULL AND status <> 'archived' AND phone <> $2`,
           [requested, phone],
         );
-        if (clash)
+        if (clash || RESTORE_HELD_IDS.includes(requested))
           return {
             status: "error",
             field: "requested_id",

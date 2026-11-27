@@ -28,6 +28,10 @@ const isLoggedIn = () =>
     .then((d) => !!d.loggedIn)
     .catch(() => true));
 
+/** Until 1 December 2026 (Sydney): Risers from the old database are restored then. */
+const restoreNoticeOn = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()) < "2026-12-01";
+
 /** Sydney hour, so the lion keeps club time wherever the visitor is. */
 const sydneyHour = () => Number(new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", hourCycle: "h23" }).format(new Date()));
 
@@ -78,6 +82,12 @@ export function MerchLion() {
     const wait = path === "/" ? 7000 : 2500;
     let cancelled = false;
     const t = setTimeout(async () => {
+      if (restoreNoticeOn()) {
+        return say("roar", "Registered to be a Riser?", "If you registered to be a Riser, you will be restored in the database on 1 December.", 14000, {
+          href: "/pullers",
+          label: "Riser Database",
+        });
+      }
       // Visitors without an account get nudged to make one (not on the account page itself).
       if (!path.startsWith("/account") && !(await isLoggedIn())) {
         if (cancelled) return;

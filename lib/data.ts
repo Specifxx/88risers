@@ -89,12 +89,19 @@ export const PICK_MIN = 9;
 export const PICK_MAX = 87;
 export const RESERVED_ID = 88;
 
+/**
+ * Riser numbers already used in the previous database (#001–#026 and #069), held until that
+ * data is imported back, so nobody new is given one of them in the meantime.
+ */
+export const RESTORE_HELD_IDS = [...Array.from({ length: 26 }, (_, i) => i + 1), 69];
+const RESTORE_HELD_SQL = RESTORE_HELD_IDS.join(", ");
+
 /** Numbers held for open registrations that asked for them. */
 const HELD_IDS = `SELECT requested_id FROM registrations
   WHERE requested_id IS NOT NULL AND puller_id IS NULL AND status <> 'archived'`;
 /** The lowest free Riser number: not used, not held for someone, and not #088. */
 export const NEXT_ID_SQL = `(SELECT min(n)::int FROM generate_series(1, (SELECT coalesce(max(id), 0) + 200 FROM pullers)) n
-  WHERE n <> ${RESERVED_ID} AND n NOT IN (SELECT id FROM pullers) AND n NOT IN (${HELD_IDS}))`;
+  WHERE n <> ${RESERVED_ID} AND n NOT IN (${RESTORE_HELD_SQL}) AND n NOT IN (SELECT id FROM pullers) AND n NOT IN (${HELD_IDS}))`;
 
 const PULLER_COLS = `
   p.id, p.name, p.nickname, p.title, p.bio, p.photo_url, p.card_url, p.highlight_url, p.highlight_title, p.weight_class,
@@ -177,7 +184,7 @@ export async function getClubStats() {
        (SELECT count(*)::int FROM matches) AS matches,
        ${NEXT_ID_SQL} AS next_id,
        (SELECT coalesce(array_agg(id ORDER BY id), '{}') FROM pullers WHERE NOT hidden) AS taken,
-       (SELECT coalesce(array_agg(DISTINCT x ORDER BY x), '{}') FROM (SELECT id AS x FROM pullers UNION ${HELD_IDS}) u) AS unavailable,
+       (SELECT coalesce(array_agg(DISTINCT x ORDER BY x), '{}') FROM (SELECT id AS x FROM pullers UNION ${HELD_IDS} UNION SELECT unnest(ARRAY[${RESTORE_HELD_SQL}])) u) AS unavailable,
        (SELECT coalesce(array_agg(DISTINCT x ORDER BY x), '{}') FROM (${HELD_IDS}) h(x) WHERE x NOT IN (SELECT id FROM pullers)) AS held`,
   );
   return s;
