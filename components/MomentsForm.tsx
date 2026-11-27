@@ -2,14 +2,14 @@
 
 import { startTransition, useActionState, useState } from "react";
 import { orderMoments, type MomentState } from "@/app/(site)/moments/actions";
-import { MOMENTS_BASE, MOMENTS_DEPOSIT, MOMENTS_FULL_SET, MOMENTS_ITEMS_SUM, MOMENT_EVENTS, MOMENT_ITEMS, SHIRT_SIZES, momentsTotal } from "@/lib/momentsConfig";
+import { MOMENTS_DEPOSIT, MOMENTS_FULL_SET, MOMENTS_ITEMS_SUM, MOMENT_EVENTS, MOMENT_ITEMS, SHIRT_SIZES, momentsTotal } from "@/lib/momentsConfig";
 import { SITE } from "@/lib/site";
 import { Arrow, Check, Instagram } from "./Icons";
 
 /** 88 Moments order: pick the event and moment, choose pieces, see the total. Pay later. */
 export function MomentsForm() {
   const [state, action, pending] = useActionState<MomentState, FormData>(orderMoments, { status: "idle" });
-  const [picked, setPicked] = useState<string[]>([]);
+  const [picked, setPicked] = useState<string[]>(["framed"]);
   const [event, setEvent] = useState("");
   const total = momentsTotal(picked);
   const all = picked.length === MOMENT_ITEMS.length;
@@ -29,7 +29,7 @@ export function MomentsForm() {
           </div>
           <h3>Almost booked{state.name ? `, ${state.name}` : ""}</h3>
           <p>
-            {state.count ? `Booking + ${state.count} ${state.count === 1 ? "piece" : "pieces"}` : "Booking + digital artwork"} · <b>${state.total}</b>. Pay the <b>${state.deposit} deposit</b> to
+            {state.count} {state.count === 1 ? "piece" : "pieces"} · <b>${state.total}</b>. Pay the <b>${state.deposit} deposit</b> to
             lock in the camera for your comp. It&apos;s non-refundable and comes off your total, so the balance after you approve
             your artwork is <b>${Math.max(0, state.total - state.deposit)}</b>.
           </p>
@@ -68,31 +68,20 @@ export function MomentsForm() {
       ) : null}
 
       <div className="field" data-invalid={invalid("items")}>
-        <span className="label">Your moment</span>
-        <div className="mo-items">
-          <label className="on mo-base">
-            <input type="checkbox" checked disabled readOnly />
-            <span className="mo-item-name">
-              Moment booking
-              <small>Camera on you at the comp, your sumi-e artwork, high-res digital file</small>
-            </span>
-            <b>${MOMENTS_BASE}</b>
-          </label>
-        </div>
-        <span className="label" style={{ marginTop: 14 }}>
-          Add printed pieces <em>optional</em>
+        <span className="label">
+          Pieces <em>camera, artwork and digital file included</em>
         </span>
         <div className="mo-items">
           {MOMENT_ITEMS.map((i) => (
             <label key={i.id} className={picked.includes(i.id) ? "on" : undefined}>
               <input type="checkbox" name="items" value={i.id} checked={picked.includes(i.id)} onChange={() => toggle(i.id)} />
               <span className="mo-item-name">{i.name}</span>
-              <b>+${i.price}</b>
+              <b>${i.price}</b>
             </label>
           ))}
         </div>
-        <button type="button" className="mo-all" onClick={() => setPicked(all ? [] : MOMENT_ITEMS.map((i) => i.id))}>
-          {all ? "Just the booking and digital artwork" : `Full Risers Moment Package · $${MOMENTS_FULL_SET} (save $${MOMENTS_ITEMS_SUM - MOMENTS_FULL_SET})`}
+        <button type="button" className="mo-all" onClick={() => setPicked(all ? ["framed"] : MOMENT_ITEMS.map((i) => i.id))}>
+          {all ? "Just the framed print" : `Full Risers Moment Package · $${MOMENTS_FULL_SET} (save $${MOMENTS_ITEMS_SUM - MOMENTS_FULL_SET})`}
         </button>
         {fieldErr("items")}
       </div>
@@ -213,7 +202,7 @@ export function MomentsForm() {
         <span>Total</span>
         <b>${total}</b>
       </div>
-      <button className="btn btn-primary submit" type="submit" disabled={pending}>
+      <button className="btn btn-primary submit" type="submit" disabled={pending || !picked.length}>
         {pending ? "Booking…" : `Book · $${MOMENTS_DEPOSIT} deposit`} {!pending ? <Arrow /> : null}
       </button>
       <p className="fine">
