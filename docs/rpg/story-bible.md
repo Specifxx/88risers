@@ -21,7 +21,7 @@ The dead cannot rise on their own any more. Anything that dies unattended sinks 
 | Four Houses | Four Houses, same jobs (below). |
 | Mecca / Porcelain Saints | **The Undying**. |
 | Buddhist Crusade | **The Pilgrimage**. The last one left 134 years ago. |
-| Four heroes plus a monk | One player, and 80 people who have to be persuaded. |
+| Four heroes plus a monk | One player, and a quota: 80 more Risers, recruited from the villages. |
 
 Names dropped on purpose: the previous crusaders (Annie, Ryze, Rengar, Kha'Zix, Alistar) are League of Legends characters, and "Mecca" reads as the real place.
 
@@ -51,7 +51,7 @@ That matters because of what is inside him. The Lion's ember is still caged in h
 
 ### Why people believe it
 
-- **The first 88 left an instruction.** Before they died out, they carved one line above the Register: *"If he fails, gather the 88."* They meant: take the job back. It is the only thing they left, and it is why the Register has 88 lines.
+- **The first 88 left an instruction.** Before they died out, they carved one line above the Register: *"If he fails, gather the 88."* They meant: take the job back. It is the only thing they left, and it is why the Register stops at 88.
 - **Rhodes reads it the other way.** After generations living under the machine's protection, people revere Wukhan. To them the line means: the 88 built him, so 88 Risers can mend him. The Houses teach this reading, because it keeps Wukhan, and them, at the centre.
 - **Wukhan answers them.** When a Riser says the rite near the machine, the ember in his core flares. People take that as Wukhan drawing strength from Risers, and conclude that enough of them would restore him. In truth the ember is answering the rite, as the Lion always did, and Wukhan has nothing to do with it.
 
@@ -59,7 +59,7 @@ So the evidence is real and the conclusion is wrong. Everyone in Rhodes believes
 
 ## Rhodes and the eight founders
 
-The starting village sits inside the Ring, beside the wreck of Wukhan. In its hall is **the Register**: 88 names, eight filled in. (The same 88-seat grid as the club site. Every recruit fills one.)
+The starting village sits inside the Ring, beside the wreck of Wukhan. In its hall is **the Register**: room for 88 names, eight filled in. (The same 88-seat grid as the club site. Every recruit fills one.) The 88 is a quota, not a list of chosen people: anyone willing and able can fill a line.
 
 The founders are Risers #001 to #008, in the order the club already uses:
 
@@ -77,6 +77,12 @@ The founders are Risers #001 to #008, in the order the club already uses:
 These role assignments are placeholders. Each founder should write their own persona sheet (below), because the point is that they are recognisably themselves.
 
 **Every recruit makes their settlement safe.** That is the open-world loop: the Ring stays as it is, the island is hostile everywhere else, and each Riser you recruit turns their home into somewhere the dead rise, where you can rest, trade and set out from again.
+
+### Why the quota is hard
+
+- **Every village has only so many.** A Riser has to be both willing and capable: willing to leave an ordinary life for the dead, and able to face a Pinned and hold their nerve through the rite. Most villages have a handful of each and very few who are both. Small villages might give you one. No single place can fill the quota, so you have to cover the island.
+- **You can change the odds, slowly.** A willing person can be trained until they are capable. A capable person can be persuaded until they are willing. Both take time and trust, and what you do in a village (and what it hears about you) moves how many will step forward.
+- **The Pinned are everywhere outside the Ring.** Every road, field and ruin has them, and they attack on sight. Getting to a village at all is the first half of recruiting from it, and the further from Rhodes, the worse it gets.
 
 ## The Pinned, chalk, straps and the rite
 
@@ -101,9 +107,9 @@ Each began as a job the Ring needed and hardened into a class.
 
 ## The Pilgrimage (main quest)
 
-**Act I. Rhodes.** Learn the rite. Raise your first Pinned just outside the gate. Get the Register: eighty blank lines and no directions beyond what people tell you.
+**Act I. Rhodes.** Learn the rite. Raise your first Pinned just outside the gate. Get the Register: eighty empty lines and no directions beyond what people tell you.
 
-**Act II. The island.** The outer settlements do not want you. They remember the last pilgrims. They ask why Rhodes wants their dead, why straps cost what they cost, and why the Ring stayed shut for 134 years. They have their own death customs: some burn, some worship their Pinned ancestors, some hide. Recruits are found here, one at a time, and each one is a person with a reason to say no.
+**Act II. The island.** The outer settlements do not want you. They remember the last pilgrims. They ask why Rhodes wants their dead, why straps cost what they cost, and why the Ring stayed shut for 134 years. They have their own death customs: some burn, some worship their Pinned ancestors, some hide. Recruits are found here, a few per village at most, and each one is a person with a reason to say no.
 
 **Act III. Gornn.** The dragon tells you the truth, and it is mostly true: Wukhan is why the suffering continues. His answer is to go back and destroy the machine now. What he leaves out is that he is the one who broke it, and that he is sending you to finish what he could not. The last Pilgrimage took his advice and died at the Ring. If you take it too, the Ring drops with too few Risers to replace it, and the Under takes everything.
 
@@ -128,7 +134,7 @@ Relieving Wukhan leaves you holding the Lion's ember. What you do with it is the
 
 Ending 3 needs all 88. With fewer, shutting him down saves only as much of the island as your Risers can cover. The count is the difficulty slider.
 
-**The 88th Riser.** You recruit 79. The last blank line in the Register is yours, and you are not offered it until the other 87 are filled. This keeps the club's own line ("we're looking for the 88th Riser") as the last beat of the game.
+**The 88th Riser.** You recruit 79. The last line in the Register is yours, and you are not offered it until the other 87 are filled. This keeps the club's own line ("we're looking for the 88th Riser") as the last beat of the game.
 
 ## Player freedom
 
@@ -136,14 +142,14 @@ The rule the game is built on: you can do anything, and the world answers. The P
 
 - **Nobody is protected.** Any character can be robbed, lied to, attacked or killed, including founders and possible recruits.
 - **Murder has a built-in consequence.** Whoever you kill sinks like anyone else and comes back as one of the Pinned, unless somebody raises them. You can end up saying the rite over your own victim, and they remember you.
-- **The 88 can be lost.** Each line in the Register belongs to one person. If that person dies unrecruited, the line stays blank and the full "relieve him" ending is gone for that playthrough. The game tells you, and carries on.
+- **The quota can be lost.** Nobody in particular is required, but the island only holds so many people who could ever be Risers. Every villager who dies, or who you drive away, shrinks that pool. Kill enough and 88 becomes unreachable, and the full "relieve him" ending is gone for that playthrough. The game tells you, and carries on.
 - **Crime is local.** Theft, grave-robbing and stealing straps or chalk are judged by whoever saw it and whoever they tell. Reputation travels by word of mouth between settlements, at the speed people travel.
 - **You can ignore the story.** Trade straps, rise in a House, hunt the Pinned for pay, work for Gornn, live among the Undying, or never leave Rhodes. The island keeps going either way.
 
 ## NPC minds
 
 - **Every NPC is an individual.** Each has a persona sheet (history, voice, values, what they want, what they are afraid of), a private memory of what the player and other NPCs have said and done to them, a disposition towards the player in the Morrowind sense, and a small set of drives that decide what they do when the player is not around. The persona and memory condition a shared language model; the per-NPC part is the state, which is theirs alone and persists.
-- **Recruitment is persuasion, not a quest flag.** Each of the 80 has someone they lost who never rose. They join when that is resolved, and how you resolve it is open. There is no dialogue option labelled "recruit".
+- **Recruitment is persuasion, not a quest flag.** Whether someone is willing lives in their own head: what they have lost, what they owe their family, what they think of Rhodes and of you. They step forward when that changes, and how you change it is open. There is no dialogue option labelled "recruit".
 - **The Pinned are NPCs too.** A Pinned runs on a degraded copy of the person it was: gaps in memory, one fixation. Chalk shows you that person, and the rite is a conversation with them. A village's monster is somebody's father, and the village's NPCs remember him.
 - **Directions, not markers.** NPCs tell you where things are from what they actually know, and they can be wrong, out of date, or lying.
 - **Wukhan is the one scripted mind in the game.** Everyone else improvises. He has three lines and repeats them.
@@ -153,4 +159,4 @@ The rule the game is built on: you can do anything, and the world answers. The P
 
 1. Is the island a fantasy version of the real area around Rhodes NSW, or its own place?
 2. Does the player pick a House at the start, or earn one?
-3. Are the 80 recruits all hand-written, or are some generated from real club members as they join (Riser IDs #009 onward)?
+3. Are villagers generated, hand-written, or drawn from real club members as they join (Riser IDs #009 onward)?
