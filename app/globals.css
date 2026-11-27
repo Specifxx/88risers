@@ -9607,3 +9607,28 @@ b.gold {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+/* nine nav items (Affiliates added): tighten progressively, hamburger below 1100px */
+.nav a {
+  padding: 10px 10px;
+  letter-spacing: 0.1em;
+}
+@media (min-width: 1001px) and (max-width: 1439px) {
+  .site-header .brand small {
+    display: none;
+  }
+}
+@media (max-width: 1279px) {
+  .nav a {
+    padding: 10px 7px;
+    letter-spacing: 0.06em;
+    font-size: 12px;
+  }
+}
+@media (max-width: 1100px) {
+  .nav {
+    display: none;
+  }
+  .menu {
+    display: block;
+  }
+}

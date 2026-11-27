@@ -16,6 +16,7 @@ const NAV = [
   { href: "/tv", label: "TV" },
   { href: "/moments", label: "Moments" },
   { href: "/shop", label: "Shop" },
+  { href: "/affiliates", label: "Affiliates" },
 ];
 /** Phone menu: everything. */
 const MENU = [

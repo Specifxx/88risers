@@ -53,7 +53,8 @@ export default function SupportPage() {
               Chip in to <span className="gold-text">club funds.</span>
             </h2>
             <p className="muted">
-              Any amount helps. Pay with PayPal or a debit/credit card, once or monthly. No PayPal account needed.
+              Any amount helps, once or monthly. Pay by debit/credit card or with PayPal: on the next screen choose{" "}
+              <b>Donate with Card</b> if you don&apos;t have a PayPal account.
             </p>
             <div className="support-amounts">
               {AMOUNTS.map((a) => (
@@ -63,9 +64,9 @@ export default function SupportPage() {
               ))}
             </div>
             <a className="btn btn-primary" href={donateHref("funds")} target="_blank" rel="noreferrer">
-              Donate any amount with PayPal
+              Donate any amount (card or PayPal)
             </a>
-            <p className="support-alt">Secure checkout by PayPal. You&apos;ll get a receipt by email.</p>
+            <p className="support-alt">Secure checkout through PayPal, paid to 88risers@gmail.com. You&apos;ll get a receipt by email.</p>
             <ul className="support-funds">
               {FUNDS.map(([t, d]) => (
                 <li key={t}>

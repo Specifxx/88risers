@@ -7,6 +7,12 @@ import "server-only";
  * and PayPal shows the button's name rather than the email address.
  */
 const PAYPAL_EMAIL = process.env.PAYPAL_EMAIL || "georgelu721@gmail.com";
+/**
+ * The address buyers and donors see on PayPal. 88risers@gmail.com is linked to the same PayPal
+ * account, so money still lands in one balance; PayPal reports the account's primary email as the
+ * receiver, which paypalReceivers() accepts too.
+ */
+const PAYPAL_SHOWN = process.env.PAYPAL_BUSINESS_EMAIL || "88risers@gmail.com";
 
 export const PURPOSES = {
   funds: "88 Risers club funds",
@@ -18,7 +24,7 @@ export function paypalUrl(purpose: Purpose, amount?: number) {
   const button = process.env.PAYPAL_DONATE_BUTTON_ID;
   const q = button
     ? new URLSearchParams({ hosted_button_id: button })
-    : new URLSearchParams({ business: PAYPAL_EMAIL, currency_code: "AUD", item_name: PURPOSES[purpose] });
+    : new URLSearchParams({ business: PAYPAL_SHOWN, currency_code: "AUD", item_name: PURPOSES[purpose] });
   if (amount) q.set("amount", String(amount));
   return `https://www.paypal.com/donate/?${q}`;
 }
@@ -35,7 +41,7 @@ export function paypalPaymentUrl(
 ) {
   const q = new URLSearchParams({
     cmd: "_xclick",
-    business: PAYPAL_EMAIL,
+    business: PAYPAL_SHOWN,
     item_name: itemName,
     item_number: ref,
     amount: amount.toFixed(2),
@@ -58,5 +64,5 @@ export const donateHref = (purpose: Purpose, amount?: number) =>
 /** Addresses a genuine payment to the club may be addressed to (PayPal reports the receiving account). */
 export function paypalReceivers(): Set<string> {
   const extra = (process.env.PAYPAL_RECEIVER_EMAILS || "").split(/[,\s]+/);
-  return new Set([PAYPAL_EMAIL, "88risers@gmail.com", ...extra].map((e) => e.trim().toLowerCase()).filter(Boolean));
+  return new Set([PAYPAL_EMAIL, PAYPAL_SHOWN, "88risers@gmail.com", "georgelu721@gmail.com", ...extra].map((e) => e.trim().toLowerCase()).filter(Boolean));
 }
