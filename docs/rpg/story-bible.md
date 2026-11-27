@@ -41,7 +41,7 @@ Three layers: **the Still** above (nothingness, completion, rest), the living wo
 
 Wukhan was built to replace exactly 88 people. So 88 Risers can carry what he carries.
 
-A Riser keeps the ground around them safe, the way the Ring does: deaths near them rise instead of sinking. Eight Risers cover a village. Every recruit pushes the safe ground further out. **At 88, the Risers cover the island, and Wukhan is no longer needed.**
+The Ring never changes size. It is Wukhan's staff, and it protects Rhodes and nothing else. But a Riser keeps the ground around *them* safe, wherever they are: deaths near a Riser rise instead of sinking. Recruits stay in their own settlements, so each one becomes a small safe place outside the Ring. One recruit is one safe town. **At 88, there are enough safe places to cover the island, and Wukhan is no longer needed.**
 
 That matters because of what is inside him. The Lion's ember is still caged in his core, and it is the last piece of the Lion that could gather the dead on its own. It cannot be freed while he is running, and he cannot be switched off while the Ring depends on him: everyone inside would die unrisen. With 88 Risers holding the island, he can finally be stopped and the ember released.
 
@@ -49,7 +49,7 @@ That matters because of what is inside him. The Lion's ember is still caged in h
 
 - **The first 88 left an instruction.** Before they died out, they carved one line above the Register: *"If he fails, gather the 88."* They meant: take the job back. It is the only thing they left, and it is why the Register has 88 lines.
 - **Rhodes reads it the other way.** After generations living under the machine's protection, people revere Wukhan. To them the line means: the 88 built him, so 88 Risers can mend him. The Houses teach this reading, because it keeps Wukhan, and them, at the centre.
-- **It appears to work.** Every new Riser visibly widens the Ring. People take that as Wukhan growing stronger. In truth it is the Risers themselves holding the new ground, and Wukhan is doing no more than before.
+- **Wukhan answers them.** When a Riser says the rite near the machine, the ember in his core flares. People take that as Wukhan drawing strength from Risers, and conclude that enough of them would restore him. In truth the ember is answering the rite, as the Lion always did, and Wukhan has nothing to do with it.
 
 So the evidence is real and the conclusion is wrong. Everyone in Rhodes believes the Pilgrimage exists to gather 88 Risers to *repair* Wukhan. The game is the slow discovery that it is to *relieve* him.
 
@@ -72,7 +72,7 @@ The founders are Risers #001 to #008, in the order the club already uses:
 
 These role assignments are placeholders. Each founder should write their own persona sheet (below), because the point is that they are recognisably themselves.
 
-**Every recruit widens the Ring.** That is the open-world unlock: no level gates, just safe ground growing outward from the village, and Rhodes growing with it.
+**Every recruit makes their settlement safe.** That is the open-world loop: the Ring stays as it is, the island is hostile everywhere else, and each Riser you recruit turns their home into somewhere the dead rise, where you can rest, trade and set out from again.
 
 ## The Pinned, chalk, straps and the rite
 
