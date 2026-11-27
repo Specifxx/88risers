@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AffiliateJoin, AffiliateResend } from "@/components/AffiliateJoin";
 import { CopyText } from "@/components/CopyText";
-import { AFFILIATE_DISCOUNT, affiliateByToken, affiliateStats, shareUrl } from "@/lib/affiliates";
+import { AFFILIATE_DISCOUNT, affiliateByToken, affiliateStats, payoutLabel, shareUrl } from "@/lib/affiliates";
 import { COMMISSION_SUMMARY, money } from "@/lib/shop";
 
 export const dynamic = "force-dynamic";
@@ -42,7 +42,7 @@ export default async function AffiliatesPage({ searchParams }: PageProps<"/affil
             </li>
             <li>
               <strong>Get paid</strong>
-              Commission on every paid order, sent to your PayPal monthly.
+              Commission on every paid order, sent monthly to your PayPal or bank account.
             </li>
           </ol>
           <p className="fine">
@@ -113,7 +113,7 @@ export default async function AffiliatesPage({ searchParams }: PageProps<"/affil
                 </div>
               </div>
               <p className="fine">
-                Paid so far: {money(stats!.paid / 100)}. Commission goes to {aff.payout_email} by PayPal each month. Keep this page&apos;s link
+                Paid so far: {money(stats!.paid / 100)}. Commission is paid each month: {payoutLabel(aff)}. To change how you&apos;re paid, email us. Keep this page&apos;s link
                 private.
               </p>
             </div>

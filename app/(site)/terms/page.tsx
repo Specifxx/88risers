@@ -79,7 +79,7 @@ const SECTIONS: { id: string; title: string; points: React.ReactNode[] }[] = [
         Anyone can be an affiliate. Buyers who use your code get {pct(AFFILIATE_DISCOUNT)} off the items (not postage), and you earn a
         flat commission of {COMMISSION_SUMMARY} sold with your code.
       </>,
-      "Commission counts once an order is paid, and is paid monthly by PayPal to the email you gave us. Refunded or cancelled orders don't earn commission, and commission already paid on them may be deducted from your next payment.",
+      "Commission counts once an order is paid, and is paid monthly by PayPal or bank transfer to the account you gave us. If you're under 18, a parent or guardian must agree to these terms, and commission is paid to an account they approve. Refunded or cancelled orders don't earn commission, and commission already paid on them may be deducted from your next payment.",
       "You can't use your own code, or have orders placed for yourself under other people's details. We don't pay commission on self-referred or fake orders, and we may close codes that are misused.",
       <>
         <b>You must disclose that you earn commission</b> whenever you share your code or link, for example &ldquo;#ad&rdquo; or

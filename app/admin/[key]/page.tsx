@@ -2170,7 +2170,7 @@ async function ShopOrders({ k }: { k: string }) {
 /* ─────────── Affiliates ─────────── */
 
 async function Affiliates({ k }: { k: string }) {
-  const { affiliateLedger, AFFILIATE_DISCOUNT } = await import("@/lib/affiliates");
+  const { affiliateLedger, AFFILIATE_DISCOUNT, payoutLabel } = await import("@/lib/affiliates");
   const { COMMISSION_SUMMARY } = await import("@/lib/shop");
   const { dollars } = await import("@/lib/shopOrders");
   const rows = await affiliateLedger();
@@ -2181,7 +2181,7 @@ async function Affiliates({ k }: { k: string }) {
         Affiliates <small>{rows.length} SIGNED UP · {dollars(owed)} OWED</small>
       </h2>
       <p className="muted" style={{ marginTop: 0 }}>
-        Codes give buyers {Math.round(AFFILIATE_DISCOUNT * 100)}% off; affiliates earn {COMMISSION_SUMMARY}. Once a month, send each affiliate what they&apos;re owed by PayPal (to the email below), then press Mark paid.
+        Codes give buyers {Math.round(AFFILIATE_DISCOUNT * 100)}% off; affiliates earn {COMMISSION_SUMMARY}. Once a month, send each affiliate what they&apos;re owed (by PayPal or bank transfer, as shown below), then press Mark paid.
         Sign-up page: <Link href="/affiliates" target="_blank">/affiliates ↗</Link>
       </p>
       {rows.length === 0 ? (
@@ -2209,6 +2209,8 @@ async function Affiliates({ k }: { k: string }) {
                     {a.name}
                     <br />
                     <a href={`mailto:${a.payout_email}`}>{a.payout_email}</a> · <a href={`tel:${a.phone}`}>{prettyPhone(a.phone)}</a>
+                    <br />
+                    <small>Pay: {payoutLabel(a, true)}</small>
                   </td>
                   <td className="num">{a.orders}</td>
                   <td className="num">{dollars(a.earned)}</td>
@@ -2220,7 +2222,7 @@ async function Affiliates({ k }: { k: string }) {
                       <form action={payAffiliate}>
                         <input type="hidden" name="key" value={k} />
                         <input type="hidden" name="id" value={a.id} />
-                        <ConfirmButton message={`Have you sent ${dollars(a.owed)} to ${a.payout_email} by PayPal? This marks it paid.`} className="btn btn-sm btn-ghost">
+                        <ConfirmButton message={`Have you sent ${dollars(a.owed)} (${payoutLabel(a, true)})? This marks it paid.`} className="btn btn-sm btn-ghost">
                           Mark paid
                         </ConfirmButton>
                       </form>

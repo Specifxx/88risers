@@ -145,6 +145,10 @@ CREATE TABLE IF NOT EXISTS affiliates (
   active        boolean NOT NULL DEFAULT true,
   created_at    timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE affiliates ADD COLUMN IF NOT EXISTS payout_method text NOT NULL DEFAULT 'paypal';
+ALTER TABLE affiliates ADD COLUMN IF NOT EXISTS bank_name text;
+ALTER TABLE affiliates ADD COLUMN IF NOT EXISTS bank_bsb text;
+ALTER TABLE affiliates ADD COLUMN IF NOT EXISTS bank_account text;
 ALTER TABLE shop_orders ADD COLUMN IF NOT EXISTS promo_code text;
 ALTER TABLE shop_orders ADD COLUMN IF NOT EXISTS affiliate_id integer;
 ALTER TABLE shop_orders ADD COLUMN IF NOT EXISTS discount_cents integer NOT NULL DEFAULT 0;
@@ -469,7 +473,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v61";
+const MIGRATION_MARKER = "founders_v62";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [

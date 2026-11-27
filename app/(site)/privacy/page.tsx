@@ -17,7 +17,7 @@ const SECTIONS: { id: string; title: string; points: React.ReactNode[] }[] = [
       "Registering as a Riser: your name, mobile, Instagram (optional), a photo, and the Riser number you ask for.",
       "A website account: your handle, display name and a securely hashed password (we can't see your password).",
       "Shop orders and 88 Moments bookings: your name, email, mobile, delivery address, what you ordered, and your PayPal transaction ID. Card details go to PayPal only.",
-      "Affiliates: your name, code, PayPal email and mobile, and the sales made with your code.",
+      "Affiliates: your name, code, email, mobile, how you're paid (PayPal email, or bank account name, BSB and account number), and the sales made with your code.",
       "Events: entries (arm, weight class, Riser ID), check-ins, results and match videos.",
       "Training log: the notes you write in your log.",
       "Basic, anonymous visit statistics (pages viewed, device type) through Vercel Web Analytics, which doesn't use advertising cookies.",
@@ -29,7 +29,7 @@ const SECTIONS: { id: string; title: string; points: React.ReactNode[] }[] = [
     points: [
       "To run the club: text you about meets, add you to the Riser Database, record results and Chalk, and run events.",
       "To fill orders and bookings: process payments, send receipts, post or hand over your order, and contact you about it.",
-      "To pay affiliates their commission.",
+      "To pay affiliates their commission. Bank details are only used for that and only the club organisers can see them.",
       "We only send marketing texts or emails if you've agreed to them, and you can opt out any time (reply STOP to texts). Order receipts and messages about your booking aren't marketing.",
       "We never sell your information.",
     ],

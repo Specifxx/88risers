@@ -14,6 +14,10 @@ export async function joinAffiliate(_prev: JoinState, form: FormData): Promise<J
       code: String(form.get("code") ?? ""),
       email: String(form.get("email") ?? ""),
       phone: String(form.get("phone") ?? ""),
+      method: String(form.get("method") ?? "paypal"),
+      bankName: String(form.get("bank_name") ?? ""),
+      bsb: String(form.get("bsb") ?? ""),
+      account: String(form.get("account") ?? ""),
     });
     if ("error" in r) return { status: "error", message: r.error ?? "Something went wrong." };
     revalidatePath("/affiliates");
