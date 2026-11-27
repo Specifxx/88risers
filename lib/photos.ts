@@ -56,7 +56,7 @@ export async function deletePhotos(db: Db, ids: string[]): Promise<number> {
  * well inside a request's time limit). Returns how many moved and how many are left.
  */
 export async function movePhotosToBlob(db: Db, batch = 40): Promise<{ moved: number; left: number }> {
-  if (!blobEnabled()) throw new Error("Vercel Blob isn't connected yet (no BLOB_READ_WRITE_TOKEN).");
+  if (!blobEnabled()) throw new Error("Vercel Blob isn't connected yet (no BLOB_STORE_ID or BLOB_READ_WRITE_TOKEN).");
   const rows = await db.query<{ id: string; mime: string; data: Uint8Array }>(
     `SELECT id::text AS id, mime, data FROM photos WHERE blob_url IS NULL AND data IS NOT NULL ORDER BY created_at LIMIT $1`,
     [batch],

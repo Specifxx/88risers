@@ -10,7 +10,8 @@ import { del, put } from "@vercel/blob";
  * Without BLOB_READ_WRITE_TOKEN (local dev, or before the store is connected) photos are kept
  * in the database as before.
  */
-export const blobEnabled = () => !!process.env.BLOB_READ_WRITE_TOKEN;
+// Newer Blob stores connect with BLOB_STORE_ID plus Vercel's built-in OIDC sign-in; older ones with a token.
+export const blobEnabled = () => !!(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 
 const EXT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
