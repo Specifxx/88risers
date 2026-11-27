@@ -38,6 +38,7 @@ export function SiteFooter() {
               <li><Link href="/gallery">Gallery</Link></li>
               <li><Link href="/shop">Shop</Link></li>
               <li><Link href="/moments">88 Moments</Link></li>
+              <li><Link href="/affiliates">Affiliates</Link></li>
               <li><Link href="/supermatch">Supermatch</Link></li>
               <li><Link href="/play">Pin Run</Link></li>
               <li><Link href="/rewards">Rewards</Link></li>

@@ -72,6 +72,7 @@ import {
   setRegistrationStatus,
   cleanStorage,
   setShopOrderStatus,
+  payAffiliate,
   resendShopReceipt,
   movePhotos,
   importOldDatabase,
@@ -977,6 +978,7 @@ async function Shop({ interest, k }: { interest: ShopInterest[]; k: string }) {
       </div>
       <MailPanel k={k} />
       {await guarded("Orders", () => ShopOrders({ k }))}
+      {await guarded("Affiliates", () => Affiliates({ k }))}
       <h2 className="panel-title" style={{ marginTop: 28 }}>Registered interest</h2>
       <div className="panel interest-counts">
         {counts.map(({ p, n }) => (
@@ -2115,6 +2117,12 @@ async function ShopOrders({ k }: { k: string }) {
                       </div>
                     ))}
                     {o.notes ? <i className="muted">“{o.notes}”</i> : null}
+                    {o.promo_code ? (
+                      <div className="muted">
+                        Code {o.promo_code}: −{dollars(o.discount_cents)} · commission {dollars(o.commission_cents)}
+                        {o.commission_paid_at ? " (paid)" : ""}
+                      </div>
+                    ) : null}
                   </td>
                   <td style={{ whiteSpace: "pre-line", maxWidth: 220 }}>
                     {o.delivery === "post" ? `${o.shipping_label}\n${o.address}` : "Pickup at a meet"}
@@ -2146,6 +2154,75 @@ async function ShopOrders({ k }: { k: string }) {
                         <input type="hidden" name="key" value={k} />
                         <input type="hidden" name="id" value={o.id} />
                         <button className="btn btn-sm btn-ghost">{o.receipts_sent ? "Resend receipt" : "Send receipt"}</button>
+                      </form>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────── Affiliates ─────────── */
+
+async function Affiliates({ k }: { k: string }) {
+  const { affiliateLedger, AFFILIATE_COMMISSION, AFFILIATE_DISCOUNT } = await import("@/lib/affiliates");
+  const { dollars } = await import("@/lib/shopOrders");
+  const rows = await affiliateLedger();
+  const owed = rows.reduce((n, r) => n + r.owed, 0);
+  return (
+    <div className="panel">
+      <h2 className="panel-title">
+        Affiliates <small>{rows.length} SIGNED UP · {dollars(owed)} OWED</small>
+      </h2>
+      <p className="muted" style={{ marginTop: 0 }}>
+        Codes give buyers {Math.round(AFFILIATE_DISCOUNT * 100)}% off; affiliates earn {Math.round(AFFILIATE_COMMISSION * 100)}% of what&apos;s paid
+        for the items. Once a month, send each affiliate what they&apos;re owed by PayPal (to the email below), then press Mark paid.
+        Sign-up page: <Link href="/affiliates" target="_blank">/affiliates ↗</Link>
+      </p>
+      {rows.length === 0 ? (
+        <p className="muted">No affiliates yet.</p>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <table className="sm-backers">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Affiliate</th>
+                <th className="num">Paid orders</th>
+                <th className="num">Earned</th>
+                <th className="num">Owed</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((a) => (
+                <tr key={a.id}>
+                  <td>
+                    <b>{a.code}</b>
+                  </td>
+                  <td>
+                    {a.name}
+                    <br />
+                    <a href={`mailto:${a.payout_email}`}>{a.payout_email}</a> · <a href={`tel:${a.phone}`}>{prettyPhone(a.phone)}</a>
+                  </td>
+                  <td className="num">{a.orders}</td>
+                  <td className="num">{dollars(a.earned)}</td>
+                  <td className="num">
+                    <b>{dollars(a.owed)}</b>
+                  </td>
+                  <td>
+                    {a.owed > 0 ? (
+                      <form action={payAffiliate}>
+                        <input type="hidden" name="key" value={k} />
+                        <input type="hidden" name="id" value={a.id} />
+                        <ConfirmButton message={`Have you sent ${dollars(a.owed)} to ${a.payout_email} by PayPal? This marks it paid.`} className="btn btn-sm btn-ghost">
+                          Mark paid
+                        </ConfirmButton>
                       </form>
                     ) : null}
                   </td>

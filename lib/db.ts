@@ -134,6 +134,24 @@ CREATE TABLE IF NOT EXISTS shop_orders (
   created_at      timestamptz NOT NULL DEFAULT now()
 );
 
+-- Affiliates: anyone with a code that gives buyers a discount and earns them commission.
+CREATE TABLE IF NOT EXISTS affiliates (
+  id            serial PRIMARY KEY,
+  code          text NOT NULL UNIQUE,
+  name          text NOT NULL,
+  payout_email  text NOT NULL UNIQUE,
+  phone         text NOT NULL,
+  token         text NOT NULL UNIQUE,
+  active        boolean NOT NULL DEFAULT true,
+  created_at    timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE shop_orders ADD COLUMN IF NOT EXISTS promo_code text;
+ALTER TABLE shop_orders ADD COLUMN IF NOT EXISTS affiliate_id integer;
+ALTER TABLE shop_orders ADD COLUMN IF NOT EXISTS discount_cents integer NOT NULL DEFAULT 0;
+ALTER TABLE shop_orders ADD COLUMN IF NOT EXISTS commission_cents integer NOT NULL DEFAULT 0;
+ALTER TABLE shop_orders ADD COLUMN IF NOT EXISTS commission_paid_at timestamptz;
+ALTER TABLE shop_orders ADD COLUMN IF NOT EXISTS items_count integer NOT NULL DEFAULT 0;
+
 CREATE TABLE IF NOT EXISTS shop_interest (
   id          serial PRIMARY KEY,
   product     text NOT NULL,
@@ -451,7 +469,7 @@ const FOUNDER_RENUMBER: Array<[number, string, number, string]> = [
 /** First 88RisersTV reels, in channel order. Added once; skipped if a reel with that code exists. */
 const TV_SEED = ["DdbKrJFB7cB", "Dd0Nzb6h_SC", "DeA5EcEBkFc", "DeLgi4JThHG", "DeXuPBfvS9-"];
 
-const MIGRATION_MARKER = "founders_v60";
+const MIGRATION_MARKER = "founders_v61";
 
 /** [meta key, account handle, account name, Riser #, Riser name] for one-off account links. */
 const ACCOUNT_LINKS: Array<[string, string, string, number, string]> = [

@@ -19,6 +19,11 @@ export default function ShopPage() {
           <h1 className="display">
             Rep <span className="gold-text">88Risers.</span>
           </h1>
+          <div className="btn-row" style={{ marginTop: 18 }}>
+            <Link href="/affiliates" className="btn btn-sm btn-primary">
+              Become an affiliate: earn 20% commission →
+            </Link>
+          </div>
           <Link href="/support#sponsor" className="btn btn-sm btn-ghost shop-sponsor-link">
             Put your brand on our jerseys: become a sponsor →
           </Link>

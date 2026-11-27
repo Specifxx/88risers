@@ -871,6 +871,21 @@ export async function setShopOrderStatus(form: FormData) {
   done(key, "shop", `Order #${id} is now ${status}.`);
 }
 
+/** Records that an affiliate's commission so far has been paid out (after sending it by PayPal). */
+export async function payAffiliate(form: FormData) {
+  const key = guard(form);
+  const id = int(form, "id");
+  const db = await getDb();
+  const rows = await db.query<{ c: number }>(
+    `UPDATE shop_orders SET commission_paid_at = now()
+     WHERE affiliate_id = $1 AND commission_paid_at IS NULL AND commission_cents > 0 AND status IN ('paid','sent','collected')
+     RETURNING commission_cents AS c`,
+    [id],
+  );
+  const total = rows.reduce((n, r) => n + r.c, 0);
+  done(key, "shop", rows.length ? `Marked $${(total / 100).toFixed(2)} commission as paid (${rows.length} orders).` : "Nothing owed to that affiliate.");
+}
+
 export async function resendShopReceipt(form: FormData) {
   const key = guard(form);
   const { getShopOrder, sendReceipts } = await import("@/lib/shopOrders");

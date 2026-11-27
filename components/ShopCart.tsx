@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { startCheckout } from "@/app/(site)/shop/actions";
+import { useEffect, useState, useTransition } from "react";
+import { checkCode, startCheckout } from "@/app/(site)/shop/actions";
 import { type CartLine, type Product, PRODUCTS, SIZES, SLEEVES, lineLabel, money, shippingFor } from "@/lib/shop";
 import { Arrow } from "./Icons";
 
@@ -106,10 +106,43 @@ export function Checkout({ lines, setLines }: { lines: CartLine[]; setLines: (l:
   const [delivery, setDelivery] = useState<"pickup" | "post">("pickup");
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [codeInput, setCodeInput] = useState("");
+  const [code, setCode] = useState<{ code: string; percent: number } | null>(null);
+  const [codeMsg, setCodeMsg] = useState<string | null>(null);
   const count = lines.reduce((n, l) => n + l.qty, 0);
   const subtotal = lines.reduce((n, l) => n + priceOf(l) * l.qty, 0);
+  const discount = code ? Math.round(subtotal * code.percent) / 100 : 0;
   const ship = delivery === "post" ? shippingFor(count) : { label: "Pickup at a meet", price: 0 };
-  const total = Math.round((subtotal + ship.price) * 100) / 100;
+  const total = Math.round((subtotal - discount + ship.price) * 100) / 100;
+
+  const apply = (raw: string) =>
+    start(async () => {
+      const r = await checkCode(raw);
+      if (r.ok) {
+        setCode({ code: r.code, percent: r.percent });
+        setCodeInput(r.code);
+        setCodeMsg(null);
+        try {
+          localStorage.setItem("88ref", r.code);
+        } catch {}
+      } else {
+        setCode(null);
+        setCodeMsg(r.message);
+      }
+    });
+
+  // A shared link like /shop?ref=HARRY fills the code in (and it's remembered on this device).
+  useEffect(() => {
+    let ref = "";
+    try {
+      ref = new URLSearchParams(window.location.search).get("ref") || localStorage.getItem("88ref") || "";
+    } catch {}
+    if (ref) {
+      setCodeInput(ref.toUpperCase());
+      apply(ref);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!lines.length) return null;
   return (
@@ -130,6 +163,7 @@ export function Checkout({ lines, setLines }: { lines: CartLine[]; setLines: (l:
               delivery,
               address: { line1: s("line1"), line2: s("line2"), suburb: s("suburb"), state: s("state"), postcode: s("postcode") },
               notes: s("notes"),
+              code: code?.code,
             });
             if (!r.ok) return setMsg(r.message);
             try {
@@ -227,9 +261,39 @@ export function Checkout({ lines, setLines }: { lines: CartLine[]; setLines: (l:
           <input id="k-notes" name="notes" type="text" maxLength={300} placeholder="Anything we should know" />
         </div>
 
+        <div className="field">
+          <label htmlFor="k-code">
+            Affiliate code <em>optional</em>
+          </label>
+          <div className="code-row">
+            <input
+              id="k-code"
+              type="text"
+              value={codeInput}
+              onChange={(e) => {
+                setCodeInput(e.target.value.toUpperCase());
+                if (code) setCode(null);
+              }}
+              placeholder="e.g. HARRY"
+              maxLength={15}
+              autoCapitalize="characters"
+            />
+            <button type="button" className="btn btn-sm btn-ghost" onClick={() => apply(codeInput)} disabled={pending || !codeInput.trim()}>
+              Apply
+            </button>
+          </div>
+          {code ? <p className="field-hint code-ok">{code.code} applied: {code.percent}% off your items.</p> : codeMsg ? <p className="field-error">{codeMsg}</p> : null}
+        </div>
+
         <div className="cart-sum">
           <span>Subtotal</span>
           <b>{money(subtotal)}</b>
+          {code ? (
+            <>
+              <span>Code {code.code}</span>
+              <b>−{money(discount)}</b>
+            </>
+          ) : null}
           <span>{delivery === "post" ? "Postage" : "Pickup"}</span>
           <b>{ship.price ? money(ship.price) : "Free"}</b>
           <span className="cart-total">Total</span>

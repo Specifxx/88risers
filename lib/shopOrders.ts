@@ -1,5 +1,6 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
+import { AFFILIATE_COMMISSION, AFFILIATE_DISCOUNT, affiliateByCode, cleanCode } from "./affiliates";
 import { getDb } from "./db";
 import { sendClubMail } from "./mail";
 import { normalisePhone, prettyPhone } from "./phone";
@@ -32,6 +33,12 @@ export type ShopOrder = {
   receipts_sent: boolean;
   notes: string | null;
   created_at: Date;
+  promo_code: string | null;
+  affiliate_id: number | null;
+  discount_cents: number;
+  commission_cents: number;
+  commission_paid_at: Date | null;
+  items_count: number;
 };
 
 export type CheckoutInput = {
@@ -42,6 +49,7 @@ export type CheckoutInput = {
   delivery: string;
   address?: { line1?: string; line2?: string; suburb?: string; state?: string; postcode?: string };
   notes?: string;
+  code?: string;
 };
 
 const STATES = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"];
@@ -120,21 +128,42 @@ export async function createShopOrder(input: CheckoutInput) {
   const v = validateCheckout(input);
   if ("error" in v) return { error: v.error };
   const o = v.order;
+  const promo = await applyCode(input.code, o.email, o.phone, o.subtotal);
+  if ("error" in promo) return { error: promo.error };
+  const total = o.subtotal - promo.discount + o.shipping;
+  const items = o.lines.reduce((n, l) => n + l.qty, 0);
   const token = randomBytes(12).toString("hex");
   const db = await getDb();
   const [row] = await db.query<{ id: number }>(
-    `INSERT INTO shop_orders (token, name, email, phone, items, delivery, address, shipping_label, subtotal_cents, shipping_cents, total_cents, notes)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
-    [token, o.name, o.email, o.phone, JSON.stringify(o.lines), o.delivery, o.address, o.shippingLabel, o.subtotal, o.shipping, o.total, o.notes],
+    `INSERT INTO shop_orders (token, name, email, phone, items, delivery, address, shipping_label, subtotal_cents, shipping_cents, total_cents, notes,
+                              promo_code, affiliate_id, discount_cents, commission_cents, items_count)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id`,
+    [token, o.name, o.email, o.phone, JSON.stringify(o.lines), o.delivery, o.address, o.shippingLabel, o.subtotal, o.shipping, total, o.notes,
+     promo.code, promo.affiliate, promo.discount, promo.commission, items],
   );
   const base = SITE.url.replace(/\/$/, "");
-  const url = paypalPaymentUrl(`88 Risers order #${row.id}`, o.total / 100, ref(row.id), {
+  const url = paypalPaymentUrl(`88 Risers order #${row.id}`, total / 100, ref(row.id), {
     notifyUrl: `${base}/api/paypal/ipn`,
     returnUrl: `${base}/shop/thanks?o=${row.id}&t=${token}`,
     cancelUrl: `${base}/shop?cancelled=${row.id}`,
     custom: token,
   });
   return { id: row.id, token, url };
+}
+
+/**
+ * An affiliate code: AFFILIATE_DISCOUNT off the items for the buyer, AFFILIATE_COMMISSION of what
+ * they then pay for the items to the affiliate. Not usable on your own code.
+ */
+export async function applyCode(raw: string | undefined, email: string, phone: string | null, subtotal: number) {
+  const code = cleanCode(raw);
+  if (!code) return { code: null, affiliate: null, discount: 0, commission: 0 };
+  const a = await affiliateByCode(code);
+  if (!a) return { error: `${code} isn't a valid code.` };
+  if (a.payout_email === email.toLowerCase() || (phone && a.phone === phone)) return { error: "You can't use your own affiliate code." };
+  const discount = Math.round(subtotal * AFFILIATE_DISCOUNT);
+  const commission = Math.round((subtotal - discount) * AFFILIATE_COMMISSION);
+  return { code, affiliate: a.id, discount, commission };
 }
 
 export async function getShopOrder(id: number, token?: string): Promise<ShopOrder | null> {
@@ -168,6 +197,7 @@ export function receiptText(o: ShopOrder, forClub: boolean) {
     ...rows,
     "",
     `  Subtotal  ${dollars(o.subtotal_cents)}`,
+    o.discount_cents ? `  Code ${o.promo_code}  -${dollars(o.discount_cents)}` : "",
     `  ${o.delivery === "post" ? o.shipping_label || "Postage" : "Pickup at an 88 Risers meet"}  ${o.shipping_cents ? dollars(o.shipping_cents) : "free"}`,
     `  Total paid  ${dollars(o.total_cents)} AUD`,
     "",

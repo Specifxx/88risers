@@ -57,6 +57,12 @@ export default async function ThanksPage({ searchParams }: PageProps<"/shop/than
                 ))}
               </ul>
               <div className="cart-sum">
+                {o.discount_cents ? (
+                  <>
+                    <span>Code {o.promo_code}</span>
+                    <b>−{dollars(o.discount_cents)}</b>
+                  </>
+                ) : null}
                 <span>{o.delivery === "post" ? o.shipping_label || "Postage" : "Pickup at a meet"}</span>
                 <b>{o.shipping_cents ? dollars(o.shipping_cents) : "Free"}</b>
                 <span className="cart-total">Total</span>

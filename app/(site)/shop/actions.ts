@@ -13,3 +13,12 @@ export async function startCheckout(input: CheckoutInput): Promise<{ ok: true; u
     return { ok: false, message: "Something went wrong on our side. Try again, or DM us on Instagram." };
   }
 }
+
+/** Checks an affiliate code at checkout so the buyer sees the discount before paying. */
+export async function checkCode(code: string): Promise<{ ok: true; code: string; percent: number } | { ok: false; message: string }> {
+  const { AFFILIATE_DISCOUNT, affiliateByCode, cleanCode } = await import("@/lib/affiliates");
+  const c = cleanCode(code);
+  if (!c) return { ok: false, message: "Type a code first." };
+  const a = await affiliateByCode(c);
+  return a ? { ok: true, code: c, percent: Math.round(AFFILIATE_DISCOUNT * 100) } : { ok: false, message: `${c} isn't a valid code.` };
+}
