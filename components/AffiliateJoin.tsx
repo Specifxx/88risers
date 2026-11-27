@@ -44,7 +44,10 @@ export function AffiliateJoin() {
       </div>
       <label className="check">
         <input type="checkbox" name="agree" />
-        <span>I agree: commission is paid monthly by PayPal for paid, un-refunded orders, and I can&apos;t use my own code.</span>
+        <span>
+          I agree to the <a href="/terms#affiliates">affiliate terms</a>: I&apos;ll disclose that I earn commission when I share my code (e.g.
+          #ad), commission is paid monthly for paid, un-refunded orders, and I can&apos;t use my own code.
+        </span>
       </label>
       <button className="btn btn-primary submit" type="submit" disabled={pending}>
         {pending ? "Saving…" : "Get my code"}

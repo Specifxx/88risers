@@ -22,6 +22,8 @@ export function SiteFooter() {
               <li><Link href="/#table-time">Table time</Link></li>
               <li><Link href="/#faq">FAQ</Link></li>
               <li><Link href="/conduct">Code of Conduct</Link></li>
+              <li><Link href="/terms">Terms &amp; Refunds</Link></li>
+              <li><Link href="/privacy">Privacy</Link></li>
               <li><Link href="/support">Donate</Link></li>
               <li><Link href="/app">Get the app</Link></li>
               <li><Link href="/log">Training log</Link></li>

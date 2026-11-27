@@ -307,7 +307,11 @@ export function Checkout({ lines, setLines }: { lines: CartLine[]; setLines: (l:
         <button className="btn btn-primary submit" type="submit" disabled={pending}>
           {pending ? "Opening PayPal…" : `Pay ${money(total)} with PayPal`} {!pending ? <Arrow /> : null}
         </button>
-        <p className="fine">Pay by card or PayPal account. Your receipt is emailed from 88risers@gmail.com once the payment goes through.</p>
+        <p className="fine">
+          Pay by card or PayPal account. Your receipt is emailed from 88risers@gmail.com once the payment goes through. By paying you agree to our{" "}
+          <a href="/terms#shop">Terms &amp; Refunds</a> (personalised items can&apos;t be returned for change of mind) and{" "}
+          <a href="/privacy">Privacy policy</a>.
+        </p>
       </form>
     </section>
   );

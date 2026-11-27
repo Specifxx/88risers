@@ -208,7 +208,8 @@ export function MomentsForm() {
       <p className="fine">
         Book now and pay a ${MOMENTS_DEPOSIT} non-refundable deposit to hold the camera for you; it comes off your total. We shoot you
         at the comp, send a preview, and you pay the balance once you approve it. Every booking includes the high-res digital
-        artwork. Printed pieces take about 2–3 weeks. Postage is extra; pick up at a meet is free.
+        artwork. Printed pieces take about 2–3 weeks. Postage is extra; pick up at a meet is free. See our{" "}
+        <a href="/terms#moments">Terms</a> and <a href="/privacy">Privacy policy</a>.
       </p>
     </form>
   );

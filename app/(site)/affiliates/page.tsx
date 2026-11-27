@@ -46,7 +46,7 @@ export default async function AffiliatesPage({ searchParams }: PageProps<"/affil
             </li>
           </ol>
           <p className="fine">
-            Commission is a flat {COMMISSION_SUMMARY} sold with your code, on orders that are paid and not refunded. You can&apos;t use
+            Commission is a flat {COMMISSION_SUMMARY} sold with your code, on orders that are paid and not refunded. You must say you earn commission when you share it. You can&apos;t use
             your own code.
           </p>
           {!aff ? (
@@ -90,6 +90,10 @@ export default async function AffiliatesPage({ searchParams }: PageProps<"/affil
                 Share link (fills your code in)
               </p>
               <CopyText text={shareUrl(aff)} />
+              <p className="field-hint" style={{ marginTop: 8 }}>
+                When you share it, say you earn commission, e.g. &ldquo;#ad: use my code {aff.code} for 10% off&rdquo;. It&apos;s an ACCC
+                requirement. <a href="/terms#affiliates">Affiliate terms</a>
+              </p>
               <div className="aff-stats">
                 <div>
                   <b>{stats!.orders}</b>
