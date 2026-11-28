@@ -1347,7 +1347,10 @@ func dusted(by: Node) -> void:
 	Fx.burst(Meet.main, global_position + Vector3(0, 1.5, 0), Vector3.UP, false, 10)
 	if by != Meet.player:
 		say_aloud("%s!" % by.first_name.to_upper(), 2.5)
-		Meet.bump(id, by.id, -0.08 if mind.grudge > 0.95 else 0.03)
+		var sour: bool = mind.grudge > 0.95 or Meet.tie(id, by.id) < 0.2 or randf() < 0.4
+		Meet.bump(id, by.id, -0.08 if sour else 0.03)
+		if sour and is_riser and by.is_riser and not by.dead and state not in ["pull", "to_table", "scrap", "confront", "winded"] and by.state not in ["pull", "to_table", "scrap", "confront", "winded"] and not Meet.main.invaded():
+			row_with(by)
 		return
 	Meet.main.defend(self, "chalk")
 	Meet.dusted += 1
@@ -2703,3 +2706,48 @@ func _discovered(by: Node) -> void:
 	else:
 		Meet.add_heat(1.0, "nobody trusts anybody now")
 		Meet.say("Nobody knows who did it. Nobody is looking at you in particular. Yet.")
+
+# --- Rows between members ------------------------------------------------------------------------------
+
+const ROWS := [
+	["That was in my EYE.", "It's chalk. It's a chalk club. Relax.", "You relax. You always do this.", "Always? ALWAYS? Name one other time.", "The barbecue. The car park. Last Sunday.", "...Fine. Last Sunday was me."],
+	["Do that again. Go on.", "Or what? You'll frown at me?", "I've had it with you tonight.", "You've had it with everyone tonight.", "Because everyone keeps THROWING THINGS.", "It was one handful! One!"],
+	["What is wrong with you?", "It was a joke!", "Is it funny? Am I laughing?", "You never laugh. That's the problem.", "Say that again.", "You. Never. Laugh."],
+	["This shirt was clean.", "It's a training shirt.", "It was a CLEAN training shirt.", "Oh, here we go. The shirt speech.", "Don't you 'shirt speech' me.", "Shirt. Speech."],
+]
+
+## Two members have it out, loudly, where everyone can hear. It ends at a table or with one walking off.
+func row_with(other: Node) -> void:
+	var lines: Array = ROWS[randi() % ROWS.size()]
+	var pair: Array = [self, other]
+	for r in pair:
+		r.state = "quirk"
+		r._qanim = "Idle_Talking"
+		r._qlines = []
+		r._qbark = 99.0
+		r._timer = lines.size() * 2.6 + 2.0
+	_look(other.global_position, 1.0)
+	other._look(global_position, 1.0)
+	Meet.hud.banner("%s AND %s ARE HAVING WORDS" % [first_name.to_upper(), other.first_name.to_upper()], "Over a handful of chalk. It was never about the chalk.")
+	Meet.ripple("%s and %s had a row over thrown chalk." % [first_name, other.first_name])
+	Meet.main.stir(global_position, ["Here we go.", "Not again, you two.", "Somebody get Harry.", "Let them have it out."], 12.0, 0.5, false)
+	for i in lines.size():
+		var who: Node = pair[i % 2]
+		var line: String = lines[i]
+		get_tree().create_timer(1.2 + i * 2.6).timeout.connect(func():
+			if is_instance_valid(who) and not who.dead and who.state == "quirk":
+				who.say_aloud(line, 2.6)
+				who.gesture("Interact", 0.6))
+	get_tree().create_timer(1.2 + lines.size() * 2.6).timeout.connect(func():
+		if not is_instance_valid(other) or dead or other.dead or state != "quirk" or other.state != "quirk":
+			return
+		Meet.bump(id, other.id, -0.15)
+		idle()
+		other.idle()
+		if randf() < 0.45 and Meet.main.force_match(id, other.id, "settle"):
+			say_aloud("Table. Now. Loser apologises.", 4.0)
+			Meet.say("%s and %s are settling it at the table." % [first_name, other.first_name])
+		else:
+			other.say_aloud(["I'm getting a drink.", "Whatever. I'm done.", "Talk to me when you've calmed down."][randi() % 3], 3.5)
+			other._pace_boost = 1.6
+			other._go(other.global_position + (other.global_position - global_position).normalized() * 9.0, "idle"))
