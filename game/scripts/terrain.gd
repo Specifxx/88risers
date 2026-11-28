@@ -116,11 +116,25 @@ func _build() -> void:
 	pm.size = Vector2(70, Z1 - Z0)
 	var water := MeshInstance3D.new()
 	water.mesh = pm
-	var wm := StandardMaterial3D.new()
-	wm.albedo_color = Color(0.12, 0.22, 0.27, 0.82)
-	wm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	wm.roughness = 0.08
-	wm.metallic = 0.3
+	var ws := Shader.new()
+	ws.code = """
+shader_type spatial;
+render_mode blend_mix, cull_disabled;
+varying vec3 wpos;
+void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	float t = TIME * 0.6;
+	float w = sin(wpos.z * 0.9 + t * 2.0 + sin(wpos.x * 0.7 + t)) * 0.5 + sin(wpos.x * 1.7 - t * 1.3 + wpos.z * 0.4) * 0.5;
+	float glint = smoothstep(0.75, 1.0, w);
+	ALBEDO = mix(vec3(0.07, 0.17, 0.22), vec3(0.16, 0.32, 0.36), w * 0.5 + 0.5) + glint * 0.25;
+	NORMAL_MAP = vec3(0.5 + cos(wpos.x * 1.7 - t * 1.3) * 0.12, 0.5 + cos(wpos.z * 0.9 + t * 2.0) * 0.12, 1.0);
+	ROUGHNESS = 0.08;
+	METALLIC = 0.4;
+	ALPHA = 0.84;
+}
+"""
+	var wm := ShaderMaterial.new()
+	wm.shader = ws
 	water.material_override = wm
 	add_child(water)
 	water.position = Vector3(RIVER_X, WATER_Y, 0)

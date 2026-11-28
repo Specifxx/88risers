@@ -80,6 +80,61 @@ func open(n: Node) -> void:
 	UI.open_modal()
 	_rebuild()
 
+## A guard has come over about what you owe.
+func confront(guard: Node) -> void:
+	if active() or Game.modal:
+		return
+	npc = guard
+	_name.text = guard.npc_name
+	var pic: String = guard.portrait()
+	_portrait.visible = pic != ""
+	if pic != "":
+		_portrait.texture = load("res://assets/portraits/%s.jpg" % pic)
+	var owed: int = Game.bounty[guard.village]
+	_text.clear()
+	_text.append_text("\"You. Stand where you are. People here have told me what you did.\n\nIt is %d coin to settle it. Pay, or we do this the other way.\"\n" % owed)
+	_root.visible = true
+	UI.open_modal()
+	_sub.text = guard.role
+	_show_mind()
+	UI.clear(_list)
+	UI.button(_list, "Pay the %d coin" % owed, _pay.bind(owed), 17)
+	UI.button(_list, "Talk your way down", _plead.bind(owed), 17)
+	UI.button(_list, "Refuse", _refuse, 17).add_theme_color_override("font_color", Color(0.85, 0.4, 0.35))
+
+func _settle(text: String) -> void:
+	_text.append_text("\n[i]%s[/i]\n" % text)
+	UI.clear(_list)
+	UI.button(_list, "Goodbye", close, 17)
+
+func _pay(owed: int) -> void:
+	if Game.coins < owed:
+		_text.append_text("\n[i]You haven't that much. They can see it.[/i]\n")
+		return
+	Game.coins -= owed
+	Game.bounty[npc.village] = 0
+	Game.touch()
+	_settle("They count it. \"That settles the law. It doesn't settle what people think of you.\"")
+
+func _plead(owed: int) -> void:
+	Game.train("speech", 2.0)
+	if randf() < 0.25 + Game.skills["speech"] * 0.012 + npc.mind.feeling() * 0.3:
+		var less := int(owed / 2.0)
+		Game.bounty[npc.village] = less
+		_settle("They hear you out. \"%d, then. And I'm watching you.\" They will ask again." % less)
+	else:
+		_settle("\"Save it.\" The price stands. They will ask again.")
+
+func _refuse() -> void:
+	close()
+	npc.say_aloud("Then we do it the other way.")
+	npc._flee = false
+	npc.aggro = true
+	for n in Game.villagers(npc.village):
+		if n.def.get("guard", false):
+			n._flee = false
+			n.aggro = true
+
 func close() -> void:
 	if not active():
 		return

@@ -2,7 +2,7 @@ extends RefCounted
 ## Builds an animated person from the model packs: an outfit, a head, hair, and the shared animations.
 
 const DIR := "res://assets/chars/"
-const ONE_SHOT := ["Sword_Attack", "Punch_Cross", "Hit_Chest", "Death01"]
+const ONE_SHOT := ["Sword_Attack", "Punch_Cross", "Hit_Chest", "Death01", "Push"]
 const LOOPING := ["Idle", "Idle_Talking", "Walk", "Jog_Fwd", "Sitting_Idle", "Sword_Idle", "Crouch_Idle"]
 
 static var _anims: AnimationLibrary

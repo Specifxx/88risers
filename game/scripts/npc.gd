@@ -8,6 +8,8 @@ const Data = preload("res://scripts/data.gd")
 const Character = preload("res://scripts/character.gd")
 const Mind = preload("res://scripts/mind.gd")
 const Items = preload("res://scripts/items.gd")
+const Gear = preload("res://scripts/gear.gd")
+const Fx = preload("res://scripts/fx.gd")
 
 const WALK := 1.35
 
@@ -33,6 +35,11 @@ var max_hp := 30
 var _strike := 0.0
 var _wind := 0.0
 var _flee := false
+var _knock := Vector3.ZERO
+var _shoves := 0
+var _shove_cd := 0.0
+var _confront_cd := 0.0
+var _hp_label: Label3D
 
 var _served := {}
 var _figure: Node3D
@@ -78,7 +85,20 @@ func setup(d: Dictionary, founder: bool) -> void:
 	_figure.scale = Vector3(b, 1.0 + (b - 1.0) * 0.25, b)
 	Build.label(self, npc_name, 2.22)
 	Build.label(self, role, 2.0, Color(0.75, 0.72, 0.65), 26)
-	_bark = Build.label(self, "", 2.5, Color(1.0, 0.92, 0.7), 30)
+	var carried: Dictionary = Items.CARRIED.get(id, {})
+	var worn := {}
+	for item in carried:
+		var it: Dictionary = Items.ITEMS[item]
+		if it["type"] == "weapon" and (def.get("guard", false) or id == "ivo"):
+			worn["weapon"] = item
+		elif it["type"] in ["armor", "shield"]:
+			worn[it["slot"]] = item
+	if id in ["ned", "hesper", "tommy", "mara"]:
+		worn["head"] = "hat"
+	Gear.dress(_figure, worn)
+	_hp_label = Build.label(self, "", 2.42, Color(0.85, 0.2, 0.15), 22)
+	_hp_label.visible = false
+	_bark = Build.label(self, "", 2.65, Color(1.0, 0.92, 0.7), 30)
 	_bark.visible = false
 	_timer = randf_range(4.0, 14.0)
 	add_to_group("interact")
@@ -115,6 +135,11 @@ func _process(dt: float) -> void:
 	if not alive or Game.player == null:
 		return
 	mind.tick(dt)
+	_shove_cd = max(0.0, _shove_cd - dt)
+	_confront_cd = max(0.0, _confront_cd - dt)
+	if _knock.length() > 0.1 and not Game.modal:
+		global_position = Game.main.ground(global_position + _knock * dt)
+		_knock = _knock.lerp(Vector3.ZERO, min(1.0, dt * 4.5))
 	if _bark_time > 0.0:
 		_bark_time -= dt
 		if _bark_time <= 0.0:
@@ -130,6 +155,7 @@ func _process(dt: float) -> void:
 		_think = 2.5
 		mind.reflect(2)
 	_notice_player()
+	_crowd_check()
 	match _state:
 		"post", "linger":
 			_timer -= dt
@@ -160,14 +186,71 @@ func _notice_player() -> void:
 	_noticed = true
 	mind.met()
 	var word := String(mind.state_word())
-	if randf() < (0.9 if word in ["hostile", "trusting"] else 0.45):
-		var lines: Array = Data.BARKS[word]
-		say_aloud(lines[randi() % lines.size()])
-	# Someone who fears or hates you does not stand and wait for you.
-	if mind.feeling() < -0.55 and _state != "avoid":
+	if randf() < (0.9 if word in ["hostile", "trusting", "afraid"] else 0.45):
+		# Someone who watched it happen says so.
+		var saw := ""
+		for m in mind.memories:
+			if m["kind"] == "violence" and m["firsthand"] and m["about"] != "" and m["about"] != npc_name:
+				saw = m["about"]
+		if saw != "" and randf() < 0.6:
+			say_aloud("I saw what you did to %s." % saw, 4.5)
+		else:
+			var lines: Array = Data.BARKS[word]
+			say_aloud(lines[randi() % lines.size()])
+	# The frightened keep their distance; so do those who simply loathe you and are not the fighting kind.
+	if (word == "afraid" or (mind.feeling() < -0.55 and not _bold())) and _state != "avoid":
 		var away := (global_position - p)
 		away.y = 0
 		_go(global_position + away.normalized() * 9.0, "avoid")
+
+## Bold enough to square up to the player rather than back away.
+func _bold() -> bool:
+	return (is_founder or capable >= 50 or mind.grudge > 1.4) and mind.fear < 0.5
+
+## Standing too close to someone who cannot stand you gets you pushed. Keep it up, and it becomes a fight.
+func _crowd_check() -> void:
+	var p: Vector3 = Game.player.global_position
+	var to := p - global_position
+	to.y = 0
+	var d := to.length()
+	# The law: a guard who knows what you owe walks up and says so.
+	if def.get("guard", false) and Game.bounty.get(village, 0) > 0 and d < 12.0 and _confront_cd <= 0.0 and not aggro:
+		if d > 2.6:
+			_state = "avoid"
+			_goal = p - to.normalized() * 2.0
+		else:
+			_confront_cd = 40.0
+			_state = "linger"
+			_timer = 6.0
+			Game.dialogue.confront(self)
+		return
+	if d > 2.3 or _shove_cd > 0.0 or mind.feeling() > -0.3 or not _bold() or aggro:
+		return
+	_shove_cd = 2.2
+	_shoves += 1
+	_face(p, 1.0)
+	Character.play(_figure, "Push", true)
+	Game.player.shove(to.normalized() * (6.0 + _shoves), 0.12)
+	Game.spend(8.0)
+	var lines: Array = Data.SHOVES
+	say_aloud(lines[randi() % lines.size()])
+	if _shoves >= 4:
+		say_aloud("Right. That's enough.")
+		_flee = false
+		aggro = true
+
+## The player has put hands on them.
+func shoved() -> void:
+	mind.experience("violence", -0.4, 0.8, true, "")
+	if _bold():
+		_shove_cd = 0.4
+		_shoves += 1
+		say_aloud("Don't you touch me.")
+	else:
+		say_aloud("Don't! Please!")
+
+func knock(v: Vector3) -> void:
+	_knock += v
 
 func _choose() -> void:
 	if Game.is_night():
@@ -256,21 +339,33 @@ func _face(at: Vector3, speed: float) -> void:
 func can_be_hit() -> bool:
 	return alive
 
-func take_hit(dmg: int, _from: Vector3) -> void:
+func take_hit(dmg: int, from: Vector3) -> void:
 	if not alive:
 		return
 	hp -= dmg
 	Character.play(_figure, "Hit_Chest", true)
+	var away := global_position - from
+	away.y = 0
+	_knock += away.normalized() * (4.0 + dmg * 0.4)
+	Fx.burst(Game.main, global_position + Vector3(0, 1.25, 0), away, true)
+	if dmg >= 3:
+		Fx.stain(Game.main, global_position, 0.3 + dmg * 0.03)
+	# A flash on the blow, and the wound stays on them.
+	var hurt: float = 1.0 - max(hp, 0) / float(max_hp)
+	Fx.tint(_figure, Color(1.0, 0.1, 0.1, 0.6), 0.1, Color(0.45, 0.0, 0.0, hurt * 0.38))
+	_hp_label.text = Fx.bar(max(hp, 0) / float(max_hp))
+	_hp_label.visible = true
 	if not aggro:
 		# First blood: they will never see you the same way, and neither will anyone watching.
 		mind.experience("violence", -1.0, 3.0, true, npc_name)
 		Game.deed("violence", -0.9, 3.0, global_position, village, npc_name)
-		_flee = not (is_founder or capable >= 55 or def.get("guard", false))
+		_flee = not _bold()
 		say_aloud("Help! Murder!" if _flee else "So that's what you are.")
 		if Game.dialogue.active():
 			Game.dialogue.close()
 	aggro = true
 	if hp <= 0:
+		Fx.stain(Game.main, global_position, 0.9)
 		die()
 
 ## Hostile: the brave close in and strike, the rest run. It ends when the player is gone.
@@ -281,7 +376,7 @@ func _fight(dt: float) -> void:
 	var d := to.length()
 	if d > 45.0:
 		aggro = false
-		hp = max_hp
+		_shoves = 0
 		_go(post, "walk")
 		return
 	_strike = max(0.0, _strike - dt)
@@ -316,6 +411,8 @@ func greeting() -> String:
 		if mind.remembers("theft"):
 			return "Thief. I've nothing to say to you."
 		return "I've nothing to say to you."
+	if mind.state_word() == "afraid":
+		return "They flinch when you speak. \"What do you want? I'll tell you. Just ask and go.\""
 	if recruited and not is_founder:
 		return "My name's on the Register. Tell me when it's time."
 	if mind.remembers("raised_kin"):
@@ -363,7 +460,13 @@ func topic_text(t: String) -> String:
 		Game.note("Wren Calloway wants to see Pinned on the road raised properly, so they stay gone.")
 	if t == Data.TOPIC_JOIN:
 		return _join_text()
-	return def["topics"][t]
+	var word := String(mind.state_word())
+	if word == "wary" and Data.PERSONAL.has(t):
+		return "\"That's not something I talk about with you.\""
+	var text: String = def["topics"][t]
+	if Data.TONES.has(word):
+		return Data.TONES[word] % text
+	return text
 
 func _join_text() -> String:
 	if recruited:
@@ -403,7 +506,8 @@ func actions() -> Array:
 			out.append(["Ask Bhavya to tend your wounds", _heal])
 	var stock: Dictionary = Items.STOCK.get(id, {})
 	for item in stock:
-		out.append(["Buy %s (%d coin)" % [Items.ITEMS[item]["name"].to_lower(), stock[item]], _buy.bind(item, stock[item])])
+		var cost := price(stock[item])
+		out.append(["Buy %s (%d coin)" % [Items.ITEMS[item]["name"].to_lower(), cost], _buy.bind(item, cost)])
 	if not stock.is_empty():
 		for item in Game.items:
 			var worth: int = int(Items.ITEMS[item]["value"] / 2.0)
@@ -418,10 +522,19 @@ func actions() -> Array:
 			out.append(["Give them chalk for their dead", _gift])
 	return out
 
-func _amends(price: int) -> String:
-	if Game.coins < price:
+## What they ask of the player in particular: friends pay less, the distrusted pay more,
+## and the frightened will take almost anything to see you gone.
+func price(base: int) -> int:
+	var f: float = mind.feeling()
+	var k: float = 1.0 - clamp(f, -0.6, 0.6) * 0.4
+	if mind.state_word() == "afraid":
+		k = 0.6
+	return max(1, int(round(base * k)))
+
+func _amends(cost: int) -> String:
+	if Game.coins < cost:
 		return "You haven't the coin, and they can see it."
-	Game.coins -= price
+	Game.coins -= cost
 	mind.forgive()
 	Game.touch()
 	return "They take it without looking at you. It does not undo anything. But they will speak to you again."

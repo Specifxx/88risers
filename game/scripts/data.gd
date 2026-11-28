@@ -56,7 +56,27 @@ const BARKS := {
 	"used to you": ["You again.", "Pilgrim.", "Still here, then."],
 	"wary": ["I'm watching you.", "Keep walking.", "Mind yourself."],
 	"hostile": ["Stay away from me.", "We know what you did.", "Get out."],
+	"afraid": ["Please. Don't.", "I didn't see anything. I swear it.", "Stay back. Please stay back."],
 }
+
+## Shouted in the moment by someone who sees it happen.
+const SHOUTS := {
+	"violence": ["You struck %s!", "Leave %s alone!", "Murder! Somebody!", "Get the Wall! Get the Wall!"],
+	"theft": ["Thief!", "I saw that!", "That isn't yours!"],
+}
+
+## Said by someone squaring up to the player.
+const SHOVES := ["Get out of my sight.", "You're not wanted here.", "Go on. Move.", "I said back off."]
+
+## How the same answer comes out, depending on how they feel about you.
+const TONES := {
+	"afraid": "They will not meet your eye, and answer quickly, to have it over with.\n\n\"%s\"",
+	"wary": "They look you over before answering.\n\n\"%s\" They say no more than that.",
+	"trusting": "\"%s\"\n\nThey say it easily, the way people talk to their own.",
+}
+
+## Things people will not discuss with someone they do not trust.
+const PERSONAL := ["Your father", "The stone lion", "The last pilgrims", "The pyre", "Wukhan", "The Lion"]
 
 ## What they pass on to each other, and what you overhear.
 const GOSSIP := {

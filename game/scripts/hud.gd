@@ -330,7 +330,7 @@ func _build_title(root: Control) -> void:
 	var t := UI.text(v, "88 RISERS", 64, UI.GOLD)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	UI.text(v, "The dead cannot rise on their own any more. Whatever dies unattended sinks into the ground and comes back as one of the Pinned.\n\nA Riser knows the rite that lets the dead pass on. There used to be 88. Now there are eight, in one village, inside one ring of safe ground.\n\nYou are a pilgrim. Find more.", 21)
-	UI.text(v, "WASD move  ·  mouse look  ·  Shift run  ·  Space jump  ·  left click or F attack  ·  right click or C block\nE talk or use  ·  Tab inventory  ·  V first or third person  ·  J journal  ·  H eat bread  ·  Esc free the mouse\nIn fights and conversations, click a choice or press its number.", 16, Color(0.7, 0.68, 0.6))
+	UI.text(v, "WASD move  ·  mouse look  ·  Shift run  ·  Space jump  ·  left click or F attack  ·  right click or C block  ·  G shove\nE talk or use  ·  Tab inventory  ·  V first or third person  ·  J journal  ·  H eat bread  ·  Esc free the mouse\nIn fights and conversations, click a choice or press its number.", 16, Color(0.7, 0.68, 0.6))
 	UI.button(v, "Begin", _begin, 24).alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 func _begin() -> void:

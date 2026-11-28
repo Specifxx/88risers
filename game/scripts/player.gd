@@ -9,6 +9,7 @@ const JUMP := 6.8
 const Character = preload("res://scripts/character.gd")
 const Asia = preload("res://scripts/asia.gd")
 const Build = preload("res://scripts/build.gd")
+const Gear = preload("res://scripts/gear.gd")
 
 var cam: Camera3D
 var target: Node = null
@@ -21,6 +22,9 @@ var _held := "?"           # what the hand model currently shows
 var _cooldown := 0.0
 var _swing := 0.0          # time until the blow in progress lands
 var _anim_hold := 0.0
+var _push := Vector3.ZERO
+var _shake := 0.0
+var _worn := {}
 
 func _ready() -> void:
 	var cs := CollisionShape3D.new()
@@ -45,6 +49,38 @@ func _ready() -> void:
 	_figure = Character.make(self, {"body": "Male_Ranger", "hood": true, "tint": Color(0.3, 0.3, 0.33)})
 	_figure.rotation.y = PI
 	Asia.quad(_figure, Vector2(0.34, 0.34), Vector3(0, 1.3, -0.215), PI, "ui/emblem.png", true, 0.25)
+	Game.changed.connect(_dress)
+	_dress()
+
+## Show on the pilgrim's body whatever is equipped.
+func _dress() -> void:
+	if Game.equip == _worn:
+		return
+	_worn = Game.equip.duplicate()
+	Gear.dress(_figure, _worn)
+
+## Thrown back by a blow or a shove.
+func shove(v: Vector3, shake := 0.1) -> void:
+	_push += v
+	_shake = max(_shake, shake)
+
+## Put both hands on whoever is in front of you and push. No damage, but nobody likes it.
+func shove_other() -> void:
+	if _cooldown > 0.0 or Game.modal:
+		return
+	_cooldown = 0.6
+	_anim_hold = 0.5
+	Game.spend(6.0)
+	Character.play(_figure, "Push", true)
+	var fwd := -global_transform.basis.z
+	for n in get_tree().get_nodes_in_group("hittable"):
+		var to: Vector3 = n.global_position - global_position
+		to.y = 0
+		if n.can_be_hit() and to.length() < 2.0 and fwd.dot(to.normalized()) > 0.5 and n.has_method("knock"):
+			n.knock(fwd * 5.5)
+			if n.has_method("shoved"):
+				n.shoved()
+			return
 
 func _unhandled_input(ev: InputEvent) -> void:
 	if Game.modal:
@@ -63,6 +99,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 		target.interact()
 	elif ev.is_action_pressed("attack"):
 		swing()
+	elif ev.is_action_pressed("shove"):
+		shove_other()
 	elif ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_V:
 		third = not third
 	elif ev.is_action_pressed("journal"):
@@ -151,6 +189,9 @@ func _process(dt: float) -> void:
 		if not hit.is_empty():
 			want *= clamp((from.distance_to(hit["position"]) - 0.25) / from.distance_to(to), 0.05, 1.0)
 	cam.position = cam.position.lerp(want, 0.3)
+	if _shake > 0.0:
+		_shake = max(0.0, _shake - dt * 0.6)
+		cam.position += Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * _shake * 0.5
 	if behind and _anim_hold <= 0.0:
 		var speed := Vector2(velocity.x, velocity.z).length()
 		var anim := "Idle" if speed < 0.5 else ("Jog_Fwd" if speed > 6.5 else "Walk")
@@ -171,14 +212,10 @@ func _show_hand(on: bool) -> void:
 		c.queue_free()
 	if id == "":
 		return
-	var long: float = Game.weapon()["reach"] - 1.2
-	var metal: bool = id in ["sword", "old_sword"]
-	var shaft := Build.tcyl(_hand, 0.022, 0.028, long, Vector3(0, long / 2.0 - 0.2, 0), "iron" if metal else "darkwood", Color(0.75, 0.75, 0.8) if metal else Color.WHITE, 6)
-	shaft.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	if id == "axe":
-		Build.tbox(_hand, Vector3(0.22, 0.16, 0.03), Vector3(0.1, long - 0.3, 0), "iron", Color(0.6, 0.6, 0.65))
-	elif id == "spear":
-		Build.tcyl(_hand, 0.0, 0.04, 0.25, Vector3(0, long - 0.08, 0), "iron", Color(0.7, 0.7, 0.75), 4)
+	var model := Gear.weapon(id)
+	_hand.add_child(model)
+	model.rotation = Vector3(-0.35, 0.0, -0.25)
+	model.position = Vector3(0, 0.05, 0)
 
 func _physics_process(dt: float) -> void:
 	if Game.modal:
@@ -197,8 +234,9 @@ func _physics_process(dt: float) -> void:
 		Game.spend(5.0 * dt)
 		Game.train("athletics", dt * 0.15)
 	var move := (transform.basis * Vector3(dir.x, 0, dir.y)).normalized() * speed
-	velocity.x = move.x
-	velocity.z = move.z
+	velocity.x = move.x + _push.x
+	velocity.z = move.z + _push.z
+	_push = _push.lerp(Vector3.ZERO, min(1.0, dt * 7.0))
 	if is_on_floor():
 		if velocity.y < 0.0:
 			velocity.y = 0.0

@@ -15,6 +15,7 @@ const TerrainScript = preload("res://scripts/terrain.gd")
 const Asia = preload("res://scripts/asia.gd")
 const LootScript = preload("res://scripts/loot.gd")
 const InventoryScript = preload("res://scripts/inventory.gd")
+const PropScript = preload("res://scripts/prop.gd")
 
 const R := Game.RING_RADIUS
 const ROAD := [Vector3(30, 0, 0), Vector3(70, 0, 0), Vector3(120, 0, -18), Vector3(180, 0, 8), Vector3(228, 0, 20)]
@@ -26,6 +27,7 @@ var _register_label: Label3D
 var _sun: DirectionalLight3D
 var _env: Environment
 var _sky_mat: ProceduralSkyMaterial
+var _cloud_mat: ShaderMaterial
 
 func _ready() -> void:
 	Game.main = self
@@ -64,6 +66,8 @@ func _light_for_hour() -> void:
 	_env.ambient_light_color = Color(0.62, 0.6, 0.66).lerp(Color(0.2, 0.25, 0.42), night)
 	_env.ambient_light_energy = lerp(0.62, 0.42, night)
 	_env.fog_light_color = Color(0.66, 0.6, 0.56).lerp(Color(0.95, 0.6, 0.42), low * (1.0 - night)).lerp(Color(0.1, 0.13, 0.22), night)
+	if _cloud_mat:
+		_cloud_mat.set_shader_parameter("tint", Color(1.0, 0.98, 0.95).lerp(Color(1.0, 0.72, 0.55), low).lerp(Color(0.16, 0.19, 0.3), night))
 	_sky_mat.sky_top_color = Color(0.2, 0.34, 0.6).lerp(Color(0.03, 0.05, 0.12), night)
 	_sky_mat.sky_horizon_color = Color(0.74, 0.78, 0.84).lerp(Color(0.95, 0.6, 0.38), low).lerp(Color(0.1, 0.13, 0.22), night)
 
@@ -100,16 +104,59 @@ func _sky() -> void:
 	env.fog_density = 0.0052
 	env.fog_sky_affect = 0.1
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.adjustment_enabled = true
+	env.adjustment_contrast = 1.1
+	env.adjustment_saturation = 1.18
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
 	var sun := DirectionalLight3D.new()
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 80
+	sun.directional_shadow_max_distance = 70
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+	sun.shadow_blur = 1.4
+	sun.shadow_bias = 0.06
 	add_child(sun)
 	_sun = sun
 	_light_for_hour()
 	_mountains()
+	_clouds()
+
+## High cloud drifting over, so the sky is never a flat colour.
+func _clouds() -> void:
+	var noise := FastNoiseLite.new()
+	noise.frequency = 0.006
+	noise.fractal_octaves = 4
+	var tex := NoiseTexture2D.new()
+	tex.noise = noise
+	tex.width = 512
+	tex.height = 512
+	tex.seamless = true
+	var sh := Shader.new()
+	sh.code = """
+shader_type spatial;
+render_mode unshaded, cull_disabled, fog_disabled, depth_draw_never;
+uniform sampler2D n : repeat_enable, filter_linear_mipmap;
+uniform vec3 tint = vec3(1.0);
+void fragment() {
+	vec2 uv = UV * 3.0 + vec2(TIME * 0.004, TIME * 0.0015);
+	float c = texture(n, uv).r * 0.65 + texture(n, uv * 2.3 + 0.3).r * 0.35;
+	float edge = 1.0 - smoothstep(0.25, 0.5, length(UV - 0.5));
+	ALBEDO = tint;
+	ALPHA = smoothstep(0.5, 0.78, c) * edge * 0.85;
+}
+"""
+	_cloud_mat = ShaderMaterial.new()
+	_cloud_mat.shader = sh
+	_cloud_mat.set_shader_parameter("n", tex)
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(5000, 5000)
+	var mi := MeshInstance3D.new()
+	mi.mesh = pm
+	mi.material_override = _cloud_mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+	mi.position = Vector3(100, 380, 0)
 
 ## Far peaks on every side, hazed by distance, so the island sits in a larger world.
 func _mountains() -> void:
@@ -423,6 +470,29 @@ func _cherry(p: Vector3, sc: float) -> void:
 				pink.alpha_scissor_threshold = 0.45
 				pink.cull_mode = BaseMaterial3D.CULL_DISABLED
 				mi.set_surface_override_material(i, pink)
+	var petals := CPUParticles3D.new()
+	petals.amount = 14
+	petals.lifetime = 7.0
+	petals.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	petals.emission_sphere_radius = 2.6 * sc
+	petals.direction = Vector3(0.6, -1, 0.2)
+	petals.spread = 25.0
+	petals.gravity = Vector3(0.25, -0.5, 0.1)
+	petals.initial_velocity_min = 0.2
+	petals.initial_velocity_max = 0.7
+	petals.angular_velocity_min = -90.0
+	petals.angular_velocity_max = 90.0
+	var pq := QuadMesh.new()
+	pq.size = Vector2(0.09, 0.06)
+	var pmat := StandardMaterial3D.new()
+	pmat.albedo_color = Color(1.0, 0.76, 0.84)
+	pmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	pmat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	pmat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	pq.material = pmat
+	petals.mesh = pq
+	add_child(petals)
+	petals.position = ground(p) + Vector3(0, 4.6 * sc, 0)
 
 ## The tavern: a long hall you can walk into, with tables, lanterns and the arm wrestling table.
 func _tavern(at: Vector3) -> void:
@@ -502,6 +572,31 @@ func _grass(model_name: String, count: int) -> void:
 	var node := MultiMeshInstance3D.new()
 	node.multimesh = mm
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var blade: BaseMaterial3D = mi.mesh.surface_get_material(0)
+	if blade and blade.albedo_texture:
+		var gs := Shader.new()
+		gs.code = """
+shader_type spatial;
+render_mode cull_disabled;
+uniform sampler2D tex : source_color, filter_linear_mipmap;
+void vertex() {
+	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	float bend = max(VERTEX.y, 0.0);
+	VERTEX.x += sin(TIME * 1.6 + w.x * 0.35 + w.z * 0.22) * 0.09 * bend;
+	VERTEX.z += cos(TIME * 1.1 + w.z * 0.3) * 0.05 * bend;
+}
+void fragment() {
+	vec4 c = texture(tex, UV);
+	ALBEDO = c.rgb * vec3(0.8, 0.86, 0.66);
+	ALPHA = c.a;
+	ALPHA_SCISSOR_THRESHOLD = 0.45;
+	ROUGHNESS = 1.0;
+}
+"""
+		var gm := ShaderMaterial.new()
+		gm.shader = gs
+		gm.set_shader_parameter("tex", blade.albedo_texture)
+		node.material_override = gm
 	add_child(node)
 	src.free()
 
@@ -535,8 +630,20 @@ func drop_loot(title: String, items: Dictionary, coin: int, at: Vector3, owned_b
 	l.global_position = ground(at) if sack else at
 	return l
 
+func _prop(kind: String, at: Vector3) -> void:
+	var p: RigidBody3D = PropScript.new()
+	add_child(p)
+	p.setup(kind)
+	p.global_position = at
+
 ## Things lying about the island, some of them somebody's.
 func _containers() -> void:
+	for at in [Vector3(17.5, 0.5, -15.5), Vector3(18.3, 0.5, -14.6), Vector3(33.5, 0.5, 6.5), Vector3(-9.5, 0.5, 9.0), Vector3(10.8, 0.5, 21.5)]:
+		_prop("barrel", at)
+	for at in [Vector3(34.0, 0.45, -5.5), Vector3(19.0, 0.45, 23.0), Vector3(233.5, 0.45, 9.5), Vector3(241.0, 0.45, 26.0), Vector3(87.5, 0.9, -4.5)]:
+		_prop("crate", ground(at) + Vector3(0, 0.45, 0))
+	for at in [Vector3(239.5, 0.5, 6.5), Vector3(221.0, 0.5, 30.0)]:
+		_prop("barrel", at)
 	drop_loot("the Wall House chest", {"spear": 1, "cuirass": 1}, 0, Vector3(9.5, 0, -29.5), "phillip", "rhodes", false, -1.0)
 	drop_loot("the carter's crate", {"coat": 1, "wine": 2}, 6, ground(Vector3(86.0, 0, -7.0)), "", "", false, -1.0)
 	drop_loot("a bundle on the jetty", {"pole": 1}, 0, Vector3(274.5, 0.75, 64.0), "", "", true, -1.0)
