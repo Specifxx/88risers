@@ -232,9 +232,9 @@ func ripple(text: String, quiet := false) -> void:
 		return
 	ripples.append(text)
 	if not quiet:
-		say("↳ " + text)
+		say("» " + text)
 	else:
-		say("↳ " + text)
+		say("» " + text)
 
 func wear(item: String) -> void:
 	if away.has(item):
@@ -572,7 +572,7 @@ func add_heat(x: float, why := "") -> void:
 	peak_heat = max(peak_heat, now)
 	if now > before:
 		sfx("heat")
-		say("Heat %s%s%s" % ["★".repeat(now), "☆".repeat(5 - now), ("  " + why) if why != "" else ""])
+		say("Heat is now %d of 5 stars%s" % [now, (": " + why) if why != "" else "."])
 		if main != null:
 			main.heat_rose(now)
 	changed.emit()

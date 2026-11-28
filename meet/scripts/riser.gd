@@ -2751,3 +2751,19 @@ func row_with(other: Node) -> void:
 			other.say_aloud(["I'm getting a drink.", "Whatever. I'm done.", "Talk to me when you've calmed down."][randi() % 3], 3.5)
 			other._pace_boost = 1.6
 			other._go(other.global_position + (other.global_position - global_position).normalized() * 9.0, "idle"))
+
+## Stamping on the spot in a temper: hops, dust, and a thud each time a foot comes down.
+func stomp(times := 10) -> void:
+	if dead or state in ["pull", "winded", "scrap"]:
+		return
+	gesture("Idle_Talking", times * 0.45 + 0.5)
+	var tw := _figure.create_tween()
+	for i in times:
+		tw.tween_property(_figure, "position:y", 0.22, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(_figure, "position:y", 0.0, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_callback(func():
+			Fx.burst(Meet.main, global_position + Vector3(0, 0.1, 0), Vector3.UP, false, 5)
+			Meet.sfx("punch", -10.0, 0.55)
+			if global_position.distance_to(Meet.player.global_position) < 14.0:
+				Meet.hud.shake())
+		tw.tween_interval(0.2)

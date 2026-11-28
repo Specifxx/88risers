@@ -79,4 +79,4 @@ static func tint(figure: Node3D, c: Color, seconds := 0.12, after := Color(0, 0,
 ## A health bar as text, for showing above something that has been hurt.
 static func bar(frac: float) -> String:
 	var n: int = clamp(int(round(frac * 10.0)), 0, 10)
-	return "█".repeat(n) + "░".repeat(10 - n)
+	return "#".repeat(n) + "-".repeat(10 - n)

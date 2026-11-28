@@ -24,6 +24,7 @@ var _seat: Node3D              # "take your seat" prompt
 var _bet_things: Array = []
 var _photo := ""               # "" | call | done
 var _photo_t := 0.0
+var _photo_said := 0
 var _pack := false
 var _packed := 0
 var _table_nodes: Array = []
@@ -377,8 +378,21 @@ func _run_photo(dt: float) -> void:
 		if george:
 			george.say_aloud("GROUP PHOTO! Everyone on the steps! NOW!", 6.0)
 		Meet.say("Group photo. Get on the steps with them, or don't, and be the one who wasn't in it.")
+		# George does not stand in his own photo. He backs off, turns, and lines it up.
+		if george and not george.dead and george.state not in ["winded", "scrap", "confront"]:
+			main.drop_match(george)
+			george._qanim = "Pistol_Aim_Neutral"
+			george._qlines = []
+			george._qbark = 99.0
+			george._face_at = Vector3(0, 0, -10)
+			george._timer = 30.0
+			george._pace_boost = 1.6
+			george._go(Vector3(0, 0, -4.2), "quirk")
+		_photo_said = 0
 		var k := 0
 		for r in Meet.risers:
+			if r == george:
+				continue
 			if (r.is_riser or r.guest) and r.is_free():
 				main.drop_match(r)
 				r._qanim = "Idle"
@@ -390,6 +404,17 @@ func _run_photo(dt: float) -> void:
 				k += 1
 	elif _photo == "call":
 		_photo_t -= dt
+		var gp: Node = Meet.riser("george")
+		if gp and not gp.dead:
+			if _photo_said == 0 and _photo_t < 12.0:
+				_photo_said = 1
+				gp.say_aloud("Squeeze in! Tommy, down a step. Phillip, I can SEE you hiding.", 4.5)
+			elif _photo_said == 1 and _photo_t < 6.0:
+				_photo_said = 2
+				gp.say_aloud("%s! Get in! Last call!" % Meet.you("New one").capitalize() if Meet.player.global_position.z > -8.0 else "Chins up. Flex if you've got it.", 3.0)
+			elif _photo_said == 2 and _photo_t < 2.6:
+				_photo_said = 3
+				gp.say_aloud("Three... two... one...", 2.6)
 		if _photo_t <= 0.0:
 			_photo = "done"
 			var p: Vector3 = Meet.player.global_position
@@ -398,7 +423,8 @@ func _run_photo(dt: float) -> void:
 			var flash := OmniLight3D.new()
 			flash.light_energy = 14.0
 			flash.omni_range = 40.0
-			flash.position = Vector3(0, 3, 0)
+			var gf: Node = Meet.riser("george")
+			flash.position = gf.global_position + Vector3(0, 1.6, 0) if gf and not gf.dead else Vector3(0, 3, -4)
 			add_child(flash)
 			flash.create_tween().tween_property(flash, "light_energy", 0.0, 0.5)
 			var george: Node = Meet.riser("george")
@@ -417,7 +443,7 @@ func _run_photo(dt: float) -> void:
 					george.mind.experience("nagged", -0.1, 0.4)
 					george.say_aloud("Where was %s? Typical." % Meet.you(), 5.0)
 			for r in Meet.risers:
-				if r.state == "quirk" and r._qanim == "Idle":
+				if r.state == "quirk" and r._qanim in ["Idle", "Pistol_Aim_Neutral"]:
 					r._timer = randf_range(0.5, 3.0)
 
 # --- Packing down -----------------------------------------------------------------------------------
@@ -741,7 +767,7 @@ func _ask(title: String, ch: Array) -> void:
 		# A third entry is a piece of kit you must own for the option to be there at all.
 		if o.size() > 2 and not Meet.owned.has(o[2]):
 			continue
-		opts.append([("★ " if o.size() > 2 else "") + o[0], func(): fx(e)])
+		opts.append([("* " if o.size() > 2 else "") + o[0], func(): fx(e)])
 	Meet.menu.choice(title, ch[0], opts)
 
 ## The effects a moment, or an answer to one, can have.
@@ -821,6 +847,13 @@ func fx(e: Dictionary) -> void:
 			if r.state not in ["pull", "winded"] and not r.alien:
 				r.gesture("Hit_Chest", 0.5)
 				r._knock += Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized() * 2.5
+	if e.has("stomp"):
+		var sd: Array = e["stomp"]
+		var st: Node = Meet.riser(sd[0])
+		if st != null and not st.dead:
+			get_tree().create_timer(float(sd[1])).timeout.connect(func():
+				if is_instance_valid(st) and not st.dead:
+					st.stomp(int(sd[2])))
 	if e.has("gulls"):
 		main.start_gulls()
 	if e.has("camera"):
@@ -1431,9 +1464,9 @@ func _m_swimmer() -> void:
 	th.setup("Help the person in the water", func():
 		var opts: Array = []
 		if Meet.owned.has("pool_noodle"):
-			opts.append(["★ Throw them the pool noodle", func(): _rescue("You wind up and throw the pool noodle like a javelin. It lands across their arms. They hug it like a long-lost friend and kick to the wall.", 0.6, true)])
+			opts.append(["* Throw them the pool noodle", func(): _rescue("You wind up and throw the pool noodle like a javelin. It lands across their arms. They hug it like a long-lost friend and kick to the wall.", 0.6, true)])
 		if Meet.owned.has("balloon"):
-			opts.append(["★ Throw them the balloon", func(): _rescue("It's not much. It's a balloon. They cling to it with total commitment and somehow that's enough.", 0.4, true)])
+			opts.append(["* Throw them the balloon", func(): _rescue("It's not much. It's a balloon. They cling to it with total commitment and somehow that's enough.", 0.4, true)])
 		opts.append(["Jump in after them  (costs health)", func():
 			Meet.composure = max(10.0, Meet.composure - 35.0)
 			Meet.stamina = max(0.0, Meet.stamina - 50.0)

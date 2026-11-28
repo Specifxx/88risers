@@ -43,6 +43,8 @@ var _root: Control
 var _title: Label
 var _call: Label
 var _score: Label
+var _pips_me: Pips
+var _pips_them: Pips
 var _move: Label
 var _track: Control
 var _zone: ColorRect
@@ -80,8 +82,22 @@ func _ready() -> void:
 	v.add_child(top)
 	_title = UI.text(top, "", 24, UI.GOLD)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_score = UI.text(top, "", 24)
+	_score = UI.text(top, "You", 24)
 	_score.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_pips_me = Pips.new()
+	_pips_me.px = 22.0
+	_pips_me.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	top.add_child(_pips_me)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(18, 0)
+	top.add_child(gap)
+	_pips_them = Pips.new()
+	_pips_them.px = 22.0
+	_pips_them.from_right = true
+	_pips_them.color = Color(1.0, 0.45, 0.4)
+	_pips_them.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	top.add_child(_pips_them)
+	UI.text(top, "Them", 24).autowrap_mode = TextServer.AUTOWRAP_OFF
 	_call = UI.text(v, "", 30)
 	_call.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_track = Control.new()
@@ -270,7 +286,8 @@ func _show() -> void:
 	_zone.size = Vector2(width * w, 38)
 	_needle.position = Vector2(pos * w - 3, 0)
 	_needle.size = Vector2(6, 46)
-	_score.text = "You %s%s    %s%s Them" % ["●".repeat(mine), "○".repeat(NEED - mine), "○".repeat(NEED - theirs), "●".repeat(theirs)]
+	_pips_me.set_pips(mine, NEED)
+	_pips_them.set_pips(theirs, NEED)
 
 func _finish(victory: bool) -> void:
 	phase = "done"

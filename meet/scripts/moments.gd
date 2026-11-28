@@ -81,7 +81,12 @@ const LIST := [
 
 	# --- Things the founders do ---
 	{"id": "falsestart", "need": "match", "banner": ["FALSE START", "Three in a row. Harry's had enough."], "sfx": "whistle",
-		"lines": [["harry", "FOUL! Elbows! Reset! Again! AGAIN!", 0.5], ["any", "He went early!", 2.0], ["any2", "YOU went early!", 3.0], ["harry", "You BOTH went early.", 4.5]]},
+		"lines": [["harry", "FOUL! Elbows! Reset! Again! AGAIN!", 0.5], ["any", "He went early!", 2.0], ["any2", "YOU went early!", 3.0], ["harry", "You BOTH went early.", 4.5],
+			["harry", "THREE. That is THREE. I have counted to three ONE time tonight and it was FOULS.", 7.0],
+			["harry", "'Ready' means READY. 'Go' means GO. There is a WORD in between and NOBODY waits for it!", 10.5],
+			["harry", "I referee this for FREE. On a SUNDAY. I could be at home. I have a couch!", 14.0],
+			["any", "...Sorry, Harry.", 17.0], ["harry", "Elbows. On. The pad. We go again when I say. WHEN. I. SAY.", 18.5]],
+		"stomp": ["harry", 6.6, 14]},
 	{"id": "selfie", "banner": ["SELFIE", "George needs content."],
 		"lines": [["george", "Everyone in! Quick! Before the light goes!", 0.5]], "gesture": ["keen", "Idle_Talking", 4.0], "camera": true,
 		"stir": ["My good side!", "I blinked.", "Again.", "Tag me."]},
