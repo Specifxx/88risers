@@ -112,7 +112,10 @@ static func model(item: String) -> Node3D:
 			Build.cyl(n, 0.012, 0.012, 0.1, Vector3(0, 0.38, 0), Color(0.3, 0.3, 0.3), 5)
 			Build.box(n, Vector3(0.4, 0.012, 0.05), Vector3(0, 0.43, 0), Color(0.2, 0.5, 0.95)).rotation.y = 0.6
 		"golden_chip":
-			Build.box(n, Vector3(0.05, 0.42, 0.05), Vector3(0, 0.28, 0), Color(1.0, 0.82, 0.25), false, 0.6).rotation.z = 0.12
+			# A crinkle-cut crisp the size of a saucer, bent like one, and glowing.
+			for k in 5:
+				var seg := Build.box(n, Vector3(0.056, 0.26 - absf(k - 2) * 0.05, 0.014), Vector3((k - 2) * 0.052, 0.28, absf(k - 2) * 0.016), Color(1.0, 0.82, 0.25), false, 0.9)
+				seg.rotation.y = (k - 2) * -0.28
 		"dare_sash":
 			var sash := Build.box(n, Vector3(0.09, 0.62, 0.3), Vector3(0, 0.02, 0.0), Color(0.93, 0.72, 0.28), false, 0.3)
 			sash.rotation.z = 0.7

@@ -1487,10 +1487,17 @@ func drop(items: Array, at: Vector3) -> void:
 	th.position = ground(at)
 	var m: Node3D = Wear.model(item)
 	th.add_child(m)
-	m.position.y = 0.5
+	# Bigger than life, lifted and turning, with a ring under it: nothing found on the ground
+	# should read as a thin line.
+	m.scale = Vector3.ONE * 2.2
+	m.position.y = 0.35
 	var beam_c: Color = Wear.COLORS.get(item, Meet.ITEMS[item].get("col", Color.WHITE))
 	Build.cyl(th, 0.03, 0.03, 2.2, Vector3(0, 1.4, 0), beam_c, 4).material_override = Build.mat(beam_c, 2.5)
+	Build.cyl(th, 0.42, 0.42, 0.02, Vector3(0, 0.03, 0), beam_c, 16).material_override = Build.mat(beam_c, 1.4)
 	m.create_tween().set_loops().tween_property(m, "rotation:y", TAU, 3.0).from(0.0)   # dies with the item
+	var bob := m.create_tween().set_loops()
+	bob.tween_property(m, "position:y", 0.6, 0.9).set_trans(Tween.TRANS_SINE)
+	bob.tween_property(m, "position:y", 0.35, 0.9).set_trans(Tween.TRANS_SINE)
 	th.setup("Pick up: %s" % Meet.ITEMS[item]["name"], func():
 		th.remove_from_group("interact")
 		Meet.player.target = null
