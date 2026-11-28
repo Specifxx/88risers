@@ -36,8 +36,7 @@ var _strike := 0.0
 var _wind := 0.0
 var _flee := false
 var _knock := Vector3.ZERO
-var _shoves := 0
-var _shove_cd := 0.0
+var _stuck := 0.0
 var _confront_cd := 0.0
 var _hp_label: Label3D
 
@@ -135,10 +134,9 @@ func _process(dt: float) -> void:
 	if not alive or Game.player == null:
 		return
 	mind.tick(dt)
-	_shove_cd = max(0.0, _shove_cd - dt)
 	_confront_cd = max(0.0, _confront_cd - dt)
 	if _knock.length() > 0.1 and not Game.modal:
-		global_position = Game.main.ground(global_position + _knock * dt)
+		global_position = Game.main.walk(global_position, global_position + _knock * dt)
 		_knock = _knock.lerp(Vector3.ZERO, min(1.0, dt * 4.5))
 	if _bark_time > 0.0:
 		_bark_time -= dt
@@ -207,13 +205,12 @@ func _notice_player() -> void:
 func _bold() -> bool:
 	return (is_founder or capable >= 50 or mind.grudge > 1.4) and mind.fear < 0.5
 
-## Standing too close to someone who cannot stand you gets you pushed. Keep it up, and it becomes a fight.
+## The law: a guard who knows what the player owes walks up and says so.
 func _crowd_check() -> void:
 	var p: Vector3 = Game.player.global_position
 	var to := p - global_position
 	to.y = 0
 	var d := to.length()
-	# The law: a guard who knows what you owe walks up and says so.
 	if def.get("guard", false) and Game.bounty.get(village, 0) > 0 and d < 12.0 and _confront_cd <= 0.0 and not aggro:
 		if d > 2.6:
 			_state = "avoid"
@@ -224,30 +221,6 @@ func _crowd_check() -> void:
 			_timer = 6.0
 			Game.dialogue.confront(self)
 		return
-	if d > 2.3 or _shove_cd > 0.0 or mind.feeling() > -0.3 or not _bold() or aggro:
-		return
-	_shove_cd = 2.2
-	_shoves += 1
-	_face(p, 1.0)
-	Character.play(_figure, "Push", true)
-	Game.player.shove(to.normalized() * (6.0 + _shoves), 0.12)
-	Game.spend(8.0)
-	var lines: Array = Data.SHOVES
-	say_aloud(lines[randi() % lines.size()])
-	if _shoves >= 4:
-		say_aloud("Right. That's enough.")
-		_flee = false
-		aggro = true
-
-## The player has put hands on them.
-func shoved() -> void:
-	mind.experience("violence", -0.4, 0.8, true, "")
-	if _bold():
-		_shove_cd = 0.4
-		_shoves += 1
-		say_aloud("Don't you touch me.")
-	else:
-		say_aloud("Don't! Please!")
 
 func knock(v: Vector3) -> void:
 	_knock += v
@@ -287,12 +260,21 @@ func _step_towards(to: Vector3, dt: float) -> bool:
 	if d.length() < 0.35:
 		return true
 	var speed := WALK * (1.6 if _state == "avoid" else 1.0)
-	global_position = Game.main.ground(global_position + d.normalized() * speed * dt)
-	_face(global_position + d, 0.15)
+	var before := global_position
+	global_position = Game.main.walk(global_position, global_position + d.normalized() * speed * dt)
+	var moved := global_position - before
+	if moved.length() < speed * dt * 0.3:
+		# Walled in. Stop trying after a moment rather than walking on the spot.
+		_stuck += dt
+		Character.play(_figure, "Idle")
+		return _stuck > 1.2
+	_stuck = 0.0
+	_face(global_position + moved, 0.15)
 	Character.play(_figure, "Jog_Fwd" if _state == "avoid" else "Walk")
 	return false
 
 func _arrive() -> void:
+	_stuck = 0.0
 	if _state == "avoid":
 		_state = "linger"
 		_timer = randf_range(8.0, 14.0)
@@ -376,13 +358,16 @@ func _fight(dt: float) -> void:
 	var d := to.length()
 	if d > 45.0:
 		aggro = false
-		_shoves = 0
 		_go(post, "walk")
 		return
 	_strike = max(0.0, _strike - dt)
 	if _flee:
 		_state = "avoid"
-		_step_towards(global_position - to.normalized() * 6.0, dt)
+		if _step_towards(global_position - to.normalized() * 6.0, dt):
+			# Cornered: nowhere left to run. They cower where they are.
+			_stuck = 0.0
+			_face(p, 0.2)
+			Character.play(_figure, "Crouch_Idle")
 		return
 	if _wind > 0.0:
 		_wind -= dt

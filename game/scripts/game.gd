@@ -69,7 +69,6 @@ func _ready() -> void:
 	_action("inventory", [KEY_TAB, KEY_I])
 	_action("attack", [KEY_F])
 	_action("block", [KEY_C])
-	_action("shove", [KEY_G])
 
 func _action(action: String, keys: Array) -> void:
 	if not InputMap.has_action(action):
@@ -202,7 +201,7 @@ func hurt_player(raw: int, from: Vector3) -> int:
 	if player:
 		var away := player.global_position - from
 		away.y = 0
-		player.shove(away.normalized() * (2.0 + dealt * 0.35), 0.12 + dealt * 0.015)
+		player.recoil(away.normalized() * (2.0 + dealt * 0.35), 0.12 + dealt * 0.015)
 		Fx.burst(main, player.global_position + Vector3(0, 1.2, 0), away, true, 10)
 		if dealt >= 4:
 			Fx.stain(main, player.global_position, 0.35)

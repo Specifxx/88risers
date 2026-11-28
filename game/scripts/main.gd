@@ -78,6 +78,26 @@ func _on_changed() -> void:
 func height(x: float, z: float) -> float:
 	return terrain.height(x, z)
 
+## Move a walker from `from` towards `to` without passing through walls, trees or anything
+## else solid. If the straight line is blocked it tries going round; if there is no way, it
+## stays put. Returns where the walker ends up.
+func walk(from: Vector3, to: Vector3) -> Vector3:
+	var step := to - from
+	step.y = 0
+	var dist := step.length()
+	if dist < 0.0001:
+		return from
+	var space := get_world_3d().direct_space_state
+	var chest := Vector3(0, 0.95, 0)
+	for turn in [0.0, 0.7, -0.7, 1.35, -1.35]:
+		var dir := step.normalized().rotated(Vector3.UP, turn)
+		var q := PhysicsRayQueryParameters3D.create(from + chest, ground(from + dir * (dist + 0.5)) + chest)
+		if Game.player:
+			q.exclude = [Game.player.get_rid()]
+		if space.intersect_ray(q).is_empty():
+			return ground(from + dir * dist)
+	return from
+
 ## The same point, dropped onto the ground.
 func ground(p: Vector3) -> Vector3:
 	return Vector3(p.x, terrain.height(p.x, p.z), p.z)
