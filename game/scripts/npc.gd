@@ -26,6 +26,7 @@ var persuaded := 0
 var gifts := 0
 var mind: RefCounted
 var post := Vector3.ZERO
+var aggro := false
 
 var _served := {}
 var _figure: Node3D
