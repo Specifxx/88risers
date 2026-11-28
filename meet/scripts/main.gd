@@ -809,7 +809,7 @@ func _process(dt: float) -> void:
 				h.say_aloud("Found the chalk. Behind a banner. WHO did this?", 5.0)
 			stir(CHALK, ["Not me.", "Tommy?", "Wasn't me!", "Classic."], 12.0, 0.6, false)
 	if _gulls != null:
-		Meet.sfx("gull", -6.0, randf_range(0.9, 1.15), 2.2)
+		Meet.sfx("gull", -12.0, randf_range(0.9, 1.15), 3.5)
 	# George notices when the club is taking to you.
 	_reward -= dt
 	if _reward <= 0.0:
@@ -978,7 +978,7 @@ func start_ufo() -> void:
 	beam.omni_range = 22.0
 	_ufo.add_child(beam)
 	beam.position = Vector3(0, -2, 0)
-	Meet.audio.loop("ufo", true, -6.0)
+	Meet.audio.loop("ufo", true, -12.0)
 	Meet.say("Everyone has stopped talking. Something is coming down over the water.")
 	for r in Meet.risers:
 		r.say_aloud(["What is THAT?", "Is that... no.", "Are you seeing this?", "..."][randi() % 4], 4.0)
@@ -1100,7 +1100,7 @@ func start_drone() -> void:
 		for sz in [-1.0, 1.0]:
 			Build.cyl(_drone, 0.22, 0.22, 0.02, Vector3(sx * 0.35, 0.08, sz * 0.35), Color(0.6, 0.6, 0.65), 8)
 	Build.sphere(_drone, 0.06, Vector3(0, -0.08, 0.2), Color(1.0, 0.1, 0.1), 2.0)
-	Meet.audio.loop("drone", true, -8.0)
+	Meet.audio.loop("drone", true, -16.0)
 	_drone.position = Vector3(-30, 14, 20)
 	_drone_t = 0.0
 	var a := randf() * TAU
@@ -1188,7 +1188,7 @@ func _run_gulls(dt: float) -> void:
 
 ## Something noteworthy happened: some of the people nearby turn, say something, maybe come over.
 func stir(at: Vector3, lines: Array, radius := 12.0, share := 0.6, gather := false) -> void:
-	Meet.sfx("ooh", -8.0, randf_range(0.9, 1.1), 2.5)
+	Meet.sfx("ooh", -12.0, randf_range(0.9, 1.1), 4.0)
 	for r in Meet.risers:
 		if r.alien or r.global_position.distance_to(at) > radius or r.global_position.distance_to(at) < 0.3:
 			continue

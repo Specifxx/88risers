@@ -61,5 +61,4 @@ func set_muted(m: bool) -> void:
 		for k in _loops:
 			_loops[k].stop()
 	else:
-		loop("murmur", true, -9.0)
-		loop("music", true, -13.0)
+		loop("music", true, -12.0)
