@@ -2,7 +2,10 @@ extends Node
 ## Every sound in the game. One-shots go through a small pool; the crowd and the music loop.
 
 const DIR := "res://assets/sfx/"
-const LOOPS := ["murmur", "music", "ufo", "drone"]
+const LOOPS := ["murmur", "music", "music2", "music3", "ufo", "drone"]
+const TRACKS := ["music", "music2", "music3"]
+const TRACK_NAMES := ["the usual koto loop", "something with a beat", "a slow groove"]
+var track := 0
 
 var _pool: Array = []
 var _next := 0
@@ -61,4 +64,11 @@ func set_muted(m: bool) -> void:
 		for k in _loops:
 			_loops[k].stop()
 	else:
-		loop("music", true, -12.0)
+		loop(TRACKS[track], true, -12.0)
+
+## Change what is playing. Returns the name of the new track.
+func next_track() -> String:
+	loop(TRACKS[track], false)
+	track = (track + 1) % TRACKS.size()
+	loop(TRACKS[track], true, -10.0)
+	return TRACK_NAMES[track]

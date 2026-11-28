@@ -109,3 +109,15 @@ static func _turn(sk: Skeleton3D, i: int, global_basis: Basis) -> void:
 	var parent := sk.get_bone_parent(i)
 	var pb := sk.get_bone_global_pose(parent).basis.orthonormalized() if parent >= 0 else Basis()
 	sk.set_bone_pose_rotation(i, (pb.inverse() * global_basis.orthonormalized()).get_rotation_quaternion())
+
+## Alternating dumbbell curls.
+static func curl(fig: Node3D, t: float) -> void:
+	start(fig, "Idle")
+	var sk := _reset(fig)
+	for side in [["upperarm_r", "lowerarm_r", "hand_r", -1.0, 0.0], ["upperarm_l", "lowerarm_l", "hand_l", 1.0, PI]]:
+		var sh := sk.get_bone_global_pose(sk.find_bone(side[0])).origin
+		var sx: float = side[3]
+		var up: float = 0.5 + 0.5 * sin(t * 4.0 + float(side[4]))
+		var elbow := sh + Vector3(sx * 0.04, -0.27, 0.03)
+		_aim(sk, side[0], side[1], elbow)
+		_aim(sk, side[1], side[2], elbow + Vector3(0, lerp(-0.25, 0.22, up), lerp(0.08, 0.2, up)))

@@ -105,7 +105,7 @@ func open(r: Node) -> void:
 	_dots.visible = true
 	_text.clear()
 	var lines: Array = People.BARKS[r.bond()]
-	var first: String = lines[randi() % lines.size()]
+	var first: String = r.attitude_line() if (r.is_riser or r.guest) else lines[randi() % lines.size()]
 	if r.state == "search":
 		first = "Have you seen my strap? It was in my bag."
 	elif r.calling > 0.0:
@@ -138,8 +138,15 @@ func _header() -> void:
 		var word: String = Meet.tie_word(bm[1])
 		if bm[0] != null and word != "":
 			extra = "  ·  %s %s" % [word, bm[0].first_name]
-	var mw: String = who.mood_word()
-	_sub.text = "%s%s" % [("%s %s" % [who.first_name.capitalize() if who.is_riser else "They", "is your " + mw if mw == "close mate" else (mw if mw.ends_with("you") else "is " + mw)]) if mw != "" else who.bond_text().capitalize(), extra]
+	var ax: Dictionary = who.axes() if (who.is_riser or who.guest) else {}
+	var read := ""
+	for k in [["trust", "Trust"], ["respect", "Respect"], ["fun", "Amused"], ["warmth", "Warmth"], ["irritation", "Irritated"], ["wary", "Wary"]]:
+		var v: float = ax.get(k[0], 0.0)
+		if absf(v) > 0.12:
+			read += "  %s %s" % [k[1], ("+" if v > 0 else "−").repeat(int(ceil(absf(v) * 3.0)))]
+	var who_name: String = who.first_name.capitalize() if who.is_riser else "They"
+	_sub.text = "%s: %s.%s%s" % [who_name, who.attitude() if not ax.is_empty() else who.bond_text(), read, extra]
+	_sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_sub.add_theme_color_override("font_color", Color(1.0, 0.5, 0.35) if who.mood_level() < 0 else Color(0.75, 0.72, 0.62))
 
 func _options() -> void:
@@ -162,6 +169,10 @@ func _options() -> void:
 		UI.button(_list, "Apologise, with a snack as a peace offering  (%d)" % Meet.snacks, _sorry.bind(true), 18).add_theme_color_override("font_color", Color(0.6, 0.9, 0.7))
 	if Meet.straps.has(who.id):
 		UI.button(_list, "\"Found this. Yours?\"  (hand back the strap)", _strap, 18)
+	if who.coned:
+		UI.button(_list, "Take your traffic cone back", func(): _line("[i]You lift the cone off their head.[/i]\n\"%s\"" % who.cone_off()), 18).add_theme_color_override("font_color", Color(1.0, 0.6, 0.3))
+	if who.is_riser and Meet.errands.get(who.id, "") == "ready":
+		UI.button(_list, "\"Done. That thing you asked for.\"", _errand_done, 18).add_theme_color_override("font_color", blue)
 	UI.button(_list, "Talk...", _menu_talk, 18)
 	UI.button(_list, "Be friendly...", _menu_friendly, 18)
 	if who.is_riser or who.guest:
@@ -178,10 +189,11 @@ func _back() -> void:
 
 func _menu_talk() -> void:
 	UI.clear(_list)
+	# Everyone has subjects of their own: founders, this week's guest, and people walking past.
+	for t in People.TALK.get(who.id, []):
+		if not who.done_topics.has(t["key"]):
+			UI.button(_list, t["ask"], _topic.bind(t), 18)
 	if who.is_riser:
-		for t in People.TALK.get(who.id, []):
-			if not who.done_topics.has(t["key"]):
-				UI.button(_list, t["ask"], _topic.bind(t), 18)
 		UI.button(_list, "Ask what they make of someone...", _about_who, 18)
 		UI.button(_list, "\"What's the news tonight?\"", _news, 18)
 	UI.button(_list, "Small talk", _chat, 18)
@@ -213,6 +225,8 @@ func _menu_pull() -> void:
 
 func _menu_favour() -> void:
 	UI.clear(_list)
+	if not Meet.errands.has(who.id):
+		UI.button(_list, "\"Anything need doing?\"", _errand, 18).add_theme_color_override("font_color", UI.GOLD)
 	UI.button(_list, "\"Lend me five dollars?\"", _favour.bind("lend"), 18)
 	UI.button(_list, "\"Teach me your move.\"", _favour.bind("teach"), 18)
 	UI.button(_list, "\"Watch my back tonight?\"", _favour.bind("back"), 18)
@@ -493,6 +507,9 @@ func _answer(o: Dictionary, show_say := true) -> void:
 				close()
 				Meet.say("Tommy heads for Harry with a fistful of chalk. You said you'd take the blame.")
 				return
+		"keen":
+			r.keen = true
+			_text.append_text("[i]They're half talked into it already. Ask them for a pull.[/i]\n")
 		"snitch":
 			var h: Node = Meet.riser("harry")
 			if h:
@@ -551,6 +568,7 @@ func confrontation(r: Node) -> void:
 		_text.append_text("\"Do it again and you're out of this club. Understood?\"\n")
 	UI.clear(_list)
 	var end := func(line: String):
+		Meet.dare("talkdown")
 		_forced = false
 		r.idle()
 		_text.append_text("\n%s\n" % line)
@@ -643,6 +661,7 @@ func _carry(e: Dictionary) -> void:
 		var lines: Array = Web.TOLD[kind]
 		_text.append_text("\"%s\"\n" % lines[randi() % lines.size()])
 		if kind == "worse":
+			Meet.dare("feud")
 			Meet.main.send(who.id, by.id, "chat")
 			_text.append_text("[i]They are going over there to have it out. %s will work out who stirred it.[/i]\n" % by.first_name)
 		Meet.save()
@@ -665,6 +684,8 @@ func _drink() -> void:
 	Meet.pay(-3)
 	Meet.sfx("sip")
 	Meet.dare("round")
+	if who.id == "kelvin":
+		Meet.errand("kelvin", "ready")
 	Meet.add_heat(-0.3)
 	who.mind.experience("gift", 0.5, 1.0, true, "the drink")
 	_line("[i]Three dollars in the tin.[/i] \"%s\"" % ["Oh, nice one. Cheers.", "You didn't have to. But thanks.", "First drink anyone's bought me here."][randi() % 3])
@@ -823,6 +844,73 @@ func _mates_check() -> void:
 			n += 1
 	if n >= 4:
 		Meet.grant("lion_mask")
+
+# --- Errands, and anything that isn't a person -------------------------------------------------------
+
+const ERRANDS := {
+	"harry": ["Get one of the public to the table. One's enough. That's how a club grows.", "You got one to pull? That's the job. Well done."],
+	"george": ["Film a pull for me. Stand close to a table while two of them are going and take a photo.", "That's a great shot. That's the thumbnail. You're hired."],
+	"phillip": ["Count my reps. Out loud. Properly.", "...You counted right. Nobody counts right."],
+	"bhavya": ["My notebook. I left it up at the top of the seating. Every puller in NSW is in it.", "My notebook! Did you read it? ...What does yours say? One line. A good line."],
+	"kelvin": ["A cold drink. I'd go myself, but I'd pass the snack table on the way and I know what I'm like.", "Cold. Perfect. You understand me."],
+	"tommy": ["Get chalk on Kelvin. I can't, he's watching me. He's not watching YOU.", "DIRECT HIT. I saw it. I'll treasure it."],
+	"luie": ["I dropped an earbud down by the railing. The left one. I need the left one.", "The left one. ...Thank you. Really."],
+	"erick": ["Find me someone new to pull. Talk a stranger into staying. I've beaten everyone here twice.", "Fresh arms! Finally. I owe you one."],
+}
+
+func _errand() -> void:
+	Meet.errand(who.id, "open")
+	var ev: Node = Meet.main.evening
+	match who.id:
+		"bhavya":
+			Meet.main.pickup("Bhavya's notebook", Vector3(-6.0, 0, -15.5), Color(0.2, 0.3, 0.6), func(): Meet.errand("bhavya", "ready"))
+		"luie":
+			Meet.main.pickup("Luie's left earbud", Vector3(-8.5, 0, 28.6), Color(0.95, 0.95, 0.95), func(): Meet.errand("luie", "ready"))
+		"phillip":
+			var r := who
+			close()
+			Meet.strapgame.start(func(hits: int):
+				if hits >= 2:
+					Meet.errand("phillip", "ready")
+					r.say_aloud("...Forty-nine. Fifty. Good.", 3.5)
+				else:
+					Meet.errands.erase("phillip")
+					r.say_aloud("That was eleven. You said fourteen.", 4.0), "Count Phillip's reps", ["Forty-eight...", "Forty-nine...", "FIFTY"])
+			return
+	_line("[color=#b9b3a0]\"Anything need doing?\"[/color]\n\"%s\"" % ERRANDS[who.id][0])
+
+func _errand_done() -> void:
+	Meet.errands[who.id] = "done"
+	who.mind.experience("helped", 0.7, 2.0, true, "the errand")
+	Meet.dare("errand")
+	if who.id in ["bhavya", "luie"]:
+		Meet.tips = min(4, Meet.tips + 1)
+	Meet.pay(5, "%s slips you a fiver for your trouble." % who.first_name)
+	_line("[color=#b9b3a0]\"Done. That thing you asked for.\"[/color]\n\"%s\"" % ERRANDS[who.id][1])
+
+## Somebody has sat down next to you.
+func bench(r: Node) -> void:
+	open(r)
+	_text.clear()
+	var lines: Array = People.BENCH.get(r.id, ["Mind if I sit?", "Long night."])
+	_text.append_text("[i]%s sits down next to you.[/i]\n\n\"%s\"\n\n\"%s\"\n" % [r.riser_name, lines[0], lines[1]])
+
+## A plain choice that has nobody on the other side of it: a shop, a bet, a board.
+func choice(title: String, text: String, opts: Array) -> void:
+	who = null
+	_name.text = title
+	_card.visible = false
+	_dots.visible = false
+	_sub.text = ""
+	_text.clear()
+	_text.append_text(text + "\n")
+	_show()
+	UI.clear(_list)
+	for o in opts:
+		var cb: Callable = o[1]
+		UI.button(_list, o[0], func():
+			close()
+			cb.call(), 18)
 
 # --- The ladder ------------------------------------------------------------------------------------
 

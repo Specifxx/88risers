@@ -3,6 +3,8 @@ extends CanvasLayer
 
 const UI = preload("res://scripts/ui.gd")
 const STEPS := ["Wrap it round", "Cross it over", "Pull it TIGHT"]
+var _steps: Array = STEPS
+var _head: Label
 
 var step := 0
 var hits := 0
@@ -28,7 +30,7 @@ func _ready() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
 	p.add_child(v)
-	UI.text(v, "Strap them in", 24, UI.GOLD)
+	_head = UI.text(v, "Strap them in", 24, UI.GOLD)
 	_call = UI.text(v, "", 26)
 	_call.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_track = Control.new()
@@ -51,8 +53,10 @@ func _ready() -> void:
 func active() -> bool:
 	return _root.visible
 
-func start(done: Callable) -> void:
+func start(done: Callable, title := "Strap them in", steps: Array = STEPS) -> void:
 	_done = done
+	_steps = steps
+	_head.text = title
 	step = 0
 	hits = 0
 	_root.visible = true
@@ -64,7 +68,7 @@ func _next() -> void:
 	width = 0.26 - step * 0.05
 	_ph = randf() * TAU
 	_t = 0.0
-	_call.text = "%d of 3: %s" % [step + 1, STEPS[step]]
+	_call.text = "%d of %d: %s" % [step + 1, _steps.size(), _steps[step]]
 
 func _unhandled_input(ev: InputEvent) -> void:
 	if not active():
@@ -96,7 +100,7 @@ func tap() -> void:
 	if absf(pos - zone) < width / 2.0:
 		hits += 1
 	step += 1
-	if step >= 3:
+	if step >= _steps.size():
 		_root.visible = false
 		UI.close_modal()
 		_done.call(hits)

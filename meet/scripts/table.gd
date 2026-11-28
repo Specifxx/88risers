@@ -138,6 +138,8 @@ func start(r: Node) -> void:
 		extras.append("strapped: slower needle")
 	if Meet.tips > 0:
 		extras.append("coached")
+	if Meet.pump > 0:
+		extras.append("pumped x%d" % Meet.pump)
 	if not extras.is_empty():
 		_title.text += "   (%s)" % ", ".join(extras)
 	var pic: String = r.portrait()
@@ -170,7 +172,7 @@ func _round() -> void:
 		width *= 1.2
 	if not Meet.straps.is_empty():
 		speed *= 0.9
-	width += min(Meet.tips, 4) * 0.01
+	width += min(Meet.tips, 4) * 0.01 + Meet.pump * 0.012
 	if Meet.stamina < 30.0:
 		width *= 0.85
 	if move in ["press", "hook"]:
@@ -276,7 +278,8 @@ func _finish(victory: bool) -> void:
 	Meet.sfx("win" if victory else "lose")
 	Meet.sfx("ooh", -6.0)
 	if rival.is_riser:
-		Meet.points += 3 if victory else 1
+		Meet.points += (3 if victory else 1) * (2 if Meet.double_points else 1)
+		Meet.double_points = false
 	if victory:
 		Meet.dare("win", rival.id)
 	Meet.chalked = false
@@ -288,6 +291,8 @@ func _finish(victory: bool) -> void:
 	if rival.guest_ready:
 		rival.recruited = true
 		Meet.dare("recruit")
+		Meet.errand("harry", "ready")
+		Meet.errand("erick", "ready")
 		Meet.recruits += 1
 		_call.text = "You pin %s." % rival.first_name if victory else "%s pins you. Oh." % rival.riser_name
 		Meet.results.append(("You beat %s" if victory else "%s beat you, somehow") % rival.first_name)

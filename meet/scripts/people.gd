@@ -117,7 +117,7 @@ const QUIRK := {
 	"rounds": ["All good here?", "Everyone warmed up?", "Chalk's by the middle table."],
 	"film": ["This is going on the page.", "Do that again, I missed it.", "Look at the camera. No, pull, THEN look."],
 	"spruik": ["Come have a go! First one's free!", "Arm wrestling! Every month! Free snacks!", "You look strong. You. Yes, you."],
-	"drill": ["...forty-eight. Forty-nine.", "One more set.", "Tendons don't train themselves."],
+	"drill": ["...and hold. Thirty seconds.", "One more set.", "Tendons don't train themselves.", "Wrist. Fingers. Wrist."],
 	"coach": ["Higher. Wrist HIGHER.", "You're pulling with your arm. Use your back.", "Shoulder behind the hand. There."],
 	"coached": ["I know, I know.", "That IS high.", "Yes, coach."],
 	"seconds": ["Just one more.", "These don't count, they're small.", "I'm bulking."],
@@ -165,6 +165,94 @@ const REMEMBER := {
 ## v: how it lands (-1..1). flag: remembered between visits. need: only offered once that flag is set.
 ## do: something that then happens in the world.
 const TALK := {
+	"p_office": [
+		{"key": "boss", "ask": "\"Rough day at the office?\"", "reply": "Darren scheduled a meeting to discuss why we have too many meetings. It ran over.", "opts": [
+			{"say": "What did Darren say this time?", "reply": "He said 'let's take this offline' while we were all in the same room. I think about it constantly.", "v": 0.4, "lead_local": "darren"},
+			{"say": "Quit. Come and arm wrestle instead.", "reply": "...Don't tempt me. I've got a mortgage and a stand-up at seven. ...What time do you lot meet?", "v": 0.3, "do": "keen"},
+			{"say": "Sounds like you're the problem.", "reply": "That's what Darren said in my review.", "v": -0.4, "kind": "heckle"}]},
+		{"key": "fridge", "ask": "Ask about office politics", "reply": "Someone's been eating Priya's labelled yoghurt. There's an email chain. Forty replies. HR is involved.", "opts": [
+			{"say": "Was it you?", "reply": "...It was one time. It was a Tuesday. I was low.", "v": 0.35},
+			{"say": "Blame Darren.", "reply": "I already replied-all saying exactly that. I may have ended my career. It felt incredible.", "v": 0.5, "do": "keen"},
+			{"say": "This is the dullest thing I've ever heard.", "reply": "You should see the email about the printer.", "v": -0.2}]},
+	],
+	"p_jog": [
+		{"key": "run", "ask": "Ask how far she's running", "reply": "Ten k. I was on for a personal best until you lot started shouting 'GO' every thirty seconds.", "opts": [
+			{"say": "Sorry. Occupational hazard.", "reply": "It's fine. Honestly it made me sprint. Might come past every month.", "v": 0.3},
+			{"say": "Arm wrestling's better cardio.", "reply": "It is NOT. ...Is it? My watch would know. Let me try one.", "v": 0.2, "do": "keen"},
+			{"say": "You run like you're being chased.", "reply": "I AM being chased. By my thirties.", "v": 0.25}]},
+	],
+	"p_dog": [
+		{"key": "biscuit", "ask": "Ask about Biscuit", "reply": "He failed puppy school twice. The second time they asked us not to come back. He's very proud.", "opts": [
+			{"say": "What did he do?", "reply": "Ate the certificate. Somebody else's.", "v": 0.4},
+			{"say": "He looks like he could pull.", "reply": "He pulls me into the bay twice a week. Ask my shoulder.", "v": 0.3, "do": "keen"},
+			{"say": "Dogs shouldn't be here.", "reply": "Biscuit, we're leaving. This person has no joy.", "v": -0.5, "kind": "heckle"}]},
+	],
+	"p_dog2": [
+		{"key": "mochi", "ask": "Ask about Mochi", "reply": "She has four jumpers and a raincoat. I have two shirts. That's the household.", "opts": [
+			{"say": "Who's in charge at home?", "reply": "She is. I just hold the lead and pay for things.", "v": 0.4},
+			{"say": "Small dog, big attitude.", "reply": "She once stared down a bin lorry. It reversed.", "v": 0.35},
+			{"say": "That's not a dog, that's a slipper.", "reply": "She heard that. She won't forget it. Neither will I.", "v": -0.45, "kind": "heckle"}]},
+	],
+	"p_tour": [
+		{"key": "trip", "ask": "Ask what he's seen so far", "reply": "The bridge, the opera house, a bird that stole my sandwich, and now this. This is my favourite.", "opts": [
+			{"say": "This isn't in the guidebook.", "reply": "It should be. Five stars. 'Authentic local hand combat.'", "v": 0.4},
+			{"say": "Have a go. It's tradition.", "reply": "Tradition! Then I must. Hold my camera. No, you hold it. No. I'll hold it.", "v": 0.3, "do": "keen"},
+			{"say": "The ferry's the other way, mate.", "reply": "Everyone says a different way. I've been to three wharves.", "v": 0.1}]},
+	],
+	"p_old": [
+		{"key": "eighties", "ask": "Ask about pulling in the eighties", "reply": "Pubs. For jugs. No pads, no pegs, no straps. You pulled on a bar mat and if you lost you bought the round.", "opts": [
+			{"say": "Were you any good?", "reply": "State finalist, '84 and '86. Lost to a wharfie called Kev both times. Kev's dead now. I still wouldn't pull him.", "v": 0.45},
+			{"say": "Show these kids how it's done.", "reply": "...My doctor said nothing strenuous. My doctor isn't here.", "v": 0.4, "do": "keen"},
+			{"say": "Different game now, old timer.", "reply": "Same arm, sonny. Same arm.", "v": -0.3, "kind": "heckle"}]},
+	],
+	"p_pt": [
+		{"key": "form", "ask": "Ask what she thinks of the technique", "reply": "Honestly? Half of them are one bad pull from a shoulder reconstruction. It's fascinating.", "opts": [
+			{"say": "Which half?", "reply": "The half that aren't the big quiet one. His scapula's perfect. Is he single? Don't answer that.", "v": 0.35},
+			{"say": "Bet you couldn't do better.", "reply": "Excuse me? I deadlift double my bodyweight. Move.", "v": 0.1, "do": "keen"},
+			{"say": "Personal trainers aren't real athletes.", "reply": "I'm going to remember your face at your first hernia.", "v": -0.5, "kind": "heckle"}]},
+	],
+	"p_cousin": [
+		{"key": "cousin", "ask": "Ask whose cousin she is", "reply": "Kelvin's. Well. Second cousin. Our mums play mahjong. I was told there would be food and nobody mentioned the arm thing.", "opts": [
+			{"say": "The food's by the lights. Go for the red ones.", "reply": "Finally, someone useful. Kelvin just pointed and kept eating.", "v": 0.45},
+			{"say": "Does Kelvin always eat like that?", "reply": "At my wedding he had three mains. He wasn't on the list for three mains.", "v": 0.35, "lead": "tally_tommy"},
+			{"say": "You should pull him. Family honour.", "reply": "Oh, I've been waiting twenty years for a reason to beat Kelvin at something.", "v": 0.3, "do": "keen"}]},
+	],
+	"p_rider": [
+		{"key": "order", "ask": "Ask who the pad thai is for", "reply": "'Unit 1408, Tower B.' There are four Tower Bs. I've been to three. The food's been cold since Thursday.", "opts": [
+			{"say": "Just eat it.", "reply": "...It's against policy. It's also against everything I stand for. ...It's pretty good cold.", "v": 0.4},
+			{"say": "Sell it to Kelvin.", "reply": "The big fella? Does he tip?", "v": 0.3, "do": "pay:5"},
+			{"say": "One star.", "reply": "Mate. Don't. I've got a rating to protect.", "v": -0.4, "kind": "heckle"}]},
+	],
+	"g_mei": [
+		{"key": "parra", "ask": "Ask about the Parramatta club", "reply": "Forty members, a sponsor, proper lighting. And nobody talks to each other. You lot have eight people and a tin and you're having more fun.", "opts": [
+			{"say": "So join us.", "reply": "Don't say that near Harry. He'll have a form in my hand.", "v": 0.4},
+			{"say": "Why are you really here?", "reply": "Scouting Erick. His left arm's a rumour where I'm from. Don't tell him.", "v": 0.3, "lead": "five_erick"},
+			{"say": "Forty members and you came here?", "reply": "For the snacks. Obviously.", "v": 0.2}]},
+	],
+	"g_baz": [
+		{"key": "servo", "ask": "Ask about pulling at truck stops", "reply": "Rules are simple. Winner gets the pie. Loser buys the pie. Never been the loser.", "opts": [
+			{"say": "What kind of pie?", "reply": "Steak and pepper. There's no other kind. Anyone says different is a cop.", "v": 0.45},
+			{"say": "Ever pulled a real puller?", "reply": "Pulled a bloke in Dubbo who turned out to be a state champ. Took me eleven seconds. Longest pie of my life.", "v": 0.3},
+			{"say": "Truck stop rules don't count here.", "reply": "Mate, a hand's a hand.", "v": -0.2}]},
+	],
+	"g_ana": [
+		{"key": "elbows", "ask": "Ask whose elbow is worst", "reply": "Patient confidentiality. ...It's Phillip's. It's held together with tape and stubbornness.", "opts": [
+			{"say": "Can you fix mine before I break it?", "reply": "Warm up. Wrists, then elbows, then shoulders. Two minutes. There, I've saved you four hundred dollars.", "v": 0.4, "do": "tip"},
+			{"say": "I'll tell Phillip you said that.", "reply": "He knows. He nodded once. That's the most I've ever got out of him.", "v": 0.2},
+			{"say": "Physios just sell you rubber bands.", "reply": "And you'll buy six. See you in March.", "v": -0.3, "kind": "heckle"}]},
+	],
+	"g_kai": [
+		{"key": "champ", "ask": "Ask about his plan", "reply": "Youngest ever champion. I've got a spreadsheet. Erick's on it. Harry's on it. You're not on it yet.", "opts": [
+			{"say": "Put me on the spreadsheet.", "reply": "Row forty-one. Under my PE teacher.", "v": 0.4},
+			{"say": "Does your mum know you're here?", "reply": "...She thinks I'm at chess. Chess is on Tuesdays. Don't tell her.", "v": 0.2},
+			{"say": "You're a kid. Go home.", "reply": "That's what they said to every champion. Probably.", "v": -0.35, "kind": "heckle"}]},
+	],
+	"g_ron": [
+		{"key": "permit", "ask": "Ask what he's observing", "reply": "Booking compliance. Noise. Chalk residue. Whether this is 'organised sport' or 'a gathering'. They're different forms.", "opts": [
+			{"say": "It's a gathering with tables.", "reply": "...That's actually the cheaper form. Don't tell anyone I said so.", "v": 0.4, "lead": "fees_harry"},
+			{"say": "You want a go, don't you.", "reply": "I'm on the clock. ...When I'm off the clock, hypothetically, which table?", "v": 0.35},
+			{"say": "Nobody likes the council, Ron.", "reply": "I know. I've read the feedback forms.", "v": -0.3, "kind": "heckle"}]},
+	],
 	"harry": [
 		{"key": "comp", "ask": "Ask about next month's comp", "reply": "Newcastle. Six of us are going. Come and watch. Or enter novice, if you've got the nerve.", "opts": [
 			{"say": "Enter me.", "reply": "Just like that? ...Good. I like that. You're in.", "v": 0.5, "flag": "novice", "lead": "novice_erick"},
@@ -450,3 +538,37 @@ const FINDS := [
 	{"item": "cape", "at": Vector3(-3, 0, 23.2), "hint": "near the lions at the gate"},
 ]
 const RUMOURS := ["gulls", "drone", "ufo", "gulls", "drone"]
+
+## How someone currently has you figured, and how they open a conversation when they do.
+const ATTITUDES := {
+	"afraid": ["afraid of what you'll do next", ["...What do you want.", "Just keep your hands where I can see them."]],
+	"arm_not_bag": ["respects your arm, watches their bag", ["Good puller. Shame about the rest of you.", "I'll pull you any day. I'm not leaving my bag near you."]],
+	"no_trust": ["doesn't trust you an inch", ["I counted my straps before you walked over.", "Whatever you're selling, no."]],
+	"funny_pest": ["can't decide if you're funny or a pest", ["Here we go. What is it this time?", "I shouldn't laugh. I'm not going to laugh."]],
+	"mouth": ["has had enough of your mouth", ["Think before you open it.", "If the next thing you say isn't an apology, save it."]],
+	"wary": ["wary of you", ["Easy. I saw what you did.", "We're fine as long as you stay calm."]],
+	"rates_likes": ["rates you, and likes you", ["Here's trouble. The good kind.", "You're turning into one of us, you know."]],
+	"respects": ["respects you at the table", ["That hand of yours. I've been thinking about it.", "You earned that last one. Don't let it go to your head."]],
+	"laugh": ["thinks you're a laugh", ["Oh good, it's you. Tonight was getting dull.", "What have you done now? Tell me everything."]],
+	"amused": ["amused by you, against their judgement", ["I'm not encouraging you. ...Go on, then.", "You're a menace. Carry on."]],
+	"trusts": ["would trust you with their strap", ["Watch my bag a sec? You're the only one I'd ask.", "Good, it's you. I need a second opinion on something."]],
+	"owes": ["feels they owe you one", ["I haven't forgotten what you did for me.", "Need anything? I mean it."]],
+	"warming": ["warming to you", ["Hey, you. Good to see you about.", "Sit down. How's your night going?"]],
+	"sussing": ["still working you out", ["So. What's your story?", "You're new. I'm watching. In a friendly way."]],
+	"neutral": ["has no strong feelings about you yet", ["Evening.", "Hey."]],
+	"hurt": ["hurt by what you said", ["I thought we were alright, you and me.", "That stuck with me, what you said."]],
+	"cold": ["being coldly polite", ["Hello.", "Can I help you with something?"]],
+	"done": ["finished with you", ["No.", "Not you. Not tonight."]],
+}
+
+## What they say when they come and sit down next to you.
+const BENCH := {
+	"harry": ["Mind if I sit? Been on my feet since three.", "You know, I worry nobody would turn up, every month. Then they do."],
+	"george": ["Budge up. I need five minutes where nobody asks me where the tape is.", "Do you think it's any good? The club? Honestly?"],
+	"phillip": ["...", "It's quieter over here. I like it."],
+	"bhavya": ["Sit up straight. Kidding. Mostly.", "You've got decent levers, you know. I've been watching."],
+	"kelvin": ["Is this seat taken? I brought two of these. One's yours.", "I come here for the snacks. I stay for the snacks. And you lot."],
+	"tommy": ["Oh good, a captive audience.", "Don't tell them, but this is the best bit of my week."],
+	"luie": ["...Good spot.", "You can see the bridge from here."],
+	"erick": ["Sitting? In the middle of a meet? ...Fine. Two minutes.", "What do you do, outside this? I never ask anyone."],
+}
