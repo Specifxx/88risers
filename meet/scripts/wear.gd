@@ -50,6 +50,9 @@ static func drop(figure: Node3D, name := "Held") -> void:
 ## The things you can win. Built from simple shapes, like everything worth owning.
 static func model(item: String) -> Node3D:
 	var n := Node3D.new()
+	if Meet.ITEMS.has(item) and Meet.ITEMS[item].has("shape"):
+		_shape(n, Meet.ITEMS[item]["shape"], Meet.ITEMS[item]["col"])
+		return n
 	match item:
 		"foam_finger":
 			Build.box(n, Vector3(0.3, 0.42, 0.1), Vector3(0, 0.25, 0), Color(0.15, 0.35, 0.95))
@@ -228,3 +231,123 @@ static func dust(figure: Node3D, seconds: float, c := Color(0.97, 0.97, 0.97)) -
 	figure.get_tree().create_timer(seconds).timeout.connect(func():
 		if is_instance_valid(figure):
 			drop(figure, "Dust"))
+
+## Kit that is one of a family of shapes in a given colour.
+static func _shape(n: Node3D, shape: String, c: Color) -> void:
+	match shape:
+		# Heads.
+		"cap":
+			Build.sphere(n, 0.13, Vector3(0, 0.16, 0), c).scale = Vector3(1, 0.7, 1.05)
+			Build.box(n, Vector3(0.2, 0.015, 0.14), Vector3(0, 0.13, 0.17), c * 0.8)
+		"beanie":
+			Build.sphere(n, 0.135, Vector3(0, 0.17, 0), c).scale = Vector3(1, 0.95, 1)
+			Build.cyl(n, 0.135, 0.135, 0.05, Vector3(0, 0.1, 0), c * 1.6 + Color(0.15, 0.15, 0.15), 12)
+			Build.sphere(n, 0.04, Vector3(0, 0.31, 0), c * 1.6 + Color(0.2, 0.2, 0.2))
+		"visor":
+			Build.cyl(n, 0.13, 0.13, 0.04, Vector3(0, 0.13, 0), c, 12)
+			Build.box(n, Vector3(0.22, 0.012, 0.16), Vector3(0, 0.12, 0.18), Color(c.r, c.g, c.b, 1.0) * 0.9)
+		"tophat":
+			Build.cyl(n, 0.2, 0.2, 0.015, Vector3(0, 0.16, 0), c, 14)
+			Build.cyl(n, 0.12, 0.125, 0.3, Vector3(0, 0.31, 0), c, 14)
+			Build.cyl(n, 0.127, 0.127, 0.03, Vector3(0, 0.19, 0), Color(0.75, 0.1, 0.12), 14)
+		"crown":
+			Build.cyl(n, 0.125, 0.125, 0.07, Vector3(0, 0.2, 0), c, 12).material_override = Build.mat(c, 0.4)
+			for i in 6:
+				var a := TAU * i / 6.0
+				Build.cyl(n, 0.0, 0.03, 0.09, Vector3(cos(a) * 0.115, 0.28, sin(a) * 0.115), c, 4).material_override = Build.mat(c, 0.4)
+		"helmet":
+			Build.sphere(n, 0.17, Vector3(0, 0.12, 0), Color(c.r, c.g, c.b, 1.0)).scale = Vector3(1, 1.05, 1)
+			Build.box(n, Vector3(0.18, 0.06, 0.02), Vector3(0, 0.1, 0.16), Color(0.05, 0.05, 0.08))
+		"box":
+			Build.box(n, Vector3(0.34, 0.05, 0.34), Vector3(0, 0.2, 0), c)
+			Build.cyl(n, 0.09, 0.09, 0.005, Vector3(0, 0.23, 0), Color(0.8, 0.2, 0.15), 10)
+		"halo":
+			for i in 12:
+				var a := TAU * i / 12.0
+				Build.sphere(n, 0.022, Vector3(cos(a) * 0.14, 0.42, sin(a) * 0.14), c, 2.0)
+		"horns":
+			for sx in [-1.0, 1.0]:
+				Build.cyl(n, 0.0, 0.035, 0.16, Vector3(sx * 0.09, 0.26, 0.02), c, 6).rotation.z = -sx * 0.4
+		"wig":
+			Build.sphere(n, 0.16, Vector3(0, 0.14, -0.02), c).scale = Vector3(1.1, 1.0, 1.1)
+			for sx in [-1.0, 1.0]:
+				Build.sphere(n, 0.08, Vector3(sx * 0.14, 0.0, -0.02), c).scale = Vector3(0.8, 1.6, 0.9)
+		# Bodies.
+		"scarf":
+			Build.cyl(n, 0.13, 0.13, 0.07, Vector3(0, 0.24, 0.0), c, 10)
+			Build.box(n, Vector3(0.08, 0.4, 0.03), Vector3(0.08, 0.02, 0.15), c)
+		"chain":
+			for i in 12:
+				var a := PI * i / 11.0
+				Build.sphere(n, 0.025, Vector3(cos(a) * 0.14, 0.2 - sin(a) * 0.22, 0.15), c, 0.5)
+			Build.cyl(n, 0.05, 0.05, 0.012, Vector3(0, -0.06, 0.16), c, 10).rotation.x = PI / 2.0
+		"tie":
+			for sx in [-1.0, 1.0]:
+				Build.box(n, Vector3(0.09, 0.07, 0.02), Vector3(sx * 0.055, 0.22, 0.14), c).rotation.z = sx * 0.3
+			Build.box(n, Vector3(0.035, 0.04, 0.03), Vector3(0, 0.22, 0.145), c)
+		"ring":
+			for i in 14:
+				var a := TAU * i / 14.0
+				Build.sphere(n, 0.07, Vector3(cos(a) * 0.3, -0.2, sin(a) * 0.3), c if i % 2 else Color(0.97, 0.97, 0.97))
+		"wings":
+			for sx in [-1.0, 1.0]:
+				Build.box(n, Vector3(0.45, 0.16, 0.03), Vector3(sx * 0.32, 0.1, -0.17), c).rotation.z = sx * 0.35
+				Build.cyl(n, 0.035, 0.05, 0.14, Vector3(sx * 0.12, -0.05, -0.2), Color(1.0, 0.5, 0.1), 6, false)
+		"bib":
+			Build.cyl(n, 0.06, 0.06, 0.012, Vector3(0.1, 0.12, 0.16), c, 10).rotation.x = PI / 2.0
+			Build.cyl(n, 0.035, 0.035, 0.014, Vector3(0.1, 0.12, 0.165), Color(1.0, 0.85, 0.3), 10).rotation.x = PI / 2.0
+		"backpack":
+			Build.box(n, Vector3(0.3, 0.36, 0.16), Vector3(0, 0.02, -0.22), c)
+			Build.box(n, Vector3(0.2, 0.12, 0.05), Vector3(0, -0.06, -0.31), c * 0.8)
+		"apron":
+			Build.box(n, Vector3(0.36, 0.6, 0.02), Vector3(0, -0.2, 0.16), c)
+			Build.box(n, Vector3(0.2, 0.06, 0.01), Vector3(0, -0.02, 0.172), Color(0.85, 0.1, 0.15))
+		# Hands.
+		"flag":
+			Build.cyl(n, 0.012, 0.012, 1.1, Vector3(0, 0.5, 0), Color(0.6, 0.5, 0.35), 5)
+			Build.box(n, Vector3(0.45, 0.28, 0.01), Vector3(0.23, 0.9, 0), c)
+		"mug":
+			Build.cyl(n, 0.055, 0.05, 0.11, Vector3(0, 0.14, 0), c, 10)
+			Build.box(n, Vector3(0.015, 0.06, 0.05), Vector3(0.065, 0.14, 0), c)
+		"horn":
+			Build.cyl(n, 0.11, 0.03, 0.28, Vector3(0, 0.2, 0.14), c, 10).rotation.x = PI / 2.0
+			Build.box(n, Vector3(0.04, 0.1, 0.04), Vector3(0, 0.1, 0.04), Color(0.2, 0.2, 0.22))
+		"lid":
+			Build.cyl(n, 0.3, 0.3, 0.03, Vector3(0, 0.2, 0.08), c, 14).rotation.x = PI / 2.0
+			Build.sphere(n, 0.04, Vector3(0, 0.2, 0.11), c * 0.7)
+		"boot":
+			Build.box(n, Vector3(0.1, 0.24, 0.1), Vector3(0, 0.28, 0), c)
+			Build.box(n, Vector3(0.1, 0.08, 0.24), Vector3(0, 0.14, 0.07), c)
+		"banana":
+			for i in 5:
+				Build.sphere(n, 0.035, Vector3(0, 0.12 + i * 0.05, sin(i * 0.5) * 0.06), c)
+		"sock":
+			Build.cyl(n, 0.055, 0.06, 0.22, Vector3(0, 0.12, 0), c, 8)
+			Build.sphere(n, 0.06, Vector3(0, 0.25, 0.02), c)
+		"jandal":
+			Build.box(n, Vector3(0.11, 0.3, 0.02), Vector3(0, 0.25, 0), c)
+			Build.box(n, Vector3(0.08, 0.02, 0.03), Vector3(0, 0.32, 0.02), Color(0.1, 0.1, 0.1))
+		"bottle":
+			Build.cyl(n, 0.045, 0.045, 0.2, Vector3(0, 0.2, 0), c, 8)
+			Build.cyl(n, 0.018, 0.03, 0.08, Vector3(0, 0.34, 0), c, 8)
+			Build.box(n, Vector3(0.03, 0.12, 0.03), Vector3(0, 0.2, 0), Color(0.95, 0.9, 0.75))
+		"wheel":
+			Build.cyl(n, 0.11, 0.11, 0.04, Vector3(0, 0.22, 0), c, 12).rotation.z = PI / 2.0
+			Build.cyl(n, 0.012, 0.012, 0.22, Vector3(0, 0.1, 0), c, 5)
+		"stick":
+			Build.cyl(n, 0.015, 0.02, 0.6, Vector3(0, 0.35, 0), c, 6)
+			Build.sphere(n, 0.05, Vector3(0, 0.68, 0), c, 2.0)
+		"trophy":
+			Build.cyl(n, 0.035, 0.07, 0.3, Vector3(0, 0.25, 0), Color(0.97, 0.97, 0.97), 8)
+			Build.cyl(n, 0.02, 0.035, 0.08, Vector3(0, 0.43, 0), Color(0.9, 0.1, 0.1), 8)
+		"whistle":
+			Build.box(n, Vector3(0.04, 0.03, 0.09), Vector3(0, 0.12, 0.04), c)
+			Build.sphere(n, 0.03, Vector3(0, 0.12, -0.01), c)
+		"umbrella":
+			Build.cyl(n, 0.01, 0.01, 0.8, Vector3(0, 0.4, 0), Color(0.2, 0.2, 0.2), 5)
+			Build.cyl(n, 0.0, 0.42, 0.18, Vector3(0, 0.85, 0), c, 8)
+		"plunger":
+			Build.cyl(n, 0.014, 0.014, 0.5, Vector3(0, 0.3, 0), Color(0.75, 0.6, 0.4), 5)
+			Build.cyl(n, 0.02, 0.09, 0.09, Vector3(0, 0.58, 0), c, 10)
+		_:
+			Build.box(n, Vector3(0.12, 0.12, 0.12), Vector3(0, 0.2, 0), c)

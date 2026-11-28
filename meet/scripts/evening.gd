@@ -534,6 +534,17 @@ func _places() -> void:
 	tip.setup("Tip the busker ($2)", _tip)
 	add_child(tip)
 	tip.position = BUSKER + Vector3(0, 0, -1.2)
+	# George's merch table, by the ladder board.
+	Build.tbox(self, Vector3(1.8, 0.06, 0.7), Vector3(6.4, 0.8, 21.4), "planks", Color(0.7, 0.6, 0.5), true)
+	for sx in [-0.8, 0.8]:
+		Build.tbox(self, Vector3(0.06, 0.8, 0.6), Vector3(6.4 + sx, 0.4, 21.4), "darkwood")
+	for i in 4:
+		Build.box(self, Vector3(0.3, 0.1, 0.3), Vector3(5.75 + i * 0.44, 0.9, 21.4), [Color(0.75, 0.1, 0.12), Color(0.1, 0.1, 0.12), Color(0.95, 0.95, 0.9), Color(1.0, 0.82, 0.25)][i])
+	Build.label(self, "CLUB MERCH", 1.6, Color(1.0, 0.85, 0.3), 26).position = Vector3(6.4, 1.6, 21.4)
+	var merch := Thing.new()
+	merch.setup("Look at the club merch", _merch)
+	add_child(merch)
+	merch.position = Vector3(6.4, 0, 20.5)
 	# Bins.
 	for at in [Vector3(-11.5, 0, 25.6), Vector3(11.5, 0, 25.6), Vector3(-19, 0, 14)]:
 		Build.tcyl(self, 0.32, 0.28, 0.9, at + Vector3(0, 0.45, 0), "iron", Color(0.2, 0.35, 0.25), 10, true)
@@ -557,6 +568,9 @@ func _van() -> void:
 		["Hot chips  ($3): three snacks' worth", func(): _buy(3, func():
 			Meet.snacks = min(5, Meet.snacks + 3)
 			Meet.say("A box of chips. Counts as snacks. People like chips."))],
+		["Sami's 'special sauce'  ($35): brings anybody back from anything", func(): _buy(35, func():
+			Meet.potions += 1
+			Meet.say("A sauce bottle with a skull drawn on it. \"One squirt. On where they fell. Don't get it on your hands.\" (Revival potion: %d.)" % Meet.potions))],
 		["Lucky dip from the glovebox  ($8)", func(): _buy(8, func():
 			for it in ["sunnies", "snag"]:
 				if not Meet.owned.has(it):
@@ -583,8 +597,12 @@ func _fish() -> void:
 		Meet.fish += 1
 		if hits >= 2:
 			Meet.sfx("win", -8.0, 1.4)
+			var odd: String = Meet.unowned("fish")
 			if Meet.grant("fish"):
 				Meet.say("You land a fish. The fisherman says you can keep it. It is a hand item now. It slaps.")
+			elif odd != "" and randf() < 0.45:
+				Meet.grant(odd)
+				Meet.say("That's not a fish. That's %s. Con: \"Keep it. I've got three.\"" % Meet.ITEMS[odd]["name"].to_lower())
 			else:
 				Meet.pay(4, "A decent bream. The fisherman buys it off you.")
 			Meet.dare("fish")
@@ -615,6 +633,12 @@ func _bin(b: Node) -> void:
 		if r.global_position.distance_to(p) < 8.0 and r.facing(p) and randf() < 0.5:
 			r.say_aloud(["Are you in the BIN?", "What are you doing in there?", "Things that bad?"][randi() % 3], 3.5)
 			break
+	var found: String = Meet.unowned("bin")
+	if found != "" and randf() < 0.22:
+		Meet.grant(found)
+		Meet.say("Right at the bottom, under the wrappers: %s. Yours now." % Meet.ITEMS[found]["name"].to_lower())
+		Meet.touch_state()
+		return
 	match randi() % 8:
 		0: Meet.pay(randi_range(1, 2), "Loose change at the bottom of the bin.")
 		1:
@@ -635,7 +659,7 @@ func _free() -> Array:
 
 func _random_moment() -> void:
 	if _moments_left.is_empty():
-		_moments_left = ["critter", "swimmer", "gale", "gale" if Meet.owned.has("balloon") else "phone", "legend_don" if randf() < 0.5 else "sneeze", "legend_lasha" if randf() < 0.5 else "phone", "cyclist", "phone", "footy", "blackout", "conga", "balloon", "plank", "double", "possum", "wallet", "feast", "tiktok", "star", "sprinkler", "pushups", "tourist", "sneeze", "cap", "fiver" if randf() < 0.4 else "sneeze"]
+		_moments_left = ["critter", "swimmer", "lostprop", "lostprop", "oz" if randf() < 0.5 else "lostprop", "gale", "gale" if Meet.owned.has("balloon") else "phone", "legend_don" if randf() < 0.5 else "sneeze", "legend_lasha" if randf() < 0.5 else "phone", "cyclist", "phone", "footy", "blackout", "conga", "balloon", "plank", "double", "possum", "wallet", "feast", "tiktok", "star", "sprinkler", "pushups", "tourist", "sneeze", "cap", "fiver" if randf() < 0.4 else "sneeze"]
 		for m in Moments.LIST:
 			_moments_left.append("d_" + m["id"])
 		_moments_left.shuffle()
@@ -1423,6 +1447,8 @@ func _rescue(text: String, rep: float, hero: bool) -> void:
 	Meet.say(text)
 	if hero:
 		Meet.saved += 1
+		Meet.saved_total += 1
+		Meet.milestones()
 		Meet.hud.banner("RESCUED", "The whole meet is clapping. Even Phillip.")
 		Meet.sfx("win")
 		Meet.add_heat(-2.0)
@@ -1505,6 +1531,36 @@ func _m_legend_lasha() -> void:
 
 ## What you can do with a legend, offered when you talk to one.
 func legend_options(r: Node) -> Array:
+	if r.legend == "oz":
+		return [
+			["Shake his hand", func():
+				r.gesture("Interact", 1.2)
+				Meet.player.act("Interact", 1.2)
+				Meet.composure = max(5.0, Meet.composure * 0.5)
+				Meet.hud.shake()
+				Meet.sfx("crash", -4.0, 1.4)
+				Meet.hud.banner("THE HANDSHAKE", "You hear it before you feel it. Half your health, gone.")
+				r.say_aloud("Good grip. For a Riser.", 4.0)
+				Meet.touch_state()
+				if not r._asked.has("shake"):
+					r._asked["shake"] = true
+					r.mind.experience("talk", 0.4, 1.0)
+					for f in Meet.risers:
+						if f.is_riser:
+							f.mind.experience("helped", 0.1, 0.4, false, "shaking Oz's hand")],
+			["\"Pull me.\"", func():
+				r.say_aloud("That's the spirit. Hand on the pad.", 3.5)
+				Meet.table.start(r)],
+			["Ask about the Spartans", func():
+				Meet.tips = min(4, Meet.tips + 1)
+				r.say_aloud("We train back pressure till it's boring. Then we train it more.", 5.0)
+				Meet.say("He shows you one thing with your wrist. One. It changes everything. (The gold zone is a little wider for good.)")],
+			["\"Risers would take the Spartans any day.\"", func():
+				r.say_aloud("Ha! Bring eight. I'll bring two.", 4.5)
+				Meet.main.stir(r.global_position, ["OOOH.", "We would!", "...Would we?", "Don't write cheques, mate."], 20.0, 0.8, false)
+				for f in Meet.risers:
+					if f.is_riser:
+						f.mind.experience("talk", 0.2, 0.5, false, "sticking up for the club")]]
 	if r.legend == "don":
 		return [
 			["\"Pull me.\"", func():
@@ -1607,7 +1663,7 @@ func start_kaiju() -> void:
 	Build.sphere(_hand, 2.3, Vector3(2.0, -8.0, 13.6), c * 1.2)
 	Build.box(_kaiju, Vector3(1.6, 5, 1.6), Vector3(-6.0, 9.5, 2.0), c * 0.9).rotation.x = 0.8
 	Meet.hud.banner("THE WATER IS GOING OUT", "All of it. Old Con has stopped fishing. Old Con has never stopped fishing.")
-	Meet.sfx("ufo", 0.0, 0.5)
+	Meet.sfx("rumble", 0.0)
 	Meet.hud.shake()
 	for m in main._matches.duplicate():
 		main.drop_match(m["a"])
@@ -1650,6 +1706,11 @@ func _run_kaiju(dt: float) -> void:
 				p.slapped(6.0, p.global_position + Vector3(0, 0, 3), null)
 				p.splatted()
 			if _wave.position.z < -14.0:
+				# The wave takes someone who was standing too near the wall.
+				var near: Array = Meet.risers.filter(func(r): return r.is_riser and not r.dead and r.state != "pull")
+				near.sort_custom(func(a, b): return a.global_position.z > b.global_position.z)
+				if not near.is_empty():
+					near[0].die("the wave")
 				_wave.queue_free()
 				_wave = null
 				main._free_snacks = 0
@@ -1760,3 +1821,64 @@ func _m_gale() -> void:
 	main.stir(Vector3(0, 0, 4), ["My hat!", "Hold the tables!", "It's blowing the chalk to Meadowbank!", "Lean into it!"], 40.0, 0.7, false)
 	if Meet.owned.has("balloon"):
 		Meet.say("It's windy enough that a balloon would take your weight. Put it in your hand and hold jump.")
+
+func _merch() -> void:
+	var opts: Array = []
+	for id in Meet.ITEMS:
+		var it: Dictionary = Meet.ITEMS[id]
+		if it.get("src", "") == "merch" and not Meet.owned.has(id):
+			var price: int = it["price"]
+			opts.append(["%s  ($%d)" % [it["name"], price], func():
+				if Meet.money < price:
+					Meet.say("That's $%d and you have $%d." % [price, Meet.money])
+					return
+				Meet.pay(-price)
+				Meet.grant(id)
+				var g: Node = Meet.riser("george")
+				if g:
+					g.mind.experience("gift", 0.3, 0.8, true, "buying merch")
+					g.say_aloud(["A sale! An actual sale!", "That's the tin sorted for a week.", "Wear it with pride."][randi() % 3], 4.0)])
+	if opts.is_empty():
+		Meet.say("You've bought everything on the table. George is thinking about a second table.")
+		return
+	opts.append(["(Just looking.)", func(): pass])
+	Meet.menu.choice("Club merch", "George's handwriting: 'ALL PROFITS TO THE TIN'. You have $%d." % Meet.money, opts)
+
+func _m_lostprop() -> void:
+	var id: String = Meet.unowned("lost")
+	if id == "":
+		_m_fiver()
+		return
+	var a := randf() * TAU
+	var r := randf_range(5.0, 16.0)
+	main.drop([id], main.clear(Vector3(cos(a) * r, 0, absf(sin(a)) * r + 3.0)))
+	Meet.say("Somebody has left something behind on the grounds. Lost property is finders keepers here.")
+
+# --- Oz ---------------------------------------------------------------------------------------------------
+
+func _m_oz() -> void:
+	var r := _legend("oz", {"id": "l_oz", "name": "Oz from the Sydney Spartans", "role": "Came across town for this", "strength": 106, "pace": 1.5, "stops": 0.0, "likes": "dare",
+		"look": {"body": "Male_Peasant", "hair": "Hair_Buzzed", "beard": true, "tint": Color(0.1, 0.1, 0.12), "build": 1.25}, "mind": {"warmth": 0.3, "chatty": 0.6},
+		"chat": ["Spartans send their regards. And their heavyweights.", "Good room. Good energy. Who's your strongest?", "You lot pull light. Come to a Spartans night. Bring a spare elbow."]}, 1.22)
+	if r == null:
+		return
+	Meet.hud.banner("OZ IS HERE", "From the Sydney Spartans. The music changes. Nobody knows who changed it.")
+	Meet.audio.interlude("music4", 28.0)
+	r.say_aloud("Evening, Risers. Tables. Now. All of them.", 5.0)
+	# Everybody who can is on a table within seconds.
+	var free: Array = Meet.risers.filter(func(x): return (x.is_riser or x.guest) and x.is_free() and x.tonight.get("id", "") != "sore")
+	free.shuffle()
+	var k := 0
+	while k + 1 < free.size():
+		if not main.force_match(free[k].id, free[k + 1].id):
+			break
+		k += 2
+	for x in free.slice(k):
+		x.gesture("Dance", 5.0)
+	for l in [["harry", "Oz! You should have said you were coming!", 2.5], ["erick", "Spartans. Finally, a real pull.", 4.5], ["tommy", "Is the music coming from HIM?", 6.0]]:
+		var w: Node = Meet.riser(l[0])
+		var text: String = l[1]
+		if w:
+			get_tree().create_timer(float(l[2])).timeout.connect(func():
+				if is_instance_valid(w):
+					w.say_aloud(text, 3.5))

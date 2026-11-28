@@ -48,6 +48,9 @@ var _gulls: Node3D
 var _gulls_t := 0.0
 var _gulls_off := false
 var _bucket: Array = []
+var _lamps: Array = []
+var _dusk_t := 0.0
+var _was_dark := false
 var _lions: Array = []           # the statues at the gate
 var _pets: Array = []            # lions that got out
 var _ramp: Node3D
@@ -83,6 +86,7 @@ func _ready() -> void:
 	Meet.audio = load("res://scripts/sfx.gd").new()
 	add_child(Meet.audio)
 	Meet.new_dares()
+	Meet.milestones.call_deferred()
 	Meet.strapgame = load("res://scripts/strapgame.gd").new()
 	add_child(Meet.strapgame)
 	Meet.hud = HudScript.new()
@@ -108,6 +112,7 @@ func _ready() -> void:
 	evening = load("res://scripts/evening.gd").new()
 	add_child(evening)
 	evening.setup(self)
+	first_quality()
 	apply_quality()
 	Meet.changed.connect(func():
 		if _sun.shadow_enabled and Meet.touch:
@@ -583,13 +588,8 @@ func pickup(label: String, at: Vector3, c: Color, got: Callable) -> Node3D:
 	var th := Thing.new()
 	add_child(th)
 	th.position = ground(at)
-	Build.box(th, Vector3(0.18, 0.05, 0.24), Vector3(0, 0.08, 0), c, false, 0.4)
-	var l := OmniLight3D.new()
-	l.light_color = c
-	l.light_energy = 1.2
-	l.omni_range = 2.5
-	l.position.y = 0.5
-	th.add_child(l)
+	Build.box(th, Vector3(0.18, 0.05, 0.24), Vector3(0, 0.08, 0), c, false, 1.6)
+	Build.cyl(th, 0.02, 0.02, 1.4, Vector3(0, 0.8, 0), c, 4).material_override = Build.mat(c, 2.0)
 	th.setup("Pick up %s" % label, func():
 		th.remove_from_group("interact")
 		Meet.player.target = null
@@ -1196,7 +1196,7 @@ func start_ufo() -> void:
 	beam.omni_range = 22.0
 	_ufo.add_child(beam)
 	beam.position = Vector3(0, -2, 0)
-	Meet.audio.loop("ufo", true, -12.0)
+	Meet.audio.loop("ufo", true, -18.0)
 	Meet.hud.banner("SOMETHING IN THE SKY", "It is not a drone. It is not Tommy.")
 	Meet.say("Everyone has stopped talking. Something is coming down over the water.")
 	for r in Meet.risers:
@@ -1302,6 +1302,13 @@ func alien_down(al: Node) -> void:
 	Meet.sfx("zap", -4.0, 0.6)
 	if _alien_drops == 1 and not (Meet.owned.has("antennae") and Meet.owned.has("raygun")):
 		drop(["antennae", "raygun"], at)
+	elif _alien_drops == 2:
+		pickup("a vial of something that glows", at, Color(0.5, 1.0, 0.8), func():
+			Meet.potions += 1
+			Meet.hud.banner("A REVIVAL POTION", "It hums. Pour it where somebody fell.")
+			Meet.say("You have %d revival potion%s." % [Meet.potions, "" if Meet.potions == 1 else "s"]))
+	elif Meet.unowned("alien") != "" and randf() < 0.6:
+		drop([Meet.unowned("alien")], at)
 	elif randf() < 0.5:
 		_coin(at, [5, 5, 20][randi() % 3])
 	else:
@@ -1371,7 +1378,7 @@ func board_ship() -> void:
 				Meet.ripple("You took something from the ship that the visitors will want back."))
 	Meet.player.global_position = _cabin.position + Vector3(0, 0.1, 3.2)
 	Meet.player.rotation.y = 0.0
-	Meet.sfx("ufo", -6.0, 1.4)
+	Meet.sfx("rumble", -6.0, 1.6)
 	Meet.hud.banner("ABOARD", "It's bigger on the inside. It smells of lime.")
 
 func leave_ship() -> void:
@@ -1391,6 +1398,13 @@ func aliens() -> Array:
 
 ## The light goes as the evening does: gold at five, dark blue by half past seven.
 func _dusk() -> void:
+	# Changing the sky forces it to be redrawn, so do it now and then, not every frame.
+	var dark_now: bool = Meet.dark > 0.0
+	_dusk_t -= get_process_delta_time()
+	if _dusk_t > 0.0 and dark_now == _was_dark:
+		return
+	_dusk_t = 2.5
+	_was_dark = dark_now
 	if Meet.dark > 0.0:
 		# A power cut: properly dark. Whatever glows is all there is to see by.
 		_sun.light_energy = 0.0
@@ -1444,12 +1458,8 @@ func drop(items: Array, at: Vector3) -> void:
 	var m: Node3D = Wear.model(item)
 	th.add_child(m)
 	m.position.y = 0.5
-	var l := OmniLight3D.new()
-	l.light_color = Wear.COLORS.get(item, Color.WHITE)
-	l.light_energy = 2.5
-	l.omni_range = 4.0
-	l.position.y = 0.8
-	th.add_child(l)
+	var beam_c: Color = Wear.COLORS.get(item, Meet.ITEMS[item].get("col", Color.WHITE))
+	Build.cyl(th, 0.03, 0.03, 2.2, Vector3(0, 1.4, 0), beam_c, 4).material_override = Build.mat(beam_c, 2.5)
 	m.create_tween().set_loops().tween_property(m, "rotation:y", TAU, 3.0).from(0.0)   # dies with the item
 	th.setup("Pick up: %s" % Meet.ITEMS[item]["name"], func():
 		th.remove_from_group("interact")
@@ -1473,7 +1483,7 @@ func start_drone() -> void:
 		for sz in [-1.0, 1.0]:
 			Build.cyl(_drone, 0.22, 0.22, 0.02, Vector3(sx * 0.35, 0.08, sz * 0.35), Color(0.6, 0.6, 0.65), 8)
 	Build.sphere(_drone, 0.06, Vector3(0, -0.08, 0.2), Color(1.0, 0.1, 0.1), 2.0)
-	Meet.audio.loop("drone", true, -16.0)
+	Meet.audio.loop("drone", true, -22.0)
 	_drone.position = Vector3(-30, 14, 20)
 	_drone_t = 0.0
 	var a := randf() * TAU
@@ -1829,13 +1839,29 @@ func _run_food_fight(dt: float) -> void:
 const QUALITY := [[1.0, true], [0.8, false], [0.65, false], [0.5, false]]   # 3D resolution, shadows
 var _fps_t := 0.0
 var _fps_n := 0
-var _fps_wait := 6.0
+var _fps_wait := 3.0
 var fps := 60.0
+
+func first_quality() -> void:
+	# In a browser, start one notch down (no shadows). It climbs back up if there is room.
+	if OS.has_feature("web") and Meet.quality_auto and Meet.quality == 0:
+		Meet.quality = 1
+	var px := DisplayServer.window_get_size()
+	if Meet.quality_auto and Meet.quality == 0 and px.x * px.y > 2300000:
+		Meet.quality = 2 if px.x * px.y > 3600000 else 1
 
 func apply_quality() -> void:
 	var q: Array = QUALITY[clamp(Meet.quality, 0, QUALITY.size() - 1)]
 	get_viewport().scaling_3d_scale = q[0]
 	_sun.shadow_enabled = q[1] and not Meet.touch
+	# Fewer lamps at the lower settings: each one is paid for on every surface it touches.
+	if _lamps.is_empty():
+		for c in get_children():
+			if c is OmniLight3D:
+				_lamps.append(c)
+	for i in _lamps.size():
+		if is_instance_valid(_lamps[i]) and Meet.dark <= 0.0:
+			_lamps[i].visible = i < (4 if Meet.quality <= 1 else 2)
 
 ## Watch the frame rate and give up sharpness before smoothness.
 func _tune(dt: float) -> void:
@@ -1851,12 +1877,12 @@ func _tune(dt: float) -> void:
 		return
 	if not Meet.quality_auto:
 		return
-	if fps < 27.0 and Meet.quality < QUALITY.size() - 1:
+	if fps < 34.0 and Meet.quality < QUALITY.size() - 1:
 		Meet.quality += 1
-		_fps_wait = 5.0
+		_fps_wait = 2.5
 		apply_quality()
 		Meet.save()
-	elif fps > 57.0 and Meet.quality > 0 and _clock > 60.0 and not Meet.touch:
+	elif fps > 58.5 and Meet.quality > 0 and _clock > 90.0 and not Meet.touch:
 		Meet.quality -= 1
 		_fps_wait = 20.0
 		apply_quality()
@@ -1944,3 +1970,70 @@ func _run_pets(dt: float) -> void:
 				Meet.sfx("bark", 0.0, 0.5)
 				Meet.say("One of your stone lions roars at the seagulls. The seagulls reconsider everything.")
 				drop(["golden_chip"], SNACKS + Vector3(-0.6, 0, 1.8))
+
+# --- The ones who are gone -------------------------------------------------------------------------
+
+## Where they fell: their strap, a chalk outline, a candle. And somewhere to use a potion.
+func memorial(r: Node) -> void:
+	var th := Thing.new()
+	add_child(th)
+	th.position = ground(r.global_position)
+	Build.box(th, Vector3(0.5, 0.01, 1.5), Vector3(0, 0.07, 0), Color(0.95, 0.95, 0.95), false, 0.2)
+	Build.box(th, Vector3(1.1, 0.01, 0.2), Vector3(0, 0.07, 0.35), Color(0.95, 0.95, 0.95), false, 0.2)
+	Build.box(th, Vector3(0.4, 0.03, 0.07), Vector3(0.4, 0.09, -0.2), r.def.get("strap", Color(0.6, 0.6, 0.6)))
+	Build.cyl(th, 0.03, 0.03, 0.14, Vector3(-0.4, 0.14, -0.3), Color(0.95, 0.93, 0.85), 6)
+	Build.sphere(th, 0.03, Vector3(-0.4, 0.24, -0.3), Color(1.0, 0.7, 0.2), 3.0)
+	var who := r
+	th.setup("Stand over where %s fell" % r.first_name, func():
+		var opts: Array = []
+		if Meet.potions > 0:
+			opts.append(["Pour the revival potion on the outline  (%d left)" % Meet.potions, func():
+				Meet.potions -= 1
+				th.remove_from_group("interact")
+				Meet.player.target = null
+				th.queue_free()
+				who.global_position = th.position
+				who.revive()
+				Meet.save()])
+		opts.append(["Say a few words", func():
+			Meet.say("\"%s. Good puller. Terrible at warming up.\" Nobody is listening, and everybody hears." % who.first_name)
+			for x in Meet.risers:
+				if x.is_riser and not x.dead and Meet.tie(who.id, x.id) > 0.3:
+					x.mind.experience("helped", 0.2, 0.6, false, "what you said for %s" % who.first_name)])
+		opts.append(["Take their strap", func():
+			Meet.add_heat(1.5, "robbing the fallen")
+			Meet.say("You take the strap off the outline. Somebody behind you makes a noise like a kettle.")
+			for x in Meet.risers:
+				if x.is_riser and not x.dead:
+					x.mind.experience("theft", -0.4, 1.4, true, who.first_name)
+					x._mood_check = 0.0])
+		opts.append(["(Walk on.)", func(): pass])
+		Meet.menu.choice("Where %s fell" % who.first_name, "Taken by %s. %s" % [Meet.dead.get(who.id, "something"), "There is a potion in your pocket." if Meet.potions > 0 else "They say there are ways to bring someone back. You don't have one."], opts))
+
+## A beam of light between two points, there for a moment.
+func laser(from: Vector3, to: Vector3) -> void:
+	var beam := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.035
+	cm.bottom_radius = 0.035
+	cm.height = 1.0
+	cm.radial_segments = 6
+	beam.mesh = cm
+	beam.material_override = Build.mat(Color(1.0, 0.25, 0.85), 4.0)
+	beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(beam)
+	var d := to - from
+	var y := d.normalized()
+	var x := y.cross(Vector3.FORWARD if absf(y.dot(Vector3.FORWARD)) < 0.95 else Vector3.RIGHT).normalized()
+	beam.transform = Transform3D(Basis(x, y * d.length(), x.cross(y)), (from + to) / 2.0)
+	var glow := OmniLight3D.new()
+	glow.light_color = Color(1.0, 0.3, 0.9)
+	glow.light_energy = 3.0
+	glow.omni_range = 5.0
+	glow.position = to
+	add_child(glow)
+	var tw := create_tween()
+	tw.tween_interval(0.14)
+	tw.tween_callback(func():
+		beam.queue_free()
+		glow.queue_free())

@@ -1047,6 +1047,102 @@ func _run() -> void:
 			r._vs_player = false
 			r.idle()
 
+	# Twice the kit, where it comes from, and Oz.
+	check(Meet.ITEMS.size() >= 72, "%d pieces of kit to find" % Meet.ITEMS.size())
+	var W = preload("res://scripts/wear.gd")
+	var built := 0
+	for iid in Meet.ITEMS:
+		var mdl: Node3D = W.model(iid)
+		if mdl.get_child_count() > 0:
+			built += 1
+		mdl.free()
+	check(built == Meet.ITEMS.size(), "every piece of kit has a model (%d of %d)" % [built, Meet.ITEMS.size()])
+	Meet.money = 50
+	ev._merch()
+	var mb: Button = null
+	for b in Meet.menu._list.get_children():
+		if b is Button and mb == null:
+			mb = b
+	mb.pressed.emit()
+	await wait(0.2)
+	check(Meet.owned.has("club_cap") and Meet.money == 42, "the merch table sells kit for money")
+	Meet.menu.close()
+	Meet.main._gone_tables.clear()
+	Meet.main._matches.clear()
+	for r in Meet.risers:
+		if r.is_riser and not r.dead:
+			r._vs_player = false
+			r.state = "idle"
+	ev._m_oz()
+	await wait(1.5)
+	var oz: Node3D = ev._legends[-1]
+	check(oz.legend == "oz" and Meet.main.match_on(), "Oz arrives and the tables fill")
+	Meet.composure = 80.0
+	ev.legend_options(oz)[0][1].call()
+	check(absf(Meet.composure - 40.0) < 0.5, "shaking his hand costs half your health (%d)" % Meet.composure)
+	stand(oz.global_position + Vector3(0, 0, 4.5), oz.global_position)
+	await wait(0.5)
+	await shot("15q_oz")
+	Meet.composure = 100.0
+	var ron: Node3D = null
+	for r in Meet.risers:
+		if r.guest and not r.recruited and r.legend == "":
+			ron = r
+	if ron:
+		ron.idle()
+		var fr: float = ron.mind.feeling()
+		ron.dusted(p)
+		ron.dusted(p)
+		check(ron.mind.feeling() <= fr and ron.state == "confront", "chalk a guest twice and they think worse of you and come over about it (%.2f -> %.2f)" % [fr, ron.mind.feeling()])
+		ron.idle()
+	Meet.menu._forced = false
+	Meet.menu.close()
+	for l in ev._legends:
+		if is_instance_valid(l):
+			Meet.risers.erase(l)
+			l.queue_free()
+	ev._legends.clear()
+	Meet.main._matches.clear()
+	Meet.heat = 0.0
+	for r in Meet.risers:
+		if r.state in ["confront", "scrap", "pull", "to_table", "prep"]:
+			r._vs_player = false
+			r.idle()
+
+	# Gone, grieved, and brought back.
+	var gone_r: Node3D = Meet.riser("george")
+	gone_r.idle()
+	gone_r.zapped(999.0, "the visitors")
+	await wait(0.4)
+	check(gone_r.dead and not gone_r.visible and Meet.dead.has("george"), "a founder can be taken for the night")
+	var hl: String = Meet.riser("harry").grief_line("george")
+	check(hl.contains("George"), "Harry grieves his brother: %s" % hl.left(70))
+	Meet.potions = 1
+	for n in get_tree().get_nodes_in_group("interact"):
+		if n.has_method("prompt") and n.prompt().begins_with("Stand over where George"):
+			stand(n.global_position + Vector3(0, 0, 3), n.global_position)
+			await wait(0.3)
+			await shot("15r_memorial")
+			n.interact()
+	var pb: Button = null
+	for b in Meet.menu._list.get_children():
+		if b is Button and pb == null:
+			pb = b
+	if pb:
+		pb.pressed.emit()
+	await wait(0.4)
+	check(not gone_r.dead and gone_r.visible and Meet.potions == 0, "a revival potion brings them back")
+	Meet.menu.close()
+	Meet.owned["raygun"] = true
+	Meet.worn["hand"] = "raygun"
+	p._cooldown = 0.0
+	var beams0: int = Meet.main.get_child_count()
+	p.use_item()
+	check(Meet.main.get_child_count() > beams0, "the ray gun fires a visible beam")
+	Meet.worn["hand"] = ""
+	Meet.heat = 0.0
+	await wait(0.4)
+
 	# Sitting down, weights, and looking at yourself.
 	p.sit(Vector3(9, 0.5, 20), PI)
 	ev._join = 0.1
