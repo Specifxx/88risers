@@ -466,6 +466,15 @@ func _run() -> void:
 	stand(Meet.main.SNACKS + Vector3(0, 0, 1.5), Meet.main.SNACKS)
 	await wait(1.0)
 	check(Meet.main._gulls_off, "running at the seagulls sees them off")
+	var chip := false
+	for n in get_tree().get_nodes_in_group("interact"):
+		if n.has_method("prompt") and n.prompt().contains("golden chip"):
+			stand(n.global_position + Vector3(0, 0, 1.0), n.global_position)
+			await wait(0.3)
+			p.use() if p.target == n else n.interact()
+			chip = true
+	await wait(4.0)
+	check(chip and Meet.owned.has("golden_chip"), "the golden chip can be picked up and the night carries on")
 	Meet.main.start_drone()
 	await wait(11.5)
 	stand(Meet.main._drone_to + Vector3(0, 0, 4), Meet.main._drone_to)
