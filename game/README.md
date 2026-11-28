@@ -15,6 +15,10 @@ emblem are generated from scratch or from the club crest in `public/crest.jpg`.
 - **Fighting** is in real time. Left click (or F) swings whatever you are holding; whether it lands depends on your skill with that kind of weapon and how much wind you have left. Right click (or C) blocks. Armour and a shield take their share of what gets through.
 - **The rite.** A Pinned that is beaten down lies there for a short while. Begin the rite over it (E): throw chalk, bind it with a strap, find the true things to say before the strap gives, and say the words. Leave it and it sinks, and is back later.
 - **Things.** Weapons, armour, a shield, food and drink, chalk and straps are all items with weight and worth. Tab opens the pack: click to wield, wear, take off, eat or drink. Traders buy and sell. Crates and chests can be searched; if they belong to someone living, that is theft.
+- **What you wear shows.** Weapons, shield, hat, armour, bracers and boots are modelled and appear on the pilgrim, and guards carry theirs.
+- **Blows land.** A hit throws its target back, living people bleed and carry the wound, the Pinned shed ash, and a bar over the target shows what is left. Barrels and crates can be knocked about and broken. G shoves without doing harm.
+- **Witnesses.** Someone who sees you strike or kill shouts it, is frightened of you afterwards, and is changed by it: slower to trust anyone, quicker to hold a grudge. They answer differently, refuse personal subjects, and traders reprice. People bold enough will shove you if you crowd them, and it becomes a fight if you keep at it.
+- **The law.** What is seen is reported and priced. A guard who knows will walk up and demand it: pay, talk it down, or refuse and fight.
 - **Skills** rise only by use: blade, blunt weapon, spear, hand-to-hand, block, athletics, acrobatics, speechcraft.
 - **Minds.** Every person has a small neural network of their own (`scripts/mind.gd`) that learns, from what happens to them and what they hear, how dealing with you tends to go. Temperament differs per person, so the same act lands differently; opinions depend on the situation; and news travels only when one person tells another. The words they speak are written lines chosen by their state of mind.
 - **Lives.** People keep a post, drift to the fire, the well or the tavern, stop to talk to each other, greet or avoid you, and go home at night. A day lasts about twelve minutes.
@@ -27,7 +31,7 @@ The slice ends when you tell Harry you have brought three recruits. You can keep
 
 ## Controls
 
-WASD move, mouse look (left/right arrows also turn), Shift run, Space jump, left click or F attack, right click or C block,
+WASD move, mouse look (left/right arrows also turn), Shift run, Space jump, left click or F attack, right click or C block, G shove,
 E talk or use, Tab inventory, V first or third person, J journal, H eat bread, Esc free the mouse.
 In conversations and the rite, click a choice or press its number.
 

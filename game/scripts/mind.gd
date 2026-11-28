@@ -20,6 +20,8 @@ var chatty := 0.5    # how much they pass on what they know
 var familiarity := 0.0
 var memories: Array = []   # {kind, valence, weight, firsthand, about}
 var mood := 0.0            # short-lived; decays
+var fear := 0.0            # of the player, 0..1; fades slowly, never quite to nothing once learned
+var scars := 0             # how many times something terrible has reshaped them
 var activity := PackedFloat32Array()   # last hidden-layer activations, for display
 
 var _w1 := PackedFloat32Array()
@@ -97,9 +99,22 @@ func experience(kind: String, valence: float, weight := 1.0, firsthand := true, 
 	if memories.size() > 40:
 		memories.pop_front()
 	mood = clamp(mood + valence * min(salience, 2.0) * 0.5, -1.0, 1.0)
+	if kind == "violence":
+		fear = clamp(fear + (0.5 if firsthand else 0.2) * min(weight, 4.0) / 3.0, 0.0, 1.0)
+		if firsthand and weight >= 3.0:
+			_scar()
 	for i in int(ceil(8.0 * min(salience, 3.0))):
 		_step(_inputs(kind), valence, 0.07)
 	reflect(30)
+
+## Seeing blood changes who a person is, not only what they think of you: they become
+## slower to warm to anyone, quicker to hold a wrong against them, and quieter or louder.
+func _scar() -> void:
+	scars += 1
+	open = max(0.2, open * 0.75)
+	grudge = min(2.6, grudge * 1.2)
+	warmth = max(-0.8, warmth - 0.15)
+	chatty = clamp(chatty + (0.2 if chatty > 0.5 else -0.15), 0.05, 1.0)
 
 ## Simply being around someone makes them familiar.
 func met() -> void:
@@ -124,6 +139,7 @@ func reflect(steps := 6) -> void:
 
 ## Amends have been made. The memory stays; its hold on them loosens.
 func forgive() -> void:
+	fear *= 0.4
 	for m in memories:
 		if m["valence"] < 0.0:
 			m["weight"] *= 0.1
@@ -135,6 +151,7 @@ func forgive() -> void:
 
 func tick(dt: float) -> void:
 	mood = move_toward(mood, 0.0, dt * 0.01)
+	fear = move_toward(fear, 0.15 * min(scars, 2), dt * 0.004)
 
 ## Hearing about something from someone else. Returns true if it was news.
 func hear(m: Dictionary) -> bool:
@@ -160,6 +177,8 @@ func remembers(kind: String) -> bool:
 
 func state_word() -> String:
 	var f := feeling()
+	if fear > 0.5 and f < 0.2:
+		return "afraid"
 	if f < -0.6:
 		return "hostile"
 	if f < -0.25:

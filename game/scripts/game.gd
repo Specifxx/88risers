@@ -10,6 +10,8 @@ const SLICE_GOAL := 3
 const RHODES_SPAWN := Vector3(4, 0.1, 6)
 
 const Items = preload("res://scripts/items.gd")
+const Data = preload("res://scripts/data.gd")
+const Fx = preload("res://scripts/fx.gd")
 const CAPACITY := 60.0
 
 var hp := 30
@@ -42,6 +44,8 @@ var journal: Array = []
 var hour := 9.0
 var flags := {}
 var modal := true
+## What the law in each place holds against the player, in coin.
+var bounty := {"rhodes": 0, "tallow": 0}
 
 var main: Node3D
 var player: CharacterBody3D
@@ -65,6 +69,7 @@ func _ready() -> void:
 	_action("inventory", [KEY_TAB, KEY_I])
 	_action("attack", [KEY_F])
 	_action("block", [KEY_C])
+	_action("shove", [KEY_G])
 
 func _action(action: String, keys: Array) -> void:
 	if not InputMap.has_action(action):
@@ -194,6 +199,13 @@ func hurt_player(raw: int, from: Vector3) -> int:
 	hp -= dealt
 	if hud:
 		hud.hurt_flash()
+	if player:
+		var away := player.global_position - from
+		away.y = 0
+		player.shove(away.normalized() * (2.0 + dealt * 0.35), 0.12 + dealt * 0.015)
+		Fx.burst(main, player.global_position + Vector3(0, 1.2, 0), away, true, 10)
+		if dealt >= 4:
+			Fx.stain(main, player.global_position, 0.35)
 	touch()
 	if hp <= 0:
 		fall()
@@ -227,6 +239,14 @@ func deed(kind: String, valence: float, weight: float, at: Vector3, village: Str
 			# Those whose job it is to keep the peace do not just remember it.
 			if kind == "violence" and n.def.get("guard", false):
 				n.aggro = true
+	if seen.size() > 0 and valence < 0.0 and bounty.has(village):
+		# Seen is reported. The price depends on what it was.
+		bounty[village] += 25 if kind == "theft" else (40 if weight < 6.0 else 120)
+		var lines: Array = Data.SHOUTS.get(kind, [])
+		if not lines.is_empty():
+			var who: Node = seen[randi() % seen.size()]
+			var line: String = lines[randi() % lines.size()]
+			who.say_aloud(line % about if line.contains("%s") else line, 4.0)
 	return seen
 
 ## News that reaches a whole village by word of mouth, such as a quiet road.
@@ -250,6 +270,9 @@ func fall() -> void:
 	fatigue = max_fatigue
 	for n in npcs:
 		n.aggro = false
+	# Whoever carried you back also settled what you owed, out of your purse.
+	for v in bounty:
+		bounty[v] = 0
 	coins = int(coins / 2.0)
 	player.global_position = RHODES_SPAWN
 	player.velocity = Vector3.ZERO

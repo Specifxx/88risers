@@ -5,6 +5,7 @@ extends Node3D
 
 const Build = preload("res://scripts/build.gd")
 const Character = preload("res://scripts/character.gd")
+const Fx = preload("res://scripts/fx.gd")
 
 const SEE := 17.0
 const STRIKE_RANGE := 2.0
@@ -19,6 +20,7 @@ var _timer := 0.0
 var _grace := 0.0
 var _cooldown := 0.0
 var _stagger := 0.0
+var _knock := Vector3.ZERO
 var _target := Vector3.ZERO
 var _body: Node3D
 var _label: Label3D
@@ -67,12 +69,21 @@ func reveal() -> void:
 func can_be_hit() -> bool:
 	return state in ["roam", "windup"]
 
-func take_hit(dmg: int, _from: Vector3) -> void:
+func knock(v: Vector3) -> void:
+	_knock += v
+
+func take_hit(dmg: int, from: Vector3) -> void:
 	if not can_be_hit():
 		return
 	hp -= dmg
 	_stagger = 0.35
 	state = "roam"
+	var away := global_position - from
+	away.y = 0
+	_knock += away.normalized() * (4.0 + dmg * 0.4)
+	Fx.burst(Game.main, global_position + Vector3(0, 1.2, 0), away, false)
+	Fx.tint(_body, Color(0.9, 0.85, 0.7, 0.55), 0.1)
+	_label.text = "%s\n%s" % [display_name(), Fx.bar(max(hp, 0) / float(max_hp))]
 	if hp <= 0:
 		_fall()
 	else:
@@ -142,6 +153,11 @@ func _process(dt: float) -> void:
 		return
 	_grace = max(0.0, _grace - dt)
 	_cooldown = max(0.0, _cooldown - dt)
+	if _knock.length() > 0.1:
+		var pushed := global_position + _knock * dt
+		if Vector2(pushed.x, pushed.z).length() > Game.RING_RADIUS + 2.0:
+			global_position = Game.main.ground(pushed)
+		_knock = _knock.lerp(Vector3.ZERO, min(1.0, dt * 4.5))
 	if _stagger > 0.0:
 		_stagger -= dt
 		return

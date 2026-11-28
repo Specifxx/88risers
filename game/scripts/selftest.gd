@@ -159,6 +159,47 @@ func _run() -> void:
 	await get_tree().create_timer(0.4).timeout
 	_check(carter.state == "roam" and carter.hp == carter.max_hp, "...and it gets back up, whole")
 
+	# Blows knock things back.
+	Game.player.global_position = Game.main.ground(Vector3(60, 0, 0)) + Vector3(0, 0.1, 0)
+	Game.player.rotation.y = 0.0
+	var child := _pinned("Pip")
+	child.global_position = Game.main.ground(Game.player.global_position + Vector3(0, 0, -1.5))
+	var z0: float = child.global_position.z
+	child.max_hp = 500
+	child.hp = 500
+	child.take_hit(6, Game.player.global_position)
+	var thrown := 0.0
+	for f in 20:
+		await get_tree().process_frame
+		thrown = max(thrown, z0 - child.global_position.z)
+	print("    A blow of 6 threw the small Pinned back %.2f m" % thrown)
+	_check(thrown > 0.4, "A blow knocks its target back")
+	child.max_hp = 10
+	child.hp = 10
+
+	# Equipment shows on the body.
+	for item in ["sword", "shield", "hat", "cuirass", "bracers", "boots"]:
+		Game.add_item(item)
+		Game.toggle_equip(item)
+	await get_tree().process_frame
+	var skel: Node = Game.player._figure.find_child("Skeleton3D", true, false)
+	var shown := 0
+	for slot in ["weapon", "shield", "head", "body", "hand_l", "foot_l"]:
+		if skel.get_node_or_null("Gear_" + slot) != null:
+			shown += 1
+	_check(shown == 6, "Weapon, shield, hat, armour, bracers and boots all appear on the pilgrim")
+	Game.player.third = true
+	Game.player.global_position = Game.main.ground(Vector3(14, 0, 4)) + Vector3(0, 0.1, 0)
+	Game.player.rotation.y = deg_to_rad(200)
+	Game.player.look_level(-0.1)
+	await _save("06b_gear")
+	for item in ["sword", "shield", "hat", "cuirass", "bracers", "boots"]:
+		Game.toggle_equip(item)
+		Game.remove_item(item)
+	Game.toggle_equip("staff")
+	await get_tree().process_frame
+	_check(skel.get_node_or_null("Gear_shield") == null and skel.get_node_or_null("Gear_weapon") != null, "Taking things off removes them from the body")
+
 	# Jumping.
 	Game.player.global_position = Game.main.ground(Vector3(60, 0, 0)) + Vector3(0, 0.1, 0)
 	for f in 20:
@@ -290,6 +331,52 @@ func _run() -> void:
 		if n.has_method("empty") and String(n.title).begins_with("Pell"):
 			sack = n
 	_check(sack != null and not sack.empty(), "The dead leave their belongings behind")
+	# What witnessing it did to them.
+	var changed: Node = null
+	for n in Game.villagers("tallow"):
+		if n.mind.scars > 0 and changed == null:
+			changed = n
+	_check(changed != null, "Someone who saw the killing is changed by it")
+	var D = load("res://scripts/data.gd")
+	print("    %s: openness %.2f (was %.2f), grudge %.2f (was %.2f), fear %.2f, now seems %s" % [changed.npc_name, changed.mind.open, D.MINDS[changed.id]["open"], changed.mind.grudge, D.MINDS[changed.id]["grudge"], changed.mind.fear, changed.mind.state_word()])
+	_check(changed.mind.open < D.MINDS[changed.id]["open"] and changed.mind.grudge > D.MINDS[changed.id]["grudge"], "Their temperament itself has shifted, not only their opinion")
+	_check(Game.bounty["tallow"] > 0, "What was seen is reported, and a price is put on it")
+	print("    Tallow Ford now holds %d coin against the player" % Game.bounty["tallow"])
+	# A guard walks up about it.
+	wren_guard.aggro = false
+	wren_guard._confront_cd = 0.0
+	wren_guard.global_position = Game.player.global_position + Vector3(1.5, 0, 0)
+	wren_guard._crowd_check()
+	_check(Game.dialogue.active(), "A guard who knows confronts the player")
+	Game.coins = 500
+	Game.dialogue._pay(Game.bounty["tallow"])
+	_check(Game.bounty["tallow"] == 0, "Paying settles the law")
+	Game.dialogue.close()
+	# Someone bold who cannot stand the player shoves them.
+	var ivo2 := _npc("ivo")
+	ivo2.mind.fear = 0.0
+	ivo2.global_position = Game.player.global_position + Vector3(0, 0, 1.2)
+	var push0: Vector3 = Game.player._push
+	ivo2._shove_cd = 0.0
+	ivo2._crowd_check()
+	print("    Ivo feels %.2f and %s" % [ivo2.mind.feeling(), "shoved the pilgrim" if Game.player._push != push0 else "did not shove"])
+	_check(Game.player._push != push0, "Someone bold who loathes the player shoves them when crowded")
+	Game.player._push = Vector3.ZERO
+	# And how they speak changes with it.
+	var luie := _npc("luie")
+	luie.mind.fear = 0.9
+	luie.mind.experience("violence", -0.6, 1.0, false, "someone")
+	print("    Luie, frightened, seems %s" % luie.mind.state_word())
+	_check(luie.mind.state_word() == "afraid" and luie.topic_text("Dangerous dead") != luie.def["topics"]["Dangerous dead"], "A frightened person answers differently")
+	_check(luie.greeting().contains("flinch"), "...and greets the player differently")
+	luie.mind.forgive()
+	luie.mind.fear = 0.0
+	var tommy := _npc("tommy")
+	var fair: int = tommy.price(10)
+	tommy.mind.experience("theft", -0.9, 3.0)
+	_check(tommy.price(10) > fair, "A trader who distrusts the player charges them more")
+	tommy.mind.forgive()
+
 	# Amends.
 	var grieved: Node = null
 	for n in Game.villagers("tallow"):
