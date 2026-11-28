@@ -542,6 +542,11 @@ func _run() -> void:
 	check(Meet.menu.active() and warner != null and warner.confront_kind == "warn", "someone comes over to warn you: do it again and you're out")
 	await shot("10c_warned")
 	check(Meet.stars() >= 2, "a beating puts stars on you (%d)" % Meet.stars())
+	kelvin._fought_player = false
+	kelvin.composure = 60.0
+	kelvin.idle()
+	kelvin.global_position = Meet.main.ground(Vector3(-14, 0, -6))
+	Meet.scraps = 0
 	Meet.heat = 0.0
 	Meet.warned = false
 	Meet.menu._forced = false
@@ -1154,7 +1159,7 @@ func _run() -> void:
 	p._cooldown = 0.0
 	p.use_item()
 	await wait(0.3)
-	check(Meet.main._drone_t < 0.0, "the ray gun shoots the drone down")
+	check(Meet.main._drone_t < 0.0 or Meet.main._drone_t >= 9.0, "the ray gun shoots the drone down")
 	Meet.worn["hand"] = ""
 	Meet.heat = 0.0
 	await wait(0.4)

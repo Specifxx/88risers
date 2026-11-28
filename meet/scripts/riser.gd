@@ -558,6 +558,7 @@ func _process(dt: float) -> void:
 			Character.play(_figure, "Crouch_Idle")
 			if _timer <= 0.0:
 				composure = 60.0
+				_fought_player = false
 				say_aloud("...I'm fine. I'm fine.")
 				idle()
 		"flee":
