@@ -259,6 +259,10 @@ func _menu_favour() -> void:
 	UI.clear(_list)
 	if not Meet.errands.has(who.id):
 		UI.button(_list, "\"Anything need doing?\"", _errand, 18).add_theme_color_override("font_color", UI.GOLD)
+	if who._tail > 0.0 and who._follows:
+		UI.button(_list, "\"That'll do. Head back.\"", _favour.bind("unfollow"), 18)
+	else:
+		UI.button(_list, "\"Come with me a minute. I want to show you something.\"", _favour.bind("follow"), 18)
 	UI.button(_list, "\"Lend me five dollars?\"", _favour.bind("lend"), 18)
 	UI.button(_list, "\"Teach me your move.\"", _favour.bind("teach"), 18)
 	UI.button(_list, "\"Watch my back tonight?\"", _favour.bind("back"), 18)
@@ -367,6 +371,32 @@ func _give() -> void:
 
 func _favour(kind: String) -> void:
 	var lvl: int = who.mood_level()
+	if kind == "unfollow":
+		who._tail = 0.0
+		who._follows = false
+		who._after_talk = ""
+		_line("[color=#b9b3a0]\"That'll do. Head back.\"[/color]\n\"Right. See you over there.\"")
+		return
+	if kind == "follow":
+		# The better they like you, the further they will walk without asking why.
+		var odds: float = [0.0, 0.1, 0.4, 0.8, 0.97][clampi(lvl + 2, 0, 4)]
+		if who.sulking or Meet.stars() >= 3:
+			odds = 0.0
+		if who._asked.get("follow", 0) >= 2:
+			_line("\"You keep asking. No.\"")
+			return
+		if randf() < odds:
+			who._tail = 100.0 if lvl >= 1 else 55.0
+			who._follows = true
+			who._qbark = 5.0
+			who._after_talk = "tail"
+			_line("[color=#b9b3a0]\"Come with me a minute.\"[/color]\n\"%s\"\n[i]%s will follow you for a while, wherever you go.[/i]" % [(["Go on then. Lead the way.", "Sure. Where are we going?", "This had better be good."][randi() % 3] if lvl >= 1 else "...Alright. One minute. I'm counting."), who.first_name])
+			Meet.ripple("%s walked off with you." % who.first_name)
+		else:
+			who._asked["follow"] = who._asked.get("follow", 0) + 1
+			who.mind.experience("nagged", -0.05, 0.3)
+			_line("[color=#b9b3a0]\"Come with me a minute.\"[/color]\n\"%s\"" % ("With you? No. Say it here, in front of everyone." if lvl < 0 else ["I'm alright here, thanks.", "Show me from here.", "Maybe after my next pull."][randi() % 3]))
+		return
 	if who._asked.has(kind):
 		_line("\"You've asked me that already.\"")
 		return

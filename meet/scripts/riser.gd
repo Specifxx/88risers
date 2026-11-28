@@ -73,6 +73,8 @@ var legend := ""                 # a visiting great: "don" or "lasha"
 var sulking := false             # walked off on you tonight; won't pull until you make it right
 var _tail := 0.0
 var _fought_player := false
+var _led_away := false            # people saw them walk off with you
+var _follows := false             # asked to come along, rather than tagging along on a whim
 var secret_dead := false         # down for good, and nobody but you knows yet
 var _found_t := 0.0
 var _far_t := 0.0
@@ -478,7 +480,10 @@ func _process(dt: float) -> void:
 				say_aloud(own[randi() % own.size()], 4.5)
 			if _tail <= 0.0 or Meet.modal and Meet.table.active():
 				say_aloud(["Right. I'm up soon. Good talk.", "Catch you in a bit.", "Go on. I'll find you later."][randi() % 3], 3.5)
+				_follows = false
 				idle()
+			elif _follows and _tail < 30.0 and _tail + dt >= 30.0:
+				say_aloud(["Where are we actually going?", "Is it much further?", "I should get back soon."][randi() % 3], 4.0)
 		"post":
 			# At work. Looks up when you come close.
 			global_position = _post_at
@@ -2628,6 +2633,7 @@ func finished_by_player() -> void:
 		Meet.add_heat(0.1, "what you did to %s" % first_name)
 		return
 	# Nobody saw. They lie where they fell until somebody walks past.
+	_led_away = _follows
 	dead = true
 	secret_dead = true
 	state = "dead"
@@ -2667,7 +2673,7 @@ func _discovered(by: Node) -> void:
 	Meet.sfx("sting")
 	Meet.hud.banner("%s HAS BEEN FOUND" % first_name.to_upper(), "%s found them. Everybody is counting heads." % by.first_name)
 	var near: bool = Meet.player.global_position.distance_to(global_position) < 12.0
-	var suspect: bool = near or _fought_player and Meet.scraps > 0
+	var suspect: bool = near or _led_away
 	for r in Meet.risers:
 		if r == self or r.dead or not r.is_riser:
 			continue
@@ -2678,7 +2684,7 @@ func _discovered(by: Node) -> void:
 		r.gawp(global_position, ["Who did this?", "He was fine an hour ago!", "Nobody leaves. NOBODY leaves.", "%s had words with them earlier. I saw." % Meet.you("The new one").capitalize() if suspect else "Did anyone see anything?"][randi() % 4], true)
 	if suspect:
 		Meet.add_heat(3.0, "they think it was you")
-		Meet.say("You were the last one seen squaring up to %s. Every face in the amphitheatre turns to you." % first_name)
+		Meet.say("You were the last one seen with %s. Every face in the amphitheatre turns to you." % first_name)
 	else:
 		Meet.add_heat(1.0, "nobody trusts anybody now")
 		Meet.say("Nobody knows who did it. Nobody is looking at you in particular. Yet.")

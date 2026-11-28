@@ -1170,6 +1170,21 @@ func _run() -> void:
 			r.idle()
 			r.global_position = Meet.main.ground(Vector3(randf_range(-2, 2), 0, randf_range(-14, -11)))
 	var ph: Node3D = Meet.riser("phillip")
+	# Asked nicely, someone who likes you will walk off with you.
+	ph.mind.experience("helped", 0.9, 6.0)
+	ph.mind.experience("helped", 0.9, 6.0)
+	ph.sulking = false
+	stand(ph.global_position + Vector3(0, 0, 1.5), ph.global_position)
+	ph.interact()
+	seed(7)
+	for i in 3:
+		if not ph._follows:
+			Meet.menu._favour("follow")
+	Meet.menu.close()
+	stand(Vector3(18, 0, 21.4), Vector3(18, 0, 30))
+	await wait(3.0)
+	check(ph._follows and ph.state == "tail", "a founder who likes you can be asked to follow you (mood %d)" % ph.mood_level())
+	randomize()
 	ph.global_position = Meet.main.ground(Vector3(18, 0, 20))
 	stand(Vector3(18, 0, 21.4), ph.global_position)
 	ph.square_up()
