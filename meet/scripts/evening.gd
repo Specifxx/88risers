@@ -59,6 +59,7 @@ var _kaiju_r: Node3D
 var _kaiju_state := ""
 var _kaiju_t := 0.0
 var _wave: MeshInstance3D
+var _kaiju_dmg := 0.0
 var _hand: Node3D
 var _last_choice := -99.0
 var _walk_n := 0
@@ -521,8 +522,10 @@ func _places() -> void:
 	# His rod over the rail, a line down to the water, a float, and a bucket.
 	_rod = Build.cyl(self, 0.012, 0.02, 3.4, FISHER + Vector3(0.3, 2.0, 1.3), Color(0.25, 0.2, 0.15), 5)
 	_rod.rotation.x = 0.95
+	_rod.set_meta("live", true)
 	Build.cyl(self, 0.004, 0.004, 3.3, FISHER + Vector3(0.3, 1.25, 2.7), Color(0.9, 0.9, 0.9), 3)
 	_float = Build.sphere(self, 0.07, FISHER + Vector3(0.3, -0.3, 2.7), Color(1.0, 0.3, 0.2))
+	_float.set_meta("live", true)
 	Build.box(self, Vector3(0.45, 0.3, 0.3), FISHER + Vector3(-0.7, 0.15, 0), Color(0.2, 0.45, 0.7))
 	var rod := Thing.new()
 	rod.setup("Borrow the fisherman's rod", _fish)
@@ -1642,6 +1645,7 @@ func start_kaiju() -> void:
 		return
 	_kaiju_state = "rise"
 	_kaiju_t = 0.0
+	_kaiju_dmg = 0.0
 	_kaiju = Node3D.new()
 	main.add_child(_kaiju)
 	_kaiju.position = Vector3(0, -26.0, 52.0)
@@ -1735,6 +1739,21 @@ func _run_kaiju(dt: float) -> void:
 				_kaiju = null
 				_kaiju_state = "done"
 
+## The ray gun against the thing from the bay: every shot that lands weakens its arm.
+func kaiju_shot(from: Vector3, flat: Vector3) -> Vector3:
+	if _kaiju == null or _kaiju_state not in ["rise", "wave", "dare"]:
+		return Vector3.ZERO
+	var to: Vector3 = _kaiju.global_position - from
+	if flat.dot(Vector3(to.x, 0, to.z).normalized()) < 0.8:
+		return Vector3.ZERO
+	var at: Vector3 = _kaiju.global_position + Vector3(randf_range(-3, 3), randf_range(10, 20), 3.5)
+	_kaiju_dmg = min(24.0, _kaiju_dmg + 6.0)
+	Fx.burst(main, at, Vector3.UP, false, 26)
+	Meet.sfx("crash", -6.0, 1.3)
+	Meet.hud.shake()
+	Meet.hud.banner("IT FELT THAT", "Scorched. It is %d%% weaker for the pull." % int(_kaiju_dmg / 138.0 * 100.0) if _kaiju_dmg < 24.0 else "It can't get any more scorched than that.")
+	return at
+
 ## Everything that counts for you, and how much.
 func kaiju_odds() -> Array:
 	var lines: Array = []
@@ -1757,6 +1776,9 @@ func kaiju_odds() -> Array:
 		prep += Meet.pump * 2.0
 		lines.append("a pump")
 	prep += Meet.tips * 1.5
+	if _kaiju_dmg > 0.0:
+		prep += _kaiju_dmg
+		lines.append("ray-gun burns all down its arm")
 	if Meet.saved > 0:
 		prep += 4.0
 		lines.append("the bay owes you one")

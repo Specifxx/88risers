@@ -2,19 +2,20 @@ extends CanvasLayer
 ## On-screen display: how you're holding up, touch controls, the bag, photos, the title.
 
 const UI = preload("res://scripts/ui.gd")
+const TextTex = preload("res://scripts/texttex.gd")
 const Character = preload("res://scripts/character.gd")
 const Wear = preload("res://scripts/wear.gd")
 
-var _stats: Label
+var _stats: TextureRect
 var _bar: ProgressBar
 var _stam: ProgressBar
-var _clock: Label
+var _clock: TextureRect
 var _doll: Node3D
 var _bag_side: VBoxContainer
 var _bag_people: VBoxContainer
 var _over_title: Label
 var _name_box: LineEdit
-var _heat: Label
+var _heat: TextureRect
 const STICK := 85.0
 var _knob: Panel
 var _stick_label: Label
@@ -29,10 +30,12 @@ var _cam_vec := Vector2.ZERO
 var _cam_moved := 0.0
 var _cam_knob: Panel
 var _gfx: Button
+var _tags: Control
+var _tag_pool := {}
 var _dares_sig := ""
-var _snd: Label
+var _snd: TextureRect
 var _snd_tw: Tween
-var _keys: Label
+var _keys: TextureRect
 var _kit_title: Label
 var _jump_pad: Button
 var _bag_dirty := false
@@ -76,14 +79,14 @@ func _ready() -> void:
 	row.add_child(crest)
 	var col := VBoxContainer.new()
 	row.add_child(col)
-	_clock = UI.text(col, "", 17, UI.GOLD)
-	_clock.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_clock = TextTex.new()
+	col.add_child(_clock)
 	_bar = _meter(col, "Health", Color(0.85, 0.25, 0.25))
 	_stam = _meter(col, "Stamina", Color(0.3, 0.75, 0.4))
-	_stats = UI.text(col, "", 15)
-	_stats.autowrap_mode = TextServer.AUTOWRAP_OFF
-	_heat = UI.text(col, "", 15, Color(1.0, 0.55, 0.3))
-	_heat.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_stats = TextTex.new()
+	col.add_child(_stats)
+	_heat = TextTex.new()
+	col.add_child(_heat)
 	# Tonight's dares, under the panel.
 	_dares = VBoxContainer.new()
 	_dares.position = Vector2(18, 168)
@@ -97,14 +100,18 @@ func _ready() -> void:
 	_prompt.offset_bottom = -180
 	_shadow(_prompt)
 	# A line along the bottom saying which key does what. Keyboard only.
-	_keys = UI.text(_root, "E use/talk   ·   Click punch   ·   G chalk   ·   T throw snack   ·   X use held item   ·   V shout   ·   R eat   ·   C look at yourself   ·   Tab kit   ·   P photo   ·   M sound", 14, Color(1, 1, 1, 0.78))
-	_keys.autowrap_mode = TextServer.AUTOWRAP_OFF
-	_keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_keys.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	_keys.offset_top = -30
-	_keys.offset_bottom = -8
-	_keys.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_shadow(_keys)
+	_keys = TextTex.new()
+	_root.add_child(_keys)
+	_keys.show_text("E use/talk   ·   Click punch   ·   G chalk   ·   T throw snack   ·   X use held item   ·   V shout   ·   R eat   ·   C look at yourself   ·   Tab kit   ·   P photo   ·   M sound", 14, Color(1, 1, 1, 0.85))
+	_keys.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	_keys.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_keys.offset_top = -36
+	_keys.offset_bottom = -6
+	_tags = Control.new()
+	_tags.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_tags.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_tags)
+	_root.move_child(_tags, 0)
 	_float = UI.text(_root, "", 26, Color(1.0, 0.92, 0.6))
 	_float.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_float.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -159,11 +166,11 @@ func _shadow(l: Label) -> void:
 
 func _refresh() -> void:
 	_bar.value = Meet.composure
-	_stats.text = "$%d  ·  Snacks %d  ·  Chalk %d%s%s  ·  Won %d, lost %d" % [Meet.money, Meet.snacks, Meet.chalk, ("  ·  Hands chalked" if Meet.chalked else "") + ("  ·  CARRYING A TABLE" if Meet.carrying >= 0 else "") + ("  ·  WINDY" if Meet.wind > 0.0 else ""),
-		"  ·  Straps in pocket %d" % Meet.straps.size() if not Meet.straps.is_empty() else "", Meet.wins, Meet.losses]
-	_heat.text = "Heat  %s%s" % ["★".repeat(Meet.stars()), "☆".repeat(5 - Meet.stars())] if Meet.stars() > 0 else ""
+	_stats.show_text("$%d  ·  Snacks %d  ·  Chalk %d%s%s  ·  Won %d, lost %d" % [Meet.money, Meet.snacks, Meet.chalk, ("  ·  Hands chalked" if Meet.chalked else "") + ("  ·  CARRYING A TABLE" if Meet.carrying >= 0 else "") + ("  ·  WINDY" if Meet.wind > 0.0 else ""),
+		"  ·  Straps in pocket %d" % Meet.straps.size() if not Meet.straps.is_empty() else "", Meet.wins, Meet.losses], 15, UI.PAPER, 0, 0, 0)
+	_heat.show_text("Heat  %s%s" % ["★".repeat(Meet.stars()), "☆".repeat(5 - Meet.stars())] if Meet.stars() > 0 else "", 15, Color(1.0, 0.55, 0.3), 0, 0, 0)
 	_heat.visible = Meet.stars() > 0
-	var sig := str(Meet.dares.map(func(d): return [d["done"], d["have"]]))
+	var sig := str(Meet.dares.map(func(d): return [d["done"], d["have"], d.get("void", false)]))
 	if sig == _dares_sig:
 		if _bag and _bag.visible and _bag_dirty:
 			_bag_dirty = false
@@ -172,10 +179,12 @@ func _refresh() -> void:
 	_dares_sig = sig
 	UI.clear(_dares)
 	for d in Meet.dares:
-		var tier: int = int(d.get("tier", 0))
-		var l := UI.text(_dares, "%s %s%s%s" % ["✔" if d["done"] else "○", "", d["text"], " (%d/%d)" % [d["have"], d["need"]] if d["need"] > 1 and not d["done"] else ""], 14, Color(0.6, 0.9, 0.7) if d["done"] else Color(0.95, 0.92, 0.85))
-		l.autowrap_mode = TextServer.AUTOWRAP_OFF
-		_shadow(l)
+		var l := TextTex.new()
+		_dares.add_child(l)
+		if d.get("void", false):
+			l.show_text("✗ %s  (can't be done now)" % d["text"], 14, Color(0.65, 0.6, 0.58))
+			continue
+		l.show_text("%s %s%s" % ["✔" if d["done"] else "○", d["text"], " (%d/%d)" % [d["have"], d["need"]] if d["need"] > 1 and not d["done"] else ""], 14, Color(0.6, 0.9, 0.7) if d["done"] else Color(0.95, 0.92, 0.85))
 	# The kit is only rebuilt when you do something in it, never under your cursor.
 	if _bag and _bag.visible and _bag_dirty:
 		_bag_dirty = false
@@ -195,6 +204,7 @@ func _process(dt: float) -> void:
 			Input.action_press("jump")
 		elif Input.is_action_pressed("jump") and not Input.is_key_pressed(KEY_SPACE):
 			Input.action_release("jump")
+	_draw_tags()
 	if _cam_id >= 0 and not Meet.modal:
 		Meet.player.look += Vector2(_cam_vec.x * 560.0, _cam_vec.y * 300.0) * dt
 	if Meet.touch:
@@ -215,7 +225,7 @@ func _process(dt: float) -> void:
 			_hint.text = "Turn your phone sideways to play."
 	_bar.value = Meet.composure
 	_stam.value = Meet.stamina
-	_clock.text = "%s  ·  Rhodes Amphitheatre  ·  ends 7:30" % Meet.time_text()
+	_clock.show_text("%s  ·  Rhodes Amphitheatre  ·  ends 7:30" % Meet.time_text(), 17, UI.GOLD, 0, 0, 0)
 	if _bag.visible and _doll:
 		_doll.rotation.y += dt * 0.7
 	if _shake > 0.0:
@@ -230,18 +240,62 @@ func float_text(t: String) -> void:
 	_float.modulate.a = 1.0
 	create_tween().tween_property(_float, "modulate:a", 0.0, 0.8)
 
+## Names and speech over people's heads: sharp 2D text placed where they are on screen, each
+## drawn once into its own small image.
+func _draw_tags() -> void:
+	var cam := get_viewport().get_camera_3d()
+	_tags.visible = (not Meet.modal or Meet.table.active()) and not _title.visible
+	if cam == null or not _tags.visible:
+		return
+	var seen := {}
+	var entries: Array = []
+	for r in get_tree().get_nodes_in_group("tagged"):
+		var t: Dictionary = r.tag()
+		if not t.is_empty():
+			t["id"] = r.get_instance_id()
+			entries.append(t)
+	if Meet.player_name != "" and not Meet.player._orbit:
+		entries.append({"id": 1, "name": Meet.player_name, "color": Color(0.75, 0.9, 1.0), "at": Meet.player.global_position + Vector3(0, 1.95, 0), "say": ""})
+	for t in entries:
+		var at: Vector3 = t["at"]
+		var dist: float = cam.global_position.distance_to(at)
+		if cam.is_position_behind(at) or dist > 44.0:
+			continue
+		var sp: Vector2 = cam.unproject_position(at)
+		var near: bool = dist < 14.0
+		var y := sp.y
+		for part in [["n", t["name"], t["color"], 15 if near else 12, 0, 30.0], ["s", t["say"], Color(1.0, 0.93, 0.6), 19 if near else 15, 300, 44.0]]:
+			if part[1] == "" or dist > part[5]:
+				continue
+			var key := "%d%s" % [t["id"], part[0]]
+			seen[key] = true
+			if not _tag_pool.has(key):
+				var tt := TextTex.new()
+				_tags.add_child(tt)
+				_tag_pool[key] = tt
+			var l: TextureRect = _tag_pool[key]
+			l.visible = true
+			l.show_text(part[1], part[3], part[2], part[4], 1)
+			y -= l.size.y - 6.0
+			l.position = Vector2(sp.x - l.size.x / 2.0, y)
+	for key in _tag_pool.keys():
+		if not seen.has(key):
+			if is_instance_valid(_tag_pool[key]):
+				_tag_pool[key].visible = false
+			if _tag_pool.size() > 90:
+				_tag_pool[key].queue_free()
+				_tag_pool.erase(key)
+
 ## Says in words what a sound is, bottom-left, so nothing loud is ever a mystery.
 func sound_caption(text: String, seconds: float) -> void:
 	if _snd == null:
-		_snd = UI.text(_root, "", 16, Color(0.8, 0.9, 1.0))
-		_snd.autowrap_mode = TextServer.AUTOWRAP_OFF
+		_snd = TextTex.new()
+		_root.add_child(_snd)
 		_snd.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 		_snd.offset_left = 16
-		_snd.offset_top = -64
-		_snd.offset_bottom = -40
-		_snd.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_shadow(_snd)
-	_snd.text = "♪  You can hear: %s   (M mutes)" % text
+		_snd.offset_top = -72
+		_snd.offset_bottom = -44
+	_snd.show_text("♪  You can hear: %s   (M mutes)" % text, 16, Color(0.8, 0.9, 1.0))
 	_snd.modulate.a = 1.0
 	if _snd_tw:
 		_snd_tw.kill()
@@ -282,15 +336,15 @@ func banner(title: String, text: String) -> void:
 	_banner_tw.tween_property(_banner, "modulate:a", 0.0, 0.6)
 
 func _toast(t: String) -> void:
-	var l := UI.text(_log, t, 19)
-	l.custom_minimum_size = Vector2(520, 0)
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_shadow(l)
-	if _log.get_child_count() > 4:
+	var l := TextTex.new()
+	_log.add_child(l)
+	l.show_text(t, 18, UI.PAPER, 500, 2)
+	l.size_flags_horizontal = Control.SIZE_SHRINK_END
+	if _log.get_child_count() > 3:
 		_log.get_child(0).queue_free()
 	var tw := l.create_tween()
-	tw.tween_interval(9.0)
-	tw.tween_property(l, "modulate:a", 0.0, 1.2)
+	tw.tween_interval(7.0)
+	tw.tween_property(l, "modulate:a", 0.0, 1.0)
 	tw.tween_callback(l.queue_free)
 
 # --- Touch ---------------------------------------------------------------------------

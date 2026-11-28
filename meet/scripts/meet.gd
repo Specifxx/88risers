@@ -153,6 +153,7 @@ var ripples: Array = []         # what you changed tonight
 var away := {}                 # kit you have put down somewhere tonight
 var wind := 0.0                # seconds of proper wind left
 var carrying := -1             # the table you have hold of, or -1
+var secret := {}               # who is down for good without anyone else knowing
 var dead := {}                 # who has been taken tonight, and by what
 var pump := 0                  # sets of curls done tonight, up to 4
 var double_points := false
@@ -275,6 +276,7 @@ func new_night() -> void:
 	fish = 0
 	bracket = "open"
 	dark = 0.0
+	secret = {}
 	dead = {}
 	wind = 0.0
 	carrying = -1
@@ -532,7 +534,7 @@ func new_dares() -> void:
 ## Something happened that a dare might be about.
 func dare(event: String, arg := "") -> void:
 	for d in dares:
-		if d["done"] or d["event"] != event or (d["arg"] != "" and d["arg"] != arg):
+		if d["done"] or d.get("void", false) or d["event"] != event or (d["arg"] != "" and d["arg"] != arg):
 			continue
 		if event == "cash":
 			if night_cash < d["cash"]:
@@ -594,3 +596,10 @@ func unowned(src: String) -> String:
 		if ITEMS[id].get("src", "") == src and not owned.has(id):
 			pool.append(id)
 	return pool[randi() % pool.size()] if not pool.is_empty() else ""
+
+## A dare that needed someone who is no longer here can't be done tonight.
+func dare_void(id: String) -> void:
+	for d in dares:
+		if d["arg"] == id and not d["done"]:
+			d["void"] = true
+	changed.emit()

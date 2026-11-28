@@ -130,6 +130,9 @@ func _run() -> void:
 	await wait(14.0)
 	await shot("02_plaza")
 	check(Meet.dares[0]["tier"] == 0 and Meet.dares[2]["tier"] == 2, "one ordinary, one cheeky, one unhinged")
+	await wait(1.0)
+	var calls: int = Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
+	check(calls < 420, "a frame takes %d draw commands (it was about 690)" % calls)
 	check(Meet.dares.size() == 3, "three dares for tonight: %s" % ", ".join(Meet.dares.map(func(d): return d["text"])))
 	check(Meet.riser(preload("res://scripts/people.gd").GUESTS[Meet.week() % 5]["id"]) != null, "this week's guest is here")
 	for n in ["puff", "punch", "grip", "win", "coin", "murmur", "music", "bark", "gull", "ufo"]:
@@ -799,7 +802,7 @@ func _run() -> void:
 	check(Meet.stamina < 53.0, "stamina comes back slowly on its own (%.1f)" % Meet.stamina)
 
 	# The cyclist.
-	check(not Meet.hud._dares.get_child(1).text.contains("["), "dares are listed without tags: %s" % Meet.hud._dares.get_child(1).text)
+	check(not Meet.hud._dares.get_child(1)._sig.contains("["), "dares are listed without tags: %s" % Meet.hud._dares.get_child(1)._sig.get_slice("|", 0))
 	ev._m_cyclist()
 	var parked := false
 	for i in 100:
@@ -1015,6 +1018,9 @@ func _run() -> void:
 			r._vs_player = false
 			r.idle()
 
+	for r in Meet.risers:
+		if r.dead:
+			r.revive()
 	# Wind and the balloon; the possum; chalk as dust.
 	Meet.owned["balloon"] = true
 	Meet.worn["hand"] = "balloon"
@@ -1139,9 +1145,63 @@ func _run() -> void:
 	var beams0: int = Meet.main.get_child_count()
 	p.use_item()
 	check(Meet.main.get_child_count() > beams0, "the ray gun fires a visible beam")
+	Meet.main.start_drone()
+	await wait(1.0)
+	for r in Meet.risers:
+		if not r.post:
+			r.global_position = Meet.main.ground(Vector3(-18, 0, -8))
+	stand(Vector3(14, 0, 14), Meet.main._drone.global_position)
+	p._cooldown = 0.0
+	p.use_item()
+	await wait(0.3)
+	check(Meet.main._drone_t < 0.0, "the ray gun shoots the drone down")
 	Meet.worn["hand"] = ""
 	Meet.heat = 0.0
 	await wait(0.4)
+
+	# Finishing someone who came for you, with nobody watching.
+	for r in Meet.risers:
+		if not r.post and not r.dead:
+			r.idle()
+			r.global_position = Meet.main.ground(Vector3(randf_range(-2, 2), 0, randf_range(-14, -11)))
+	var ph: Node3D = Meet.riser("phillip")
+	ph.global_position = Meet.main.ground(Vector3(18, 0, 20))
+	stand(Vector3(18, 0, 21.4), ph.global_position)
+	ph.square_up()
+	ph.composure = 1.0
+	Meet.stamina = 100.0
+	p._cooldown = 0.0
+	p.slap()
+	await wait(0.4)
+	check(ph.state == "winded" and ph.can_be_hit(), "someone who came for you and lost can still be hit")
+	if Meet.menu.active():
+		Meet.menu._forced = false
+		Meet.menu.close()
+	for r in Meet.risers:
+		if r.state == "confront":
+			r.idle()
+			r.global_position = Meet.main.ground(Vector3(0, 0, -12))
+	p._cooldown = 0.0
+	Meet.stamina = 100.0
+	stand(Vector3(18, 0, 21.4), ph.global_position)
+	p.slap()
+	await wait(0.4)
+	check(ph.dead and ph.secret_dead and Meet.secret.has("phillip"), "finished with nobody watching: only you know")
+	await shot("15s_secret")
+	var hb: Node3D = Meet.riser("harry")
+	hb.global_position = ph.global_position + Vector3(3, 0, 0)
+	ph._found_t = 0.0
+	await wait(0.6)
+	check(not ph.secret_dead and Meet.dead.has("phillip"), "until somebody walks past and finds them")
+	Meet.menu._forced = false
+	Meet.menu.close()
+	Meet.heat = 0.0
+	Meet.warned = false
+	ph.revive()
+	for r in Meet.risers:
+		if r.state in ["confront", "scrap"]:
+			r._vs_player = false
+			r.idle()
 
 	# Sitting down, weights, and looking at yourself.
 	p.sit(Vector3(9, 0.5, 20), PI)

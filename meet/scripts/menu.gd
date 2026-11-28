@@ -169,6 +169,18 @@ func _options() -> void:
 		for e in Meet.said:
 			if e["about"] == who.id and not e.get("told", false) and Meet.riser(e["by"]) != null:
 				UI.button(_list, "\"%s was talking about you.\"" % Meet.riser(e["by"]).first_name, _carry.bind(e), 18).add_theme_color_override("font_color", blue)
+	for miss_id in Meet.secret:
+		var miss: Node = Meet.riser(miss_id)
+		if miss != null and who.is_riser and not who.done_topics.has("miss:" + miss_id):
+			UI.button(_list, "\"Seen %s about?\"" % miss.first_name, func():
+				who.done_topics["miss:" + miss_id] = true
+				var t: float = Meet.tie(who.id, miss_id)
+				_line("[color=#b9b3a0]\"Seen %s about?\"[/color]\n\"%s\"" % [miss.first_name, ("No, and that's not like them. They'd have said. I'm going to go and look." if t > 0.4 else ("Probably left early. Didn't even say bye. Typical." if t < 0.15 else "Thought they'd gone to the van. Their bag's still here, though. Odd."))])
+				if t > 0.4:
+					var w := who
+					var m := miss
+					close()
+					w._go(m.global_position + Vector3(1.5, 0, 0.5), "idle"), 18)
 	for gone_id in Meet.dead:
 		var gone: Node = Meet.riser(gone_id)
 		if gone != null and who.is_riser and not who.done_topics.has("grief:" + gone_id):

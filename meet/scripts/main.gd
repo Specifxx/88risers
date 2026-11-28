@@ -48,6 +48,8 @@ var _gulls: Node3D
 var _gulls_t := 0.0
 var _gulls_off := false
 var _bucket: Array = []
+var _missing := 20.0
+var _flat: StandardMaterial3D
 var _lamps: Array = []
 var _dusk_t := 0.0
 var _was_dark := false
@@ -117,6 +119,7 @@ func _ready() -> void:
 	Meet.changed.connect(func():
 		if _sun.shadow_enabled and Meet.touch:
 			apply_quality())
+	_bake.call_deferred()
 	if OS.get_cmdline_user_args().has("--selftest") or OS.get_cmdline_user_args().has("--soak"):
 		add_child(load("res://scripts/selftest.gd").new())
 
@@ -256,6 +259,8 @@ func _place() -> void:
 	_bucket = [Build.tcyl(self, 0.28, 0.22, 0.5, CHALK + Vector3(0, 0.55, 0), "iron", Color(0.5, 0.52, 0.56), 12),
 		Build.cyl(self, 0.25, 0.25, 0.04, CHALK + Vector3(0, 0.8, 0), Color(0.97, 0.97, 0.97), 12)]
 	Build.tcyl(self, 0.05, 0.2, 0.3, CHALK + Vector3(0, 0.15, 0), "iron", Color(0.3, 0.3, 0.33), 8)
+	for bm in _bucket:
+		bm.set_meta("live", true)
 	var hide := Thing.new()
 	hide.setup("Hide the chalk bucket", _hide_chalk)
 	add_child(hide)
@@ -303,8 +308,10 @@ func _place() -> void:
 	for sx in [-1.0, 1.0]:
 		var holder := Node3D.new()
 		add_child(holder)
+		holder.set_meta("live", true)
 		holder.position = Vector3(sx * 5.2, 0, 22.5)
 		Asia.lion(holder, Vector3.ZERO, -sx * 0.2, 1.0)
+		weld(holder)
 		_lions.append(holder)
 	for i in Meet.lions:
 		_free_lion(Vector3(randf_range(-2, 2), 0, 18.0))
@@ -396,6 +403,7 @@ func hide_table(i: int) -> void:
 func _table(at: Vector3) -> void:
 	var t := Node3D.new()
 	add_child(t)
+	t.set_meta("live", true)
 	_table_roots.append(t)
 	t.position = at
 	Build.tbox(t, Vector3(0.95, 0.07, 0.7), Vector3(0, 1.02, 0), "darkwood", Color.WHITE, false)
@@ -408,6 +416,8 @@ func _table(at: Vector3) -> void:
 	var rig := Node3D.new()
 	t.add_child(rig)
 	rig.visible = false
+	weld(t)
+	weld(t)
 	_rigs.append({"root": rig, "lean": 0.0, "target": 0.0, "a": null, "b": null})
 	var call := Thing.new()
 	call.setup("Stand at the table and call for a pull", _call_out.bind(_rigs.size() - 1))
@@ -566,6 +576,7 @@ func _bag(d: Dictionary, at: Vector3) -> void:
 	Build.box(b, Vector3(0.5, 0.03, 0.05), Vector3(0, 0.3, 0), Color(0.3, 0.3, 0.34))
 	var strap := Node3D.new()
 	b.add_child(strap)
+	strap.set_meta("live", true)
 	Build.box(strap, Vector3(0.42, 0.03, 0.07), Vector3(0.05, 0.3, 0.1), col)
 	Build.box(strap, Vector3(0.07, 0.03, 0.2), Vector3(-0.14, 0.3, 0.17), col)
 	var who: String = d["name"].split(" ")[0]
@@ -1019,6 +1030,17 @@ func _process(dt: float) -> void:
 			stir(CHALK, ["Not me.", "Tommy?", "Wasn't me!", "Classic."], 12.0, 0.6, false)
 	if _gulls != null:
 		Meet.sfx("gull", -12.0, randf_range(0.9, 1.15), 3.5)
+	# Somebody is missing. People start to notice.
+	_missing -= dt
+	if _missing <= 0.0:
+		_missing = randf_range(18.0, 30.0)
+		for mid in Meet.secret:
+			var gone: Node = Meet.riser(mid)
+			var asker: Array = Meet.risers.filter(func(r): return r.is_riser and not r.dead and r.is_free())
+			if gone != null and not asker.is_empty():
+				asker.sort_custom(func(a, b): return Meet.tie(a.id, mid) > Meet.tie(b.id, mid))
+				asker[0].say_aloud(["Has anyone seen %s?", "Where's %s got to?", "Did %s leave early? Without saying?", "%s's bag is still here. Where are they?"][randi() % 4] % gone.first_name, 5.0)
+			break
 	# George notices when the club is taking to you.
 	_reward -= dt
 	if _reward <= 0.0:
@@ -1919,6 +1941,8 @@ func _free_lion(at: Vector3) -> void:
 	add_child(pet)
 	pet.position = ground(at)
 	Asia.lion(pet, Vector3.ZERO, 0.0, 0.32)
+	weld(pet, false, true)
+	weld(pet)
 	_pets.append({"node": pet, "goal": pet.position, "mood": "follow", "t": randf_range(3.0, 8.0), "slot": _pets.size()})
 
 ## The lions that got out follow you about, and have a mind of their own while they do.
@@ -2010,6 +2034,32 @@ func memorial(r: Node) -> void:
 		opts.append(["(Walk on.)", func(): pass])
 		Meet.menu.choice("Where %s fell" % who.first_name, "Taken by %s. %s" % [Meet.dead.get(who.id, "something"), "There is a potion in your pocket." if Meet.potions > 0 else "They say there are ways to bring someone back. You don't have one."], opts))
 
+## Is the ray gun pointed at something large? If so it is hit, and where the beam lands comes back.
+func laser_target(from: Vector3, dir: Vector3) -> Vector3:
+	var flat := Vector3(dir.x, 0, dir.z).normalized()
+	# The drone.
+	if _drone != null and _drone_t >= 0.0:
+		var to: Vector3 = _drone.global_position - from
+		if to.length() < 40.0 and flat.dot(Vector3(to.x, 0, to.z).normalized()) > 0.8:
+			var at: Vector3 = _drone.global_position
+			_drone_to = Vector3(at.x, 0.3, at.z) if absf(at.x) < 20.0 else _drone_to
+			_drone_t = 9.0
+			Meet.hud.banner("DIRECT HIT", "The drone stops whining and starts falling.")
+			Meet.dare("item")
+			return at
+	# The visitors' ship.
+	if _ufo != null and is_instance_valid(_ufo) and _ufo_state in ["descend", "landed", "open"]:
+		var to2: Vector3 = _ufo.global_position - from
+		if flat.dot(Vector3(to2.x, 0, to2.z).normalized()) > 0.85:
+			Fx.burst(self, _ufo.global_position, Vector3.UP, false, 14)
+			Meet.sfx("zap", -4.0, 0.7)
+			for al in aliens():
+				al.take_hit(18, from)
+			Meet.say("The beam scorches the hull. The visitors on the ground flinch as if they felt it.")
+			return _ufo.global_position
+	# What comes out of the bay.
+	return evening.kaiju_shot(from, flat)
+
 ## A beam of light between two points, there for a moment.
 func laser(from: Vector3, to: Vector3) -> void:
 	var beam := MeshInstance3D.new()
@@ -2037,3 +2087,96 @@ func laser(from: Vector3, to: Vector3) -> void:
 	tw.tween_callback(func():
 		beam.queue_free()
 		glow.queue_free())
+
+# --- One object instead of hundreds ---------------------------------------------------------------
+
+## Scenery that never moves is welded together: everything in a plain colour becomes one mesh,
+## and everything sharing a textured material becomes one mesh each. The graphics card then
+## draws a few dozen things instead of several hundred.
+func _bake() -> void:
+	weld(self, true)
+
+## Weld the meshes under a node into as few as possible, in that node's own space, so the
+## result still moves, hides and shows with it. With `world`, anything marked as live, and
+## anything belonging to a person or a usable object, is left alone.
+func weld(root: Node3D, world := false, moving := false) -> void:
+	var groups := {}
+	var inv: Transform3D = root.global_transform.affine_inverse()
+	for mi in root.find_children("*", "MeshInstance3D", true, false):
+		if mi.mesh == null or mi.mesh.get_surface_count() != 1 or (world and not mi.is_visible_in_tree()):
+			continue
+		if world:
+			var skip := false
+			var p: Node = mi
+			while p != null and p != root:
+				if p.has_meta("live") or p is CharacterBody3D or p.get_script() == RiserScript or p.get_script() == Thing or p is Skeleton3D or p is BoneAttachment3D:
+					skip = true
+					break
+				p = p.get_parent()
+			if skip:
+				continue
+		var m: Material = mi.material_override
+		if m == null:
+			m = mi.get_surface_override_material(0)
+		if m == null:
+			m = mi.mesh.surface_get_material(0)
+		if not (m is StandardMaterial3D):
+			continue
+		var sm: StandardMaterial3D = m
+		var plain: bool = sm.albedo_texture == null and not sm.emission_enabled and sm.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED and sm.cull_mode == BaseMaterial3D.CULL_BACK and sm.metallic < 0.05 and not sm.disable_fog
+		# Textures laid on by world position would slide about on something that moves.
+		if moving and not plain and sm.uv1_triplanar and sm.uv1_world_triplanar:
+			continue
+		var key: String = "plain" if plain else str(sm.get_instance_id())
+		var arrays: Array = mi.mesh.get_mesh_arrays() if mi.mesh is PrimitiveMesh else mi.mesh.surface_get_arrays(0)
+		if arrays.is_empty() or arrays[Mesh.ARRAY_VERTEX] == null or arrays[Mesh.ARRAY_NORMAL] == null:
+			continue
+		if not (mi.mesh is PrimitiveMesh) and mi.mesh.surface_get_primitive_type(0) != Mesh.PRIMITIVE_TRIANGLES:
+			continue
+		if not groups.has(key):
+			groups[key] = {"mat": sm, "v": PackedVector3Array(), "n": PackedVector3Array(), "uv": PackedVector2Array(), "c": PackedColorArray(), "i": PackedInt32Array(), "shadow": mi.cast_shadow}
+		var g: Dictionary = groups[key]
+		var xf: Transform3D = inv * mi.global_transform
+		var nb: Basis = xf.basis.inverse().transposed()
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var norms: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+		var uvs = arrays[Mesh.ARRAY_TEX_UV]
+		var idx = arrays[Mesh.ARRAY_INDEX]
+		var base: int = g["v"].size()
+		for k in verts.size():
+			g["v"].append(xf * verts[k])
+			g["n"].append((nb * norms[k]).normalized())
+			g["uv"].append(uvs[k] if uvs != null and k < uvs.size() else Vector2.ZERO)
+			g["c"].append(sm.albedo_color)
+		if idx != null and idx.size() > 0:
+			for k in idx:
+				g["i"].append(base + k)
+		else:
+			for k in verts.size():
+				g["i"].append(base + k)
+		# The node stays (things may hang off it, such as its collision); it just stops drawing.
+		mi.mesh = null
+	if _flat == null:
+		_flat = StandardMaterial3D.new()
+		_flat.vertex_color_use_as_albedo = true
+		_flat.roughness = 0.95
+	for key in groups:
+		var g: Dictionary = groups[key]
+		if g["v"].is_empty():
+			continue
+		var arr: Array = []
+		arr.resize(Mesh.ARRAY_MAX)
+		arr[Mesh.ARRAY_VERTEX] = g["v"]
+		arr[Mesh.ARRAY_NORMAL] = g["n"]
+		arr[Mesh.ARRAY_TEX_UV] = g["uv"]
+		arr[Mesh.ARRAY_INDEX] = g["i"]
+		if key == "plain":
+			arr[Mesh.ARRAY_COLOR] = g["c"]
+		var am := ArrayMesh.new()
+		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		var out := MeshInstance3D.new()
+		out.mesh = am
+		out.material_override = _flat if key == "plain" else g["mat"]
+		out.cast_shadow = g["shadow"]
+		out.set_meta("live", true)
+		root.add_child(out)

@@ -110,6 +110,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 func set_name_tag() -> void:
 	if _tag == null:
 		_tag = Build.label(self, "", 2.05, Color(0.75, 0.9, 1.0), 16)
+		_tag.layers = 0
 	_tag.text = Meet.player_name
 
 ## A movement done with your own hands, start to finish: "chalk" or "pet".
@@ -303,12 +304,18 @@ func use_item() -> void:
 			Meet.sfx("zap", -2.0, 1.2)
 			var muzzle := global_position + Vector3(0, 1.35, 0) - global_transform.basis.z * 0.5
 			var hit_at: Vector3 = who.global_position + Vector3(0, 1.2, 0) if who else muzzle - global_transform.basis.z * 14.0
+			# Bigger things than people can be shot at too.
+			var big: Vector3 = Meet.main.laser_target(muzzle, -global_transform.basis.z) if who == null else Vector3.ZERO
+			if big != Vector3.ZERO:
+				hit_at = big
 			Meet.main.laser(muzzle, hit_at)
 			if who:
 				Fx.tint(who._figure, Color(1.0, 0.3, 0.9, 0.7), 0.4)
 				Fx.burst(Meet.main, hit_at, Vector3.UP, false, 8)
 				if who.alien:
 					who.take_hit(45, global_position)
+				elif who.get("state") in ["scrap", "winded"] and who.get("_fought_player"):
+					who.take_hit(40, global_position)
 				else:
 					who.pranked("zap", ["Pew pew! Got me.", "Aagh! I'm vaporised!", "Where did you GET that?"], ["Point that somewhere else.", "Is that thing real? Put it down."])
 		"foam_finger":

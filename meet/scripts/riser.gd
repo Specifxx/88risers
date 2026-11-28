@@ -72,7 +72,11 @@ var _zap := 0.0
 var legend := ""                 # a visiting great: "don" or "lasha"
 var sulking := false             # walked off on you tonight; won't pull until you make it right
 var _tail := 0.0
+var _fought_player := false
+var secret_dead := false         # down for good, and nobody but you knows yet
+var _found_t := 0.0
 var _far_t := 0.0
+var _lod := false
 var _grief := {}
 var _after_talk := ""
 var dead := false                # gone for the rest of tonight, unless somebody has a potion
@@ -155,6 +159,11 @@ func setup(d: Dictionary, riser: bool, at: Vector3) -> void:
 	_bark.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_bark.no_depth_test = true
 	_bark.visible = false
+	# The words themselves are drawn by the display, in 2D, so they stay sharp at any
+	# distance and at any graphics setting. These two only hold the text and colour.
+	_name_label.layers = 0
+	_bark.layers = 0
+	add_to_group("tagged")
 	_timer = randf_range(1.0, 6.0)
 	wallet = 10 + randi() % 4 * 5 if riser else 0
 	_level = mood_level()
@@ -335,7 +344,11 @@ func idle() -> void:
 # --- The evening -----------------------------------------------------------------------
 
 func _process(dt: float) -> void:
-	if Meet.player == null or dead:
+	if Meet.player == null:
+		return
+	if dead:
+		if secret_dead:
+			_wait_to_be_found(dt)
 		return
 	# Far away, their animation only needs to tick over now and then.
 	_far_t -= dt
@@ -347,6 +360,13 @@ func _process(dt: float) -> void:
 		ap.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL if far else AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_IDLE
 		if far:
 			ap.advance(1.0)
+		var mid: bool = global_position.distance_to(Meet.player.global_position) > 15.0
+		if mid != _lod:
+			_lod = mid
+			for mi in _figure.find_children("*", "MeshInstance3D", true, false):
+				var nm := String(mi.name)
+				if nm.contains("Eye") or nm.contains("Brow") or nm.contains("Teeth") or nm.contains("Tongue"):
+					mi.visible = not mid
 	mind.tick(dt)
 	if _bark_time > 0.0:
 		_bark_time -= dt
@@ -976,7 +996,8 @@ func _notice() -> void:
 # --- Being bothered ----------------------------------------------------------------------
 
 func can_be_hit() -> bool:
-	return state != "winded"
+	# Someone who squared up to you and lost is still fair game while they are down.
+	return not dead and (state != "winded" or (_fought_player and not alien))
 
 func knock(v: Vector3) -> void:
 	_knock += v
@@ -1006,6 +1027,7 @@ func heckle() -> String:
 
 ## Enough. They come for the player.
 func square_up(joined := false) -> void:
+	_fought_player = true
 	Meet.sfx("sting", -4.0, 1.0, 1.0)
 	if not joined and is_riser:
 		# A close friend may pile in.
@@ -1034,7 +1056,11 @@ func square_up(joined := false) -> void:
 	Meet.scraps += 1
 
 func take_hit(dmg: int, from: Vector3) -> void:
+	if dead:
+		return
 	if state == "winded":
+		if _fought_player and not alien:
+			finished_by_player()
 		return
 	composure -= dmg
 	var away := global_position - from
@@ -2500,6 +2526,7 @@ func die(cause: String) -> void:
 	remove_from_group("interact")
 	remove_from_group("hittable")
 	Meet.dead[id] = cause
+	Meet.dare_void(id)
 	Meet.sfx("lose")
 	for k in 5:
 		Fx.burst(Meet.main, global_position + Vector3(0, 0.4 + k * 0.3, 0), Vector3.UP, false, 12)
@@ -2565,3 +2592,92 @@ func grief_line(who_id: String) -> String:
 	if t < 0.0:
 		return "We weren't speaking, me and %s. Now we can't. That's worse than I thought it'd be." % name
 	return ("Don't. Just don't." if blame else "I didn't know %s as well as I should have. That's on me." % name)
+
+## For the display: what to write over their head, and where.
+func tag() -> Dictionary:
+	if dead or not visible:
+		return {}
+	return {"name": _name_label.text, "color": _name_label.modulate, "at": global_position + Vector3(0, _name_label.position.y - 0.25, 0),
+		"say": _bark.text if _bark.visible else ""}
+
+# --- Finished by you ---------------------------------------------------------------------------------
+
+## The player hit someone who was already down. Whether anyone saw decides everything after.
+func finished_by_player() -> void:
+	if dead:
+		return
+	var seen: Array = Meet.main.watchers(global_position, 18.0).filter(func(r): return r != self and not r.dead)
+	for r in Meet.risers:
+		if r != self and not r.dead and (r.guest or r.post) and r.global_position.distance_to(global_position) < 12.0 and Meet.dark <= 0.0:
+			seen.append(r)
+	Meet.main.drop_match(self)
+	Pose.stop(_figure)
+	Meet.sfx("lose")
+	Meet.dare_void(id)
+	if not seen.is_empty():
+		# Witnessed. That is the end of the night, and of a good deal more.
+		die("you")
+		for r in Meet.risers:
+			if r != self and not r.dead and (r.is_riser or r.guest or r.post):
+				r.mind.experience("violence", -0.95, 5.0, true, riser_name)
+				r._mood_check = 0.0
+		Meet.hud.banner("THEY SAW", "%s watched you do it." % seen[0].riser_name)
+		Meet.ripple("You finished %s in front of witnesses." % first_name)
+		Meet.heat = 4.99
+		Meet.add_heat(0.1, "what you did to %s" % first_name)
+		return
+	# Nobody saw. They lie where they fell until somebody walks past.
+	dead = true
+	secret_dead = true
+	state = "dead"
+	_vs_player = false
+	_convo = {}
+	composure = 0.0
+	_found_t = 12.0
+	remove_from_group("hittable")
+	remove_from_group("tagged")
+	Character.play(_figure, "Death01", true)
+	Meet.secret[id] = true
+	Meet.hud.banner("NOBODY SAW", "%s isn't getting up. For now, that is between you and the paving." % first_name)
+	Meet.ripple("%s is gone, and only you know why." % first_name)
+	Meet.say("Anything that needed %s tonight can't happen now. Sooner or later somebody will walk this way." % first_name)
+
+func prompt_dead() -> String:
+	return "%s is lying very still" % first_name
+
+## Lying there. Somebody will come past eventually.
+func _wait_to_be_found(dt: float) -> void:
+	_found_t -= dt
+	if _found_t > 0.0:
+		return
+	_found_t = 1.5
+	for r in Meet.risers:
+		if r != self and not r.dead and r.is_riser and r.state not in ["pull", "winded"] and r.global_position.distance_to(global_position) < 6.0 and Meet.dark <= 0.0:
+			_discovered(r)
+			return
+
+func _discovered(by: Node) -> void:
+	secret_dead = false
+	Meet.secret.erase(id)
+	visible = false
+	Meet.dead[id] = "somebody here"
+	Meet.main.memorial(self)
+	by.say_aloud("%s? ...%s! SOMEBODY! Over here!" % [first_name, first_name.to_upper()], 6.0)
+	Meet.sfx("sting")
+	Meet.hud.banner("%s HAS BEEN FOUND" % first_name.to_upper(), "%s found them. Everybody is counting heads." % by.first_name)
+	var near: bool = Meet.player.global_position.distance_to(global_position) < 12.0
+	var suspect: bool = near or _fought_player and Meet.scraps > 0
+	for r in Meet.risers:
+		if r == self or r.dead or not r.is_riser:
+			continue
+		var t: float = Meet.tie(id, r.id)
+		r._grief[id] = t
+		r.mind.experience("violence", -0.75 if suspect else -0.2, 3.0 if suspect else 1.0, suspect, riser_name)
+		r._mood_check = 0.0
+		r.gawp(global_position, ["Who did this?", "He was fine an hour ago!", "Nobody leaves. NOBODY leaves.", "%s had words with them earlier. I saw." % Meet.you("The new one").capitalize() if suspect else "Did anyone see anything?"][randi() % 4], true)
+	if suspect:
+		Meet.add_heat(3.0, "they think it was you")
+		Meet.say("You were the last one seen squaring up to %s. Every face in the amphitheatre turns to you." % first_name)
+	else:
+		Meet.add_heat(1.0, "nobody trusts anybody now")
+		Meet.say("Nobody knows who did it. Nobody is looking at you in particular. Yet.")
