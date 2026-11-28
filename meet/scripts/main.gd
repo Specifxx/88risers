@@ -13,6 +13,9 @@ const HudScript = preload("res://scripts/hud.gd")
 const MenuScript = preload("res://scripts/menu.gd")
 const TableScript = preload("res://scripts/table.gd")
 const Thing = preload("res://scripts/thing.gd")
+const Wear = preload("res://scripts/wear.gd")
+const SKIN := Color(0.82, 0.64, 0.5)
+const NIGHT := 900.0
 
 const PLAZA := 9.0
 const TIERS := 8
@@ -30,6 +33,19 @@ var _ufo_state := ""
 var _aliens: Array = []
 var _clock := 0.0
 var _bags := {}                 # riser id -> {at, strap}
+var _rigs: Array = []
+var _match_cam: Camera3D
+var _player_table := -1
+var _events: Array = []         # [{at, kind}]
+var _env: Environment
+var _sun: DirectionalLight3D
+var _sky_mat: ProceduralSkyMaterial
+var _drone: Node3D
+var _drone_t := 0.0
+var _drone_to := Vector3.ZERO
+var _gulls: Node3D
+var _gulls_t := 0.0
+var _gulls_off := false
 var _passer := 4.0
 var _passer_pool: Array = []
 
@@ -52,9 +68,14 @@ func _ready() -> void:
 	add_child(Meet.hud)
 	# The first time, something comes down a couple of minutes in. After that it is rare.
 	if not Meet.seen_ufo:
-		_ufo_at = 110.0
-	elif randf() < 0.15:
-		_ufo_at = randf_range(60.0, 240.0)
+		_events = [{"at": 75.0, "kind": "gulls"}, {"at": 330.0, "kind": "ufo"}, {"at": 600.0, "kind": "drone"}]
+	else:
+		var kinds := ["gulls", "drone", "gulls", "drone"]
+		if randf() < 0.35:
+			kinds.append("ufo")
+		kinds.shuffle()
+		for i in 2 + randi() % 2:
+			_events.append({"at": randf_range(60.0, 800.0), "kind": kinds[i]})
 	if OS.get_cmdline_user_args().has("--selftest"):
 		add_child(load("res://scripts/selftest.gd").new())
 
@@ -104,6 +125,8 @@ func _sky() -> void:
 	env.fog_density = 0.004
 	env.fog_sky_affect = 0.1
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	_env = env
+	_sky_mat = sm
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -114,6 +137,7 @@ func _sky() -> void:
 	sun.shadow_enabled = not Meet.touch
 	sun.directional_shadow_max_distance = 45
 	add_child(sun)
+	_sun = sun
 
 func _place() -> void:
 	var stone := Color(0.78, 0.76, 0.72)
@@ -246,6 +270,86 @@ func _table(at: Vector3) -> void:
 		Build.tbox(t, Vector3(0.24, 0.05, 0.24), Vector3(sx * 0.2, 1.08, 0.05), "cloth")
 		Build.tcyl(t, 0.025, 0.025, 0.2, Vector3(sx * 0.42, 1.15, -0.2), "iron", Color(0.7, 0.7, 0.72), 6)
 	Asia.quad(t, Vector2(0.3, 0.3), Vector3(0, 1.06, 0.2), 0.0, "ui/emblem.png", true).rotation.x = -PI / 2.0
+	# Two arms locked over the table, shown whenever a pull is on here.
+	var rig := Node3D.new()
+	t.add_child(rig)
+	rig.visible = false
+	var parts := {"root": rig, "lean": 0.0, "target": 0.0}
+	for k in ["fa", "fb", "ua", "ub"]:
+		parts[k] = Build.cyl(rig, 0.045, 0.055, 1.0, Vector3.ZERO, SKIN, 8)
+	parts["fist"] = Build.sphere(rig, 0.085, Vector3.ZERO, SKIN)
+	_rigs.append(parts)
+
+static func _limb(mi: MeshInstance3D, a: Vector3, b: Vector3) -> void:
+	var y := b - a
+	var x := y.cross(Vector3.FORWARD).normalized()
+	mi.transform = Transform3D(Basis(x, y, x.cross(y.normalized())), (a + b) / 2.0)
+
+func _pose_rig(i: int, dt: float) -> void:
+	var r: Dictionary = _rigs[i]
+	r["lean"] = lerp(float(r["lean"]), float(r["target"]), min(1.0, dt * 4.0))
+	var a: float = r["lean"] + sin(_clock * 9.0 + i) * 0.03
+	var fist := Vector3(0, 1.1 + 0.3 * cos(a), 0.05 + 0.3 * sin(a))
+	r["fist"].position = fist
+	for side in [[-1.0, "fa", "ua"], [1.0, "fb", "ub"]]:
+		var elbow := Vector3(side[0] * 0.17, 1.09, 0.05)
+		_limb(r[side[1]], elbow, fist)
+		_limb(r[side[2]], Vector3(side[0] * 0.52, 1.36, 0.0), elbow)
+
+func rig_lean(i: int, frac: float) -> void:
+	if i >= 0:
+		_rigs[i]["target"] = clamp(frac, -1.0, 1.0) * 1.15
+
+## Sit the player down opposite someone at the nearest table that is free.
+func seat_player(r: Node3D) -> int:
+	var best := -1
+	for i in TABLES.size():
+		if table_busy(i):
+			continue
+		if best < 0 or TABLES[i].distance_to(Meet.player.global_position) < TABLES[best].distance_to(Meet.player.global_position):
+			best = i
+	if best < 0:
+		best = 0
+		for m in _matches.duplicate():
+			if m["table"] == 0:
+				drop_match(m["a"])
+	_player_table = best
+	var t: Vector3 = TABLES[best]
+	Meet.player.global_position = t + Vector3(-0.78, 0, 0)
+	Meet.player.rotation.y = -PI / 2.0
+	r.global_position = t + Vector3(0.78, 0, 0)
+	r.rotation.y = -PI / 2.0
+	r.state = "pull"
+	r._face_at = t
+	Wear.drop(r._figure)
+	# Watch the pull from the side, framed above the panel.
+	if _match_cam == null:
+		_match_cam = Camera3D.new()
+		_match_cam.fov = 50
+		add_child(_match_cam)
+	_match_cam.position = t + Vector3(0, 1.75, 3.3)
+	_match_cam.look_at(t + Vector3(0, 0.55, 0))
+	_match_cam.current = true
+	_rigs[best]["lean"] = 0.0
+	_rigs[best]["target"] = 0.0
+	_rigs[best]["root"].visible = true
+	_pose_rig(best, 1.0)
+	return best
+
+func unseat_player(i: int) -> void:
+	_player_table = -1
+	Meet.player.cam.current = true
+	if i >= 0:
+		_rigs[i]["root"].visible = false
+	for r in Meet.risers:
+		if r.state == "pull" and not _in_match(r):
+			r.idle()
+
+func _in_match(r: Node) -> bool:
+	for m in _matches:
+		if m["a"] == r or m["b"] == r:
+			return true
+	return false
 
 func _bag(d: Dictionary, at: Vector3) -> void:
 	var b := Node3D.new()
@@ -288,6 +392,7 @@ func _strap_take(id: String) -> void:
 		Meet.touch_state()
 		return
 	var p: Vector3 = Meet.player.global_position
+	Meet.player.act("Fixing_Kneeling", 1.0)
 	var seen: Array = []
 	for r in Meet.risers:
 		if r.is_riser and r.state != "winded" and r.global_position.distance_to(p) < 10.0 and r.facing(p):
@@ -435,6 +540,30 @@ func _process(dt: float) -> void:
 	if Meet.modal:
 		return
 	_clock += dt
+	Meet.clock += dt
+	_dusk()
+	if Meet.clock >= NIGHT:
+		Meet.clock = NIGHT
+		Meet.hud.night_over(_summary(), "HALF PAST SEVEN")
+		return
+	for ev in _events.duplicate():
+		if Meet.clock >= ev["at"] and _ufo_state in ["", "gone"] and _drone == null and _gulls == null:
+			_events.erase(ev)
+			call("start_" + ev["kind"])
+			break
+	_run_drone(dt)
+	_run_gulls(dt)
+	for i in TABLES.size():
+		var on := false
+		for m in _matches:
+			if m["table"] == i and m["a"].at_table() and m["b"].at_table():
+				on = true
+				var prog: float = 1.0 - float(m["time"]) / float(m["total"])
+				_rigs[i]["target"] = (1.0 if m["a_wins"] else -1.0) * prog * prog * 1.15 + sin(_clock * 1.7 + i * 2.0) * 0.3 * (1.0 - prog)
+		if i != _player_table:
+			_rigs[i]["root"].visible = on
+		if _rigs[i]["root"].visible:
+			_pose_rig(i, dt)
 	_director -= dt
 	# People go past along the water all evening.
 	_passer -= dt
@@ -459,38 +588,39 @@ func _process(dt: float) -> void:
 		m["time"] -= dt
 		if m["time"] <= 0.0:
 			_end_match(m)
-	if _ufo_at > 0.0 and _clock > _ufo_at and _ufo_state == "":
-		start_ufo()
 	_run_ufo(dt)
 
 ## Two people with nothing to do go to a free table and pull.
 func _start_match() -> void:
-	var idle := free_risers().filter(func(r): return r.is_riser and r.tonight.get("id", "") != "sore")
+	var idle := free_risers().filter(func(r): return (r.is_riser or r.guest) and r.tonight.get("id", "") != "sore" and r.state != "huddle")
 	if idle.size() < 2:
 		return
 	var keen := idle.filter(func(r): return r.wants_pull)
 	if keen.is_empty() and randf() < 0.6:
 		return
 	for i in TABLES.size():
-		if table_busy(i):
+		if table_busy(i) or i == _player_table:
 			continue
 		idle.shuffle()
 		keen.shuffle()
 		var a: Node3D = keen[0] if not keen.is_empty() else idle[0]
 		var b: Node3D = keen[1] if keen.size() > 1 else idle.filter(func(r): return r != a)[0]
-		_matches.append({"table": i, "a": a, "b": b, "time": randf_range(9.0, 16.0)})
-		a.go_pull(TABLES[i] + Vector3(-0.85, 0, 0), TABLES[i])
-		b.go_pull(TABLES[i] + Vector3(0.85, 0, 0), TABLES[i])
+		var total := randf_range(9.0, 16.0)
+		_matches.append({"table": i, "a": a, "b": b, "time": total, "total": total,
+			"a_wins": randf() < 1.0 / (1.0 + pow(10.0, (b.strength - a.strength) / 12.0))})
+		a.go_pull(TABLES[i] + Vector3(-0.78, 0, 0), TABLES[i])
+		b.go_pull(TABLES[i] + Vector3(0.78, 0, 0), TABLES[i])
 		return
 
 func _end_match(m: Dictionary) -> void:
 	_matches.erase(m)
 	var a: Node3D = m["a"]
 	var b: Node3D = m["b"]
-	var a_wins := randf() < 1.0 / (1.0 + pow(10.0, (b.strength - a.strength) / 12.0))
+	var a_wins: bool = m["a_wins"]
 	var winner: Node3D = a if a_wins else b
 	var loser: Node3D = b if a_wins else a
 	Meet.results.append("%s beat %s" % [winner.first_name, loser.first_name])
+	Meet.bump(winner.id, loser.id, 0.03 if loser.mind.grudge < 1.05 else -0.04)
 	winner.finish_pull(true)
 	loser.finish_pull(false)
 	for r in Meet.risers:
@@ -527,7 +657,8 @@ func _grab_snack() -> void:
 		Meet.say("You've got as many as you can carry.")
 		return
 	Meet.snacks += 1
-	Meet.say("You take a snack. That's %d." % Meet.snacks)
+	Meet.player.act("PickUp_Table", 0.9)
+	Meet.say("You take a snack. That's %d. Eat one from your bag (%s) to get your breath back." % [Meet.snacks, "BAG" if Meet.touch else "R"])
 	Meet.touch_state()
 
 # --- Visitors from the sky ---------------------------------------------------------------
@@ -583,8 +714,8 @@ func _run_ufo(dt: float) -> void:
 		if up == 0:
 			_ufo_state = "leave"
 			Meet.seen_ufo = true
-			Meet.say("That's the last of them. They are being dragged back up the ramp by something you can't see.")
-			Meet.grant("antennae")
+			Meet.say("That's the last of them. They are being dragged back up the ramp by something you can't see. Something fell out on the way.")
+			drop(["antennae", "raygun"], Vector3(1.5, 0, 14.0))
 			for r in Meet.risers:
 				r.aliens_gone()
 			Meet.save()
@@ -603,3 +734,176 @@ func _run_ufo(dt: float) -> void:
 
 func aliens() -> Array:
 	return _aliens.filter(func(a): return is_instance_valid(a) and a.state != "winded")
+
+# --- The clock ----------------------------------------------------------------------------
+
+## The light goes as the evening does: gold at five, dark blue by half past seven.
+func _dusk() -> void:
+	var f: float = Meet.clock / NIGHT
+	_sun.rotation_degrees.x = lerp(-16.0, -2.0, f)
+	_sun.light_energy = lerp(0.95, 0.12, f)
+	_sun.light_color = Color(1.0, 0.72, 0.5).lerp(Color(0.8, 0.4, 0.45), f)
+	_env.ambient_light_energy = lerp(0.8, 0.5, f)
+	_env.ambient_light_color = Color(0.55, 0.48, 0.58).lerp(Color(0.3, 0.33, 0.6), f)
+	_sky_mat.sky_top_color = Color(0.16, 0.2, 0.42).lerp(Color(0.02, 0.03, 0.1), f)
+	_sky_mat.sky_horizon_color = Color(1.0, 0.62, 0.36).lerp(Color(0.3, 0.16, 0.3), f)
+
+func _summary() -> String:
+	var mates := 0
+	var sour := 0
+	for r in Meet.risers:
+		if r.is_riser and r.bond() in ["mates", "close"]:
+			mates += 1
+		elif r.is_riser and r.bond() in ["irritated", "gone"]:
+			sour += 1
+	return "Harry calls it. Tables down, chalk swept, snacks gone.\n\nTonight: %d pulls won, %d lost. %d of the founders count you a mate; %d would rather you hadn't come. Standing with the club: %s (%d).\n\nSee you next Sunday." % [
+		Meet.results.filter(func(t): return t.begins_with("You beat")).size(), Meet.results.filter(func(t): return t.ends_with("beat you")).size(),
+		mates, sour, Meet.standing(), Meet.reputation()]
+
+# --- Things that fall out of the sky ---------------------------------------------------------
+
+## Leave something on the ground to be picked up: the first of these the player doesn't own.
+func drop(items: Array, at: Vector3) -> void:
+	var item := ""
+	for it in items:
+		if not Meet.owned.has(it):
+			item = it
+			break
+	if item == "":
+		Meet.snacks = min(5, Meet.snacks + 2)
+		Meet.say("Nothing new this time. But there are two snacks on the ground, which is something.")
+		Meet.touch_state()
+		return
+	var th := Thing.new()
+	add_child(th)
+	th.position = ground(at)
+	var m: Node3D = Wear.model(item)
+	th.add_child(m)
+	m.position.y = 0.5
+	var l := OmniLight3D.new()
+	l.light_color = Wear.COLORS.get(item, Color.WHITE)
+	l.light_energy = 2.5
+	l.omni_range = 4.0
+	l.position.y = 0.8
+	th.add_child(l)
+	create_tween().set_loops().tween_property(m, "rotation:y", TAU, 3.0).from(0.0)
+	th.setup("Pick up: %s" % Meet.ITEMS[item]["name"], func():
+		Meet.grant(item)
+		Meet.player.act("PickUp_Table", 0.8)
+		th.queue_free())
+
+func start_drone() -> void:
+	if _drone != null:
+		return
+	_drone = Node3D.new()
+	add_child(_drone)
+	Build.box(_drone, Vector3(0.5, 0.12, 0.5), Vector3.ZERO, Color(0.15, 0.15, 0.18))
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			Build.cyl(_drone, 0.22, 0.22, 0.02, Vector3(sx * 0.35, 0.08, sz * 0.35), Color(0.6, 0.6, 0.65), 8)
+	Build.sphere(_drone, 0.06, Vector3(0, -0.08, 0.2), Color(1.0, 0.1, 0.1), 2.0)
+	_drone.position = Vector3(-30, 14, 20)
+	_drone_t = 0.0
+	var a := randf() * TAU
+	_drone_to = Vector3(cos(a) * 5.0, 0.3, sin(a) * 5.0 + 1.0)
+	Meet.say("There's a whining noise. Somebody's drone is coming in over the water, and it doesn't sound well.")
+
+func _run_drone(dt: float) -> void:
+	if _drone == null or _drone_t < 0.0:
+		return
+	_drone_t += dt
+	if _drone_t < 9.0:
+		var a := _drone_t * 1.3
+		var want := Vector3(cos(a) * 7.0, 6.0 + sin(_drone_t * 5.0) * 1.2, sin(a) * 7.0 + 2.0)
+		_drone.position = _drone.position.lerp(want, min(1.0, dt * 1.5))
+		_drone.rotation = Vector3(sin(_drone_t * 7.0) * 0.4, _drone_t * 3.0, cos(_drone_t * 6.0) * 0.4)
+		return
+	_drone.position = _drone.position.move_toward(_drone_to, dt * 16.0)
+	_drone.rotation.x += dt * 9.0
+	if _drone.position.distance_to(_drone_to) < 0.2:
+		_drone_t = -1.0
+		_drone.rotation = Vector3(0.5, 1.0, 2.6)
+		Fx.burst(self, _drone_to + Vector3(0, 0.5, 0), Vector3.UP, false, 30)
+		Meet.say("The drone has landed. Upside down. In several pieces.")
+		for r in Meet.risers:
+			if r.state not in ["pull", "winded", "scrap"] and r.global_position.distance_to(_drone_to) < 12.0:
+				r.say_aloud(["Whose drone is that?!", "Not mine. That's not mine, right?", "DUCK!", "Is everyone alright?", "That's coming out of someone's bond."][randi() % 5], 4.0)
+		drop(["prop_hat"], _drone_to + Vector3(0.9, 0, 0.5))
+
+func start_gulls() -> void:
+	if _gulls != null:
+		return
+	_gulls = Node3D.new()
+	add_child(_gulls)
+	_gulls.position = SNACKS + Vector3(0, 30, 20)
+	for i in 6:
+		var b := Node3D.new()
+		_gulls.add_child(b)
+		Build.box(b, Vector3(0.14, 0.12, 0.36), Vector3.ZERO, Color(0.96, 0.96, 0.96))
+		Build.box(b, Vector3(0.05, 0.04, 0.1), Vector3(0, 0.02, 0.22), Color(1.0, 0.7, 0.1))
+		for sx in [-1.0, 1.0]:
+			var wing := Build.box(b, Vector3(0.42, 0.02, 0.18), Vector3(sx * 0.27, 0.03, 0), Color(0.75, 0.77, 0.8))
+			wing.set_meta("side", sx)
+	_gulls_t = 0.0
+	_gulls_off = false
+	Meet.say("Seagulls. A lot of seagulls. They have seen the snack table.")
+	var kelvin: Node = Meet.riser("kelvin")
+	if kelvin and kelvin.is_free():
+		kelvin.say_aloud("NOT THE SNACKS.", 4.0)
+		kelvin._go(SNACKS + Vector3(-1.5, 0, 1.2), "idle")
+
+func _run_gulls(dt: float) -> void:
+	if _gulls == null:
+		return
+	_gulls_t += dt
+	var want := SNACKS + Vector3(0, 1.4, 0) if not _gulls_off else SNACKS + Vector3(-20, 40, 50)
+	_gulls.position = _gulls.position.move_toward(want, dt * (12.0 if not _gulls_off else 18.0))
+	var k := 0
+	for b in _gulls.get_children():
+		var a := _gulls_t * 2.2 + k * TAU / 6.0
+		b.position = Vector3(cos(a) * 1.5, sin(a * 1.7 + k) * 0.5, sin(a) * 1.0)
+		b.rotation.y = -a
+		for w in b.get_children():
+			if w.has_meta("side"):
+				w.rotation.z = sin(_gulls_t * 14.0 + k) * 0.7 * float(w.get_meta("side"))
+		k += 1
+	if _gulls_off:
+		if _gulls.position.y > 35.0:
+			_gulls.queue_free()
+			_gulls = null
+		return
+	if _gulls.position.distance_to(want) > 1.0:
+		return
+	if Meet.player.global_position.distance_to(SNACKS) < 3.4:
+		_gulls_off = true
+		Meet.say("You run at them waving your arms. It works. One of them drops something on the way out.")
+		drop(["golden_chip"], SNACKS + Vector3(-0.6, 0, 1.8))
+	elif _gulls_t > 40.0:
+		_gulls_off = true
+		Meet.say("The seagulls leave when they are ready to leave, and not before. Half the snacks went with them.")
+
+# --- The crowd ----------------------------------------------------------------------------
+
+## Something noteworthy happened: some of the people nearby turn, say something, maybe come over.
+func stir(at: Vector3, lines: Array, radius := 12.0, share := 0.6, gather := false) -> void:
+	for r in Meet.risers:
+		if r.alien or r.global_position.distance_to(at) > radius or r.global_position.distance_to(at) < 0.3:
+			continue
+		if randf() < share:
+			r.gawp(at, lines[randi() % lines.size()], gather)
+
+## The player is picking on someone. Whoever is closest to them, and near enough, steps in.
+func defend(victim: Node, kind: String) -> void:
+	if not victim.is_riser:
+		return
+	var best: Node = null
+	var v := 0.3
+	for r in Meet.risers:
+		if r == victim or not r.is_riser or not r.is_free() or r.global_position.distance_to(victim.global_position) > 13.0:
+			continue
+		var t: float = Meet.tie(victim.id, r.id)
+		if t > v:
+			v = t
+			best = r
+	if best != null:
+		best.stand_up_for(victim, kind, v)

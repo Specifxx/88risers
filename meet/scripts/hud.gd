@@ -2,9 +2,17 @@ extends CanvasLayer
 ## On-screen display: how you're holding up, touch controls, the bag, photos, the title.
 
 const UI = preload("res://scripts/ui.gd")
+const Character = preload("res://scripts/character.gd")
+const Wear = preload("res://scripts/wear.gd")
 
 var _stats: Label
 var _bar: ProgressBar
+var _stam: ProgressBar
+var _clock: Label
+var _doll: Node3D
+var _bag_side: VBoxContainer
+var _bag_people: VBoxContainer
+var _over_title: Label
 var _prompt: Label
 var _log: VBoxContainer
 var _float: Label
@@ -40,11 +48,10 @@ func _ready() -> void:
 	row.add_child(crest)
 	var col := VBoxContainer.new()
 	row.add_child(col)
-	UI.text(col, "Meet night  ·  Rhodes Amphitheatre", 15, UI.GOLD).autowrap_mode = TextServer.AUTOWRAP_OFF
-	_bar = ProgressBar.new()
-	_bar.custom_minimum_size = Vector2(280, 10)
-	_bar.show_percentage = false
-	col.add_child(_bar)
+	_clock = UI.text(col, "", 17, UI.GOLD)
+	_clock.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_bar = _meter(col, "Health", Color(0.85, 0.25, 0.25))
+	_stam = _meter(col, "Stamina", Color(0.3, 0.75, 0.4))
 	_stats = UI.text(col, "", 15)
 	_stats.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_prompt = UI.text(_root, "", 22)
@@ -79,13 +86,34 @@ func _ready() -> void:
 	Meet.toast.connect(_toast)
 	_refresh()
 
+func _meter(parent: Node, name: String, c: Color) -> ProgressBar:
+	var row := HBoxContainer.new()
+	parent.add_child(row)
+	var l := UI.text(row, name, 13)
+	l.custom_minimum_size = Vector2(62, 0)
+	l.autowrap_mode = TextServer.AUTOWRAP_OFF
+	var b := ProgressBar.new()
+	b.custom_minimum_size = Vector2(240, 12)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	b.show_percentage = false
+	b.max_value = 100.0
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.14, 0.12, 0.11)
+	bg.set_corner_radius_all(3)
+	var fg := StyleBoxFlat.new()
+	fg.bg_color = c
+	fg.set_corner_radius_all(3)
+	b.add_theme_stylebox_override("background", bg)
+	b.add_theme_stylebox_override("fill", fg)
+	row.add_child(b)
+	return b
+
 func _shadow(l: Label) -> void:
 	l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
 	l.add_theme_constant_override("shadow_offset_x", 2)
 	l.add_theme_constant_override("shadow_offset_y", 2)
 
 func _refresh() -> void:
-	_bar.max_value = 100.0
 	_bar.value = Meet.composure
 	_stats.text = "Snacks %d  ·  Chalk %d%s%s  ·  Won %d, lost %d" % [Meet.snacks, Meet.chalk, "  ·  Hands chalked" if Meet.chalked else "",
 		"  ·  Straps in pocket %d" % Meet.straps.size() if not Meet.straps.is_empty() else "", Meet.wins, Meet.losses]
@@ -100,6 +128,10 @@ func _process(dt: float) -> void:
 	_prompt.text = "%s  %s" % [key, t.prompt()] if t != null and not Meet.modal else ""
 	_touch_ui.visible = Meet.touch and not Meet.modal
 	_bar.value = Meet.composure
+	_stam.value = Meet.stamina
+	_clock.text = "%s  ·  Rhodes Amphitheatre  ·  ends 7:30" % Meet.time_text()
+	if _bag.visible and _doll:
+		_doll.rotation.y += dt * 0.7
 	if _shake > 0.0:
 		_shake -= dt
 		_root.position = Vector2(randf_range(-6, 6), randf_range(-6, 6)) if _shake > 0.0 else Vector2.ZERO
@@ -119,7 +151,7 @@ func _toast(t: String) -> void:
 	_shadow(l)
 	if _log.get_child_count() > 4:
 		_log.get_child(0).queue_free()
-	var tw := create_tween()
+	var tw := l.create_tween()
 	tw.tween_interval(7.0)
 	tw.tween_property(l, "modulate:a", 0.0, 1.2)
 	tw.tween_callback(l.queue_free)
@@ -188,33 +220,149 @@ func _build_bag() -> void:
 	_bag.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.add_child(_bag)
 	var p := UI.panel(_bag)
-	p.custom_minimum_size = Vector2(760, 520)
-	var v := VBoxContainer.new()
-	p.add_child(v)
-	UI.text(v, "Your bag", 28, UI.GOLD)
-	UI.text(v, "Things you've won or found. They stay yours between visits. Tap one to wear it or take it off.", 15, Color(0.75, 0.72, 0.62))
+	p.custom_minimum_size = Vector2(1140, 640)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 22)
+	p.add_child(h)
+	# You: the figure, your standing, how you're holding up.
+	_bag_side = VBoxContainer.new()
+	_bag_side.custom_minimum_size = Vector2(250, 0)
+	h.add_child(_bag_side)
+	var svc := SubViewportContainer.new()
+	svc.custom_minimum_size = Vector2(250, 320)
+	svc.stretch = true
+	_bag_side.add_child(svc)
+	var sv := SubViewport.new()
+	sv.own_world_3d = true
+	sv.transparent_bg = true
+	sv.size = Vector2i(250, 320)
+	svc.add_child(sv)
+	var stage := Node3D.new()
+	sv.add_child(stage)
+	_doll = Character.make(stage, {"body": "Male_Peasant", "hair": "Hair_Buzzed", "tint": Color(0.2, 0.2, 0.22)})
+	var cam := Camera3D.new()
+	cam.position = Vector3(0, 1.15, 3.1)
+	cam.fov = 40
+	stage.add_child(cam)
+	var sun := DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-30, 30, 0)
+	stage.add_child(sun)
+	var we := WorldEnvironment.new()
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.1, 0.08, 0.08)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.8, 0.75, 0.7)
+	we.environment = env
+	stage.add_child(we)
+	# Kit.
+	var mid := VBoxContainer.new()
+	mid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(mid)
+	UI.text(mid, "Your kit", 28, UI.GOLD)
+	UI.text(mid, "Won, found or dropped from the sky. Yours between visits. Tap to wear or take off.", 14, Color(0.75, 0.72, 0.62))
 	var sc := ScrollContainer.new()
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	v.add_child(sc)
+	mid.add_child(sc)
 	_bag_list = VBoxContainer.new()
 	_bag_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_bag_list.add_theme_constant_override("separation", 4)
+	_bag_list.add_theme_constant_override("separation", 6)
 	sc.add_child(_bag_list)
-	UI.button(v, "Close", toggle_bag, 18)
+	var row := HBoxContainer.new()
+	mid.add_child(row)
+	UI.button(row, "Eat a snack", Meet.eat, 18).custom_minimum_size = Vector2(180, 0)
+	UI.button(row, "Close", toggle_bag, 18).custom_minimum_size = Vector2(180, 0)
+	# The club.
+	var right := VBoxContainer.new()
+	right.custom_minimum_size = Vector2(300, 0)
+	h.add_child(right)
+	UI.text(right, "Where you stand", 22, UI.GOLD)
+	_bag_people = VBoxContainer.new()
+	_bag_people.add_theme_constant_override("separation", 5)
+	right.add_child(_bag_people)
 	_bag.visible = false
 
+func _tile(parent: Node, id: String) -> void:
+	var it: Dictionary = Meet.ITEMS[id]
+	var have: bool = Meet.owned.has(id)
+	var on: bool = Meet.worn[it["slot"]] == id
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(170, 78)
+	b.focus_mode = Control.FOCUS_NONE
+	b.clip_text = true
+	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	b.add_theme_font_size_override("font_size", 14)
+	b.text = it["name"] if have else "? ? ?\n%s" % it["how"]
+	b.tooltip_text = it["how"]
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.2, 0.16, 0.12) if have else Color(0.1, 0.09, 0.09)
+	sb.set_corner_radius_all(6)
+	sb.set_content_margin_all(8)
+	sb.border_width_left = 10
+	sb.border_color = Wear.COLORS.get(id, Color.GRAY) if have else Color(0.25, 0.25, 0.25)
+	if on:
+		sb.set_border_width_all(3)
+		sb.border_width_left = 10
+		sb.border_color = UI.GOLD
+	for st in ["normal", "hover", "pressed", "disabled"]:
+		b.add_theme_stylebox_override(st, sb)
+	b.add_theme_color_override("font_color", UI.GOLD if on else (UI.PAPER if have else Color(0.5, 0.48, 0.44)))
+	b.add_theme_color_override("font_disabled_color", Color(0.5, 0.48, 0.44))
+	b.disabled = not have
+	b.pressed.connect(Meet.wear.bind(id))
+	parent.add_child(b)
+
 func _fill_bag() -> void:
+	Wear.dress(_doll, Meet.worn)
 	UI.clear(_bag_list)
-	for id in Meet.ITEMS:
-		var it: Dictionary = Meet.ITEMS[id]
-		if Meet.owned.has(id):
-			var on: bool = Meet.worn[it["slot"]] == id
-			var b := UI.button(_bag_list, "%s%s" % ["● " if on else "", it["name"]], Meet.wear.bind(id), 18)
-			if on:
-				b.add_theme_color_override("font_color", UI.GOLD)
-		else:
-			UI.text(_bag_list, "?  ?  ?      %s" % it["how"], 15, Color(0.55, 0.53, 0.48))
+	for slot in [["hand", "In your hand (and what you swing)"], ["head", "On your head"], ["body", "On your body"]]:
+		var on: String = Meet.worn[slot[0]]
+		UI.text(_bag_list, "%s:  %s" % [slot[1], Meet.ITEMS[on]["name"] if on != "" else "nothing"], 16, UI.GOLD)
+		var grid := GridContainer.new()
+		grid.columns = 3
+		grid.add_theme_constant_override("h_separation", 6)
+		grid.add_theme_constant_override("v_separation", 6)
+		_bag_list.add_child(grid)
+		for id in Meet.ITEMS:
+			if Meet.ITEMS[id]["slot"] == slot[0]:
+				_tile(grid, id)
+	# You.
+	while _bag_side.get_child_count() > 1:
+		var c := _bag_side.get_child(1)
+		_bag_side.remove_child(c)
+		c.queue_free()
+	UI.text(_bag_side, Meet.standing(), 20, UI.GOLD)
+	var rep := _meter(_bag_side, "Standing", UI.GOLD)
+	rep.custom_minimum_size = Vector2(170, 12)
+	rep.value = Meet.reputation()
+	UI.text(_bag_side, "Reputation %d / 100" % Meet.reputation(), 14)
+	UI.text(_bag_side, "Health %d   Stamina %d" % [Meet.composure, Meet.stamina], 14)
+	UI.text(_bag_side, "Snacks %d   Chalk %d%s" % [Meet.snacks, Meet.chalk, "   Hands chalked" if Meet.chalked else ""], 14)
+	if not Meet.straps.is_empty():
+		var names: Array = Meet.straps.map(func(id): return Meet.riser(id).first_name)
+		UI.text(_bag_side, "Straps in your pocket: %s" % ", ".join(names), 14, Color(0.95, 0.6, 0.5))
+	UI.text(_bag_side, "Pulls: %d won, %d lost\nVisits %d   Recruits %d   Tips %d" % [Meet.wins, Meet.losses, Meet.visits, Meet.recruits, Meet.tips], 14, Color(0.75, 0.72, 0.62))
+	# Everyone else.
+	UI.clear(_bag_people)
+	for r in Meet.risers:
+		if not r.is_riser:
+			continue
+		var f: float = r.mind.feeling()
+		var line := UI.text(_bag_people, "%s  —  %s" % [r.first_name, r.bond_text()], 14, Color(0.95, 0.6, 0.5) if f < -0.15 else (UI.GOLD if f > 0.3 else UI.PAPER))
+		line.autowrap_mode = TextServer.AUTOWRAP_OFF
+		var bar := ProgressBar.new()
+		bar.custom_minimum_size = Vector2(280, 7)
+		bar.show_percentage = false
+		bar.min_value = -1.0
+		bar.max_value = 1.0
+		bar.step = 0.01
+		bar.value = f
+		_bag_people.add_child(bar)
+		var bm: Array = r.best_mate()
+		var word: String = Meet.tie_word(bm[1])
+		if word != "":
+			UI.text(_bag_people, "   %s %s" % [word, bm[0].first_name], 12, Color(0.65, 0.62, 0.55))
 
 func toggle_bag() -> void:
 	if _bag.visible:
@@ -268,11 +416,11 @@ func _build_title() -> void:
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var s := UI.text(v, "88 Risers  ·  Rhodes Amphitheatre", 22)
 	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UI.text(v, "It's a club night. Walk in. Talk to people, pull at the table, eat the snacks, chalk your hands or throw it at someone, borrow a strap when nobody's looking, bother the public, take a photo. What people think of you, and what you've won, stays with you between visits.", 19)
+	UI.text(v, "It's Sunday, five o'clock, and the meet runs till half past seven: fifteen minutes of your time. Walk in. Talk to people, pull at the table, eat the snacks, chalk your hands or throw it at someone, borrow a strap when nobody's looking, bother the public, take a photo. What people think of you, and what you've won, stays with you between visits.", 19)
 	if Meet.touch:
 		UI.text(v, "Left thumb moves, drag to look around, buttons on the right.", 16, Color(0.75, 0.72, 0.62))
 	else:
-		UI.text(v, "WASD move  ·  mouse look  ·  Shift run  ·  Space jump  ·  E talk or use  ·  click or F punch  ·  G throw chalk  ·  Tab bag  ·  P photo  ·  Esc free the mouse", 16, Color(0.75, 0.72, 0.62))
+		UI.text(v, "WASD move  ·  mouse look  ·  Shift run  ·  Space jump  ·  E talk or use  ·  click or F punch  ·  G throw chalk  ·  R eat a snack  ·  Tab bag  ·  P photo  ·  Esc free the mouse", 16, Color(0.75, 0.72, 0.62))
 	UI.button(v, "Walk in", _begin, 26).alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 func _begin() -> void:
@@ -286,13 +434,16 @@ func _begin() -> void:
 func _build_over() -> void:
 	var v := _overlay()
 	_over = v.get_parent().get_parent()
-	var t := UI.text(v, "SENT HOME", 50, UI.GOLD)
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_over_title = UI.text(v, "SENT HOME", 50, UI.GOLD)
+	_over_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_over_text = UI.text(v, "", 21)
 	UI.button(v, "Come back next week", _again, 24).alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_over.visible = false
 
-func night_over(text: String) -> void:
+func night_over(text: String, title := "SENT HOME") -> void:
+	if _over.visible:
+		return
+	_over_title.text = title
 	Meet.menu.close()
 	_over_text.text = text
 	_over.visible = true

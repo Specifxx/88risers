@@ -76,7 +76,7 @@ func _run() -> void:
 	p.throw_chalk()
 	await wait(1.0)
 	await shot("05_chalk")
-	check(Meet.dusted == 1 and luie.mind.remembers("chalk"), "thrown chalk lands and is remembered (%.2f -> %.2f)" % [fl, luie.mind.feeling()])
+	check(Meet.dusted == 1 and Meet.risers.any(func(r): return r.mind.remembers("chalk")), "thrown chalk lands and is remembered (%.2f -> %.2f)" % [fl, luie.mind.feeling()])
 
 	# Straps: caught when the owner is looking, away with it when nobody is.
 	var erick: Node3D = Meet.riser("erick")
@@ -108,22 +108,67 @@ func _run() -> void:
 	check(not Meet.straps.has("erick") and not erick.strap_known_gone, "handing it back ends the search")
 	Meet.menu.close()
 
+	# Their own conversations, and what they cost.
+	var bhavya: Node3D = Meet.riser("bhavya")
+	bhavya.state = "idle"
+	bhavya.interact()
+	var topic: Dictionary = preload("res://scripts/people.gd").TALK["bhavya"][0]
+	Meet.menu._topic(topic)
+	await wait(0.2)
+	await shot("07b_topic")
+	Meet.menu._answer(topic["opts"][0])
+	check(Meet.tips == 1, "asking Bhavya to fix one thing earns a lasting tip")
+	Meet.menu.close()
+	var harry2: Node3D = Meet.riser("harry")
+	var george2: Node3D = Meet.riser("george")
+	harry2.state = "idle"
+	george2.state = "idle"
+	george2.global_position = harry2.global_position + Vector3(2, 0, 0)
+	var fg: float = george2.mind.feeling()
+	harry2.interact()
+	Meet.menu._insult({"key": "technique", "say": "x"})
+	check(Meet.menu.active(), "an ordinary insult gets shrugged off")
+	check(george2.mind.feeling() < fg, "George steps in for his brother (%.2f -> %.2f)" % [fg, george2.mind.feeling()])
+	Meet.menu._insult({"key": "loss", "say": "x"})
+	check(not Meet.menu.active() and harry2.state == "scrap" and Meet.has_flag("harry", "sore"), "the sore spot ends the conversation and starts a scrap")
+	harry2._vs_player = false
+	harry2.idle()
+	Meet.scraps = 0
+	check(Meet.stamina <= 100.0 and Meet.time_text().begins_with("Sunday 5:"), "the clock is running: %s" % Meet.time_text())
+	var huddled := false
+	for r in Meet.risers:
+		if r.is_riser:
+			r.state = "idle"
+			r.global_position = Meet.main.ground(Vector3(randf_range(-5, 5), 0, randf_range(5, 8)))
+	for r in Meet.risers:
+		if r.is_riser and r._start_huddle():
+			huddled = true
+			break
+	check(huddled, "people gather for a conversation of their own")
+	await wait(9.0)
+	stand(Vector3(0, 0, 10.5), Vector3(0, 0, 6))
+	await wait(0.3)
+	await shot("07c_huddle")
+
 	# The table.
 	stand(Vector3(3.6, 0, 3.5), Vector3(3.6, 0, 1.2))
 	var george: Node3D = Meet.riser("george")
 	Meet.table.start(george)
-	check(Meet.table.active() and Meet.table.phase == "ready", "a match starts with a wait for GO")
+	check(Meet.table.active() and Meet.table.phase == "ready" and Meet.table.move == "hook", "a pull is a grip fight, with George's hook")
 	await wait(0.3)
 	await shot("08_table")
 	var t: Node = Meet.table
-	for i in 4000:
+	for i in 6000:
 		if t.phase == "done":
 			break
-		t.mine = {"Hook": "Toproll", "Press": "Hook", "Toproll": "Press"}[t.theirs]
-		t.pulling = t.phase == "go" and (t._surging <= 0.0 and t.grip > 0.25)
-		t.tick(0.05)
+		if t.phase == "go" and absf(t.pos - t.zone) < t.width * 0.3 and t._zone.visible:
+			t.tap()
+		t.tick(0.016)
 	check(t.phase == "done", "the match ends (%s, wins %d losses %d)" % ["won" if t.won else "lost", Meet.wins, Meet.losses])
 	check(not Meet.chalked, "the chalk is used up by the pull")
+	await shot("08b_result")
+	await wait(0.2)
+	await shot("08c_pinned")
 	t._close()
 
 	# The public.
@@ -149,18 +194,18 @@ func _run() -> void:
 		pas.interact()
 		check(Meet.menu.active(), "you can stop a passer-by to talk")
 		Meet.menu.close()
-		pas.mind.experience("gift", 0.9, 3.0)
-		pas.mind.experience("talk", 0.9, 3.0)
 		pas.interact()
-		Meet.menu._invite()
+		Meet.menu._pitches()
+		Meet.menu._pitch({"key": pas.def["likes"], "say": "the right line"})
 		if Meet.table.active():
-			for i in 4000:
+			for i in 6000:
 				if t.phase == "done":
 					break
-				t.pulling = t.phase == "go" and t.grip > 0.25
-				t.tick(0.05)
+				if t.phase == "go" and absf(t.pos - t.zone) < t.width * 0.3 and t._zone.visible:
+					t.tap()
+				t.tick(0.016)
 			t._close()
-			check(pas.recruited and Meet.recruits == 1, "a passer-by talked into a pull says they'll come back")
+			check(pas.recruited and pas.guest and Meet.recruits == 1, "the right line talks a stranger into a pull, and they stay for the meet")
 		else:
 			Meet.menu.close()
 			print("  note  the passer-by said no this time")
@@ -170,6 +215,8 @@ func _run() -> void:
 	kelvin.state = "idle"
 	stand(kelvin.global_position + Vector3(0, 0, 1.4), kelvin.global_position)
 	var fk: float = kelvin.mind.feeling()
+	Meet.stamina = 100.0
+	p._cooldown = 0.0
 	p.slap()
 	await wait(0.3)
 	check(kelvin.state == "scrap" and kelvin.mind.feeling() < fk, "punch someone and they come for you")
@@ -180,6 +227,7 @@ func _run() -> void:
 			break
 		stand(kelvin.global_position + Vector3(0, 0, 1.4), kelvin.global_position)
 		p._cooldown = 0.0
+		Meet.stamina = 100.0
 		p.slap()
 		await wait(0.2)
 	check(kelvin.state == "winded", "enough of that and they sit down winded")
@@ -198,10 +246,16 @@ func _run() -> void:
 		stand(al[0].global_position + Vector3(0, 0, 1.3), al[0].global_position)
 		p._cooldown = 0.0
 		p._down = 0.0
+		Meet.stamina = 100.0
 		p.slap()
 		await wait(0.15)
 	await wait(1.0)
-	check(Meet.owned.has("antennae"), "seeing them off earns the antennae")
+	var got := false
+	for n in get_tree().get_nodes_in_group("interact"):
+		if n.has_method("prompt") and n.prompt().begins_with("Pick up: Alien"):
+			n.interact()
+			got = true
+	check(got and Meet.owned.has("antennae"), "the visitors leave something behind to pick up")
 	Meet.wear("antennae")
 	Meet.hud.toggle_bag()
 	await wait(0.3)
@@ -211,6 +265,22 @@ func _run() -> void:
 	await wait(0.2)
 	await shot("13_notes")
 	Meet.menu.close()
+
+	# Other things from the sky.
+	Meet.main.start_gulls()
+	await wait(4.0)
+	stand(Meet.main.SNACKS + Vector3(-3.5, 0, 3.5), Meet.main.SNACKS)
+	await wait(0.5)
+	await shot("14_gulls")
+	stand(Meet.main.SNACKS + Vector3(0, 0, 1.5), Meet.main.SNACKS)
+	await wait(1.0)
+	check(Meet.main._gulls_off, "running at the seagulls sees them off")
+	Meet.main.start_drone()
+	await wait(11.5)
+	stand(Meet.main._drone_to + Vector3(0, 0, 4), Meet.main._drone_to)
+	await wait(0.4)
+	await shot("15_drone")
+	check(Meet.main._drone_t < 0.0, "the drone comes down")
 
 	# Remembered.
 	Meet.save()

@@ -5,6 +5,7 @@ const Character = preload("res://scripts/character.gd")
 const Asia = preload("res://scripts/asia.gd")
 const Build = preload("res://scripts/build.gd")
 const Fx = preload("res://scripts/fx.gd")
+const Wear = preload("res://scripts/wear.gd")
 
 const WALK := 4.2
 const RUN := 7.0
@@ -69,6 +70,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 		jump()
 	elif ev.is_action_pressed("chalk"):
 		throw_chalk()
+	elif ev.is_action_pressed("eat"):
+		Meet.eat()
 	elif ev.is_action_pressed("bag"):
 		Meet.hud.toggle_bag()
 	elif ev.is_action_pressed("photo"):
@@ -79,16 +82,27 @@ func use() -> void:
 		target.interact()
 
 func jump() -> void:
-	if _jump <= 0.0 and _down <= 0.0:
+	if _jump <= 0.0 and _down <= 0.0 and Meet.stamina >= 8.0:
+		Meet.stamina -= 8.0
 		_jump_v = 5.6
+
+## Play a one-off movement: reaching for a snack, kneeling at a bag.
+func act(anim: String, seconds: float) -> void:
+	_hold = seconds
+	Character.play(_figure, anim, true)
 
 ## A slap, a shove, a swing of whatever you're holding. Nobody gets hurt. People do get cross.
 func slap() -> void:
 	if _cooldown > 0.0 or Meet.modal or _down > 0.0:
 		return
+	if Meet.stamina < 10.0:
+		Meet.hud.float_text("out of breath")
+		return
+	Meet.stamina -= 10.0
 	_cooldown = 0.55
-	_hold = 0.45
-	Character.play(_figure, "Punch_Cross", true)
+	_hold = 0.6
+	# Whatever is in your hand gets swung like it is meant to be swung.
+	Character.play(_figure, "Sword_Attack" if Meet.worn["hand"] != "" else "Punch_Cross", true)
 	var fwd := -global_transform.basis.z
 	var best: Node3D = null
 	var bd := 99.0
@@ -147,7 +161,7 @@ func slapped(amount: float, from: Vector3, by: Node) -> void:
 	Meet.composure -= amount
 	var away := global_position - from
 	away.y = 0
-	_push += away.normalized() * 5.0
+	_push += away.normalized() * 1.2
 	Meet.hud.shake()
 	Meet.touch_state()
 	if Meet.composure <= 0.0:
@@ -163,79 +177,7 @@ func _dress() -> void:
 	if Meet.worn == _worn:
 		return
 	_worn = Meet.worn.duplicate()
-	var skel: Skeleton3D = _figure.find_child("Skeleton3D", true, false)
-	for slot in ["hand", "head", "body"]:
-		var old := skel.get_node_or_null("Worn_" + slot)
-		if old:
-			skel.remove_child(old)
-			old.queue_free()
-		var item: String = _worn[slot]
-		if item == "":
-			continue
-		var ba := BoneAttachment3D.new()
-		ba.name = "Worn_" + slot
-		ba.bone_name = {"hand": "hand_r", "head": "Head", "body": "spine_03"}[slot]
-		skel.add_child(ba)
-		var m := _model(item)
-		ba.add_child(m)
-		if slot == "hand":
-			m.rotation.x = PI / 2.0
-			m.position = Vector3(0, 0.1, 0.03)
-
-## The things you can win. Built from simple shapes, like everything worth owning.
-func _model(item: String) -> Node3D:
-	var n := Node3D.new()
-	match item:
-		"foam_finger":
-			Build.box(n, Vector3(0.3, 0.42, 0.1), Vector3(0, 0.25, 0), Color(0.15, 0.35, 0.95))
-			Build.box(n, Vector3(0.1, 0.5, 0.1), Vector3(0.02, 0.68, 0), Color(0.15, 0.35, 0.95))
-			Asia.quad(n, Vector2(0.22, 0.22), Vector3(0, 0.26, 0.052), 0.0, "ui/emblem.png", true)
-		"rubber_chicken":
-			Build.sphere(n, 0.11, Vector3(0, 0.2, 0), Color(1.0, 0.85, 0.2)).scale = Vector3(1, 2.2, 1)
-			Build.sphere(n, 0.08, Vector3(0, 0.5, 0.02), Color(1.0, 0.85, 0.2))
-			Build.box(n, Vector3(0.03, 0.08, 0.1), Vector3(0, 0.6, 0.02), Color(0.9, 0.1, 0.1))
-			Build.cyl(n, 0.0, 0.03, 0.09, Vector3(0, 0.5, 0.11), Color(1.0, 0.5, 0.1), 5).rotation.x = PI / 2.0
-		"pool_noodle":
-			Build.cyl(n, 0.05, 0.05, 1.5, Vector3(0, 0.6, 0), Color(0.2, 0.85, 0.9), 8)
-		"katana_88":
-			Build.box(n, Vector3(0.06, 0.95, 0.015), Vector3(0, 0.55, 0), Color(0.72, 0.6, 0.42))
-			Build.box(n, Vector3(0.18, 0.03, 0.05), Vector3(0, 0.07, 0), Color(0.93, 0.72, 0.28), false, 0.3)
-			Build.cyl(n, 0.022, 0.022, 0.18, Vector3(0, -0.03, 0), Color(0.6, 0.1, 0.1), 6)
-		"cone":
-			Build.cyl(n, 0.03, 0.2, 0.46, Vector3(0, 0.36, 0), Color(1.0, 0.45, 0.1), 10)
-			Build.cyl(n, 0.11, 0.14, 0.08, Vector3(0, 0.36, 0), Color(0.95, 0.95, 0.95), 10)
-		"chef_hat":
-			Build.cyl(n, 0.15, 0.15, 0.2, Vector3(0, 0.26, 0), Color(0.97, 0.97, 0.97), 10)
-			Build.sphere(n, 0.19, Vector3(0, 0.42, 0), Color(0.97, 0.97, 0.97))
-		"antennae":
-			for sx in [-1.0, 1.0]:
-				Build.cyl(n, 0.01, 0.015, 0.32, Vector3(sx * 0.08, 0.34, 0), Color(0.3, 0.9, 0.4), 4)
-				Build.sphere(n, 0.045, Vector3(sx * 0.08, 0.52, 0), Color(1.0, 0.4, 0.9), 1.5)
-		"lion_mask":
-			Build.box(n, Vector3(0.3, 0.32, 0.04), Vector3(0, 0.05, 0.19), Color(0.93, 0.72, 0.28))
-			for sx in [-1.0, 1.0]:
-				Build.sphere(n, 0.07, Vector3(sx * 0.14, 0.22, 0.18), Color(0.93, 0.72, 0.28))
-				Build.box(n, Vector3(0.06, 0.03, 0.05), Vector3(sx * 0.07, 0.09, 0.2), Color(0.1, 0.08, 0.06))
-			Build.box(n, Vector3(0.08, 0.05, 0.06), Vector3(0, 0.0, 0.21), Color(0.75, 0.2, 0.15))
-		"belt":
-			Build.box(n, Vector3(0.5, 0.12, 0.32), Vector3(0, -0.26, 0.0), Color(0.3, 0.2, 0.12))
-			Build.box(n, Vector3(0.2, 0.17, 0.03), Vector3(0, -0.26, 0.17), Color(0.93, 0.72, 0.28), false, 0.4)
-		"strap_scarf":
-			var cols := [Color(0.9, 0.15, 0.15), Color(0.93, 0.72, 0.28), Color(0.2, 0.5, 0.95), Color(0.15, 0.6, 0.3)]
-			for i in 4:
-				Build.box(n, Vector3(0.34 - i * 0.02, 0.05, 0.3), Vector3(0, 0.3 - i * 0.05, 0.0), cols[i])
-			Build.box(n, Vector3(0.07, 0.4, 0.03), Vector3(0.1, 0.02, 0.16), cols[0])
-			Build.box(n, Vector3(0.07, 0.32, 0.03), Vector3(-0.08, 0.06, 0.16), cols[2])
-		"clipboard":
-			Build.box(n, Vector3(0.26, 0.36, 0.02), Vector3(0, 0.22, 0), Color(0.45, 0.3, 0.18))
-			Build.box(n, Vector3(0.22, 0.3, 0.01), Vector3(0, 0.21, 0.015), Color(0.96, 0.96, 0.92))
-			Build.box(n, Vector3(0.1, 0.04, 0.03), Vector3(0, 0.39, 0.015), Color(0.7, 0.7, 0.72))
-		"ghost":
-			Build.cyl(n, 0.3, 0.5, 1.2, Vector3(0, -0.25, 0), Color(0.97, 0.97, 0.97), 12)
-		"medal":
-			Build.box(n, Vector3(0.03, 0.2, 0.01), Vector3(0, 0.02, 0.16), Color(0.2, 0.4, 0.9))
-			Build.cyl(n, 0.05, 0.05, 0.012, Vector3(0, -0.1, 0.16), Color(0.93, 0.72, 0.28), 10).rotation.x = PI / 2.0
-	return n
+	Wear.dress(_figure, _worn)
 
 func _process(dt: float) -> void:
 	_cooldown = max(0.0, _cooldown - dt)
@@ -263,7 +205,9 @@ func _physics_process(dt: float) -> void:
 		rotation.y += 1.8 * dt
 	if Input.is_key_pressed(KEY_RIGHT):
 		rotation.y -= 1.8 * dt
-	var pace := RUN if Input.is_action_pressed("sprint") or Meet.stick.length() > 0.9 else WALK
+	var running: bool = (Input.is_action_pressed("sprint") or Meet.stick.length() > 0.9) and dir.length() > 0.1 and Meet.stamina > 1.0
+	var pace := RUN if running else WALK
+	Meet.stamina = clamp(Meet.stamina + (-13.0 if running else 11.0) * dt, 0.0, 100.0)
 	var move := (transform.basis * Vector3(dir.x, 0, dir.y)) * pace
 	velocity = Vector3(move.x + _push.x, 0, move.z + _push.z)
 	_push = _push.lerp(Vector3.ZERO, min(1.0, dt * 7.0))

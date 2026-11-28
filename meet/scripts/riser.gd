@@ -8,6 +8,7 @@ const Character = preload("res://scripts/character.gd")
 const Mind = preload("res://scripts/mind.gd")
 const People = preload("res://scripts/people.gd")
 const Fx = preload("res://scripts/fx.gd")
+const Wear = preload("res://scripts/wear.gd")
 
 const WALK := 1.5
 
@@ -29,6 +30,13 @@ var strap_known_gone := false   # they have looked in their bag and it isn't the
 var saw_theft := {}             # whose strap they watched the player take
 var passer := false
 var recruited := false
+var guest := false               # a passer-by who stayed for the meet
+var guest_ready := false         # talked into their first pull
+var bet := false                 # a snack is riding on the next pull with the player
+var done_topics := {}
+var _convo := {}
+var _pitched := 0
+var _insulted := 0
 var calling := 0.0              # seconds left on an open challenge to the player
 var composure := 100.0
 
@@ -169,7 +177,7 @@ func bond_text() -> String:
 	return {"gone": "wants nothing to do with you", "irritated": "is fed up with you", "known": "knows you", "mates": "counts you a mate", "close": "would back you in anything"}[bond()]
 
 func is_free() -> bool:
-	return state in ["idle", "walk", "watch", "sit", "chat", "snack", "quirk"] and not alien and not passer
+	return state in ["idle", "walk", "watch", "sit", "chat", "snack", "quirk", "huddle"] and not alien and not passer
 
 func has_strap() -> bool:
 	return not Meet.straps.has(id)
@@ -183,6 +191,8 @@ func at_table() -> bool:
 	return state == "pull"
 
 func idle() -> void:
+	Wear.drop(_figure)
+	_convo = {}
 	if passer:
 		state = "pass"
 		return
@@ -212,7 +222,7 @@ func _process(dt: float) -> void:
 		_alien(dt)
 		return
 	calling = max(0.0, calling - dt)
-	if is_riser:
+	if is_riser or guest:
 		for k in needs:
 			needs[k] = min(1.5, needs[k] + float(life.get(k, 0.5)) * float(tonight.get(k, 1.0)) * dt / 45.0)
 	_notice()
@@ -228,12 +238,19 @@ func _process(dt: float) -> void:
 		"prep":
 			# Rummaging in the bag for the strap, or chalking up.
 			_timer -= dt
-			Character.play(_figure, "Interact")
+			Character.play(_figure, _qanim)
 			if _timer <= 0.0:
+				if _then == "bag":
+					# The strap comes out of the bag in their hand.
+					var st := Node3D.new()
+					Build.box(st, Vector3(0.05, 0.3, 0.02), Vector3(0, 0.02, 0.03), def.get("strap", Color.WHITE))
+					Wear.hold(_figure, st)
 				_next_leg()
 		"pull":
 			_look(_face_at, 0.2)
-			Character.play(_figure, "Sword_Idle")
+			Character.play(_figure, "Idle")
+		"huddle":
+			_huddle(dt)
 		"quirk":
 			_timer -= dt
 			_qbark -= dt
@@ -249,8 +266,18 @@ func _process(dt: float) -> void:
 		"pass":
 			_pass(dt)
 		"snack":
+			# Reach for one off the table, then stand there eating it.
 			_timer -= dt
-			Character.play(_figure, "Interact")
+			if _timer > 3.2:
+				Character.play(_figure, "PickUp_Table")
+				_look(Meet.main.SNACKS, 0.2)
+			else:
+				if _phase != "eating":
+					_phase = "eating"
+					var sn := Node3D.new()
+					Build.box(sn, Vector3(0.1, 0.14, 0.05), Vector3(0, 0.08, 0.03), [Color(0.9, 0.3, 0.2), Color(0.95, 0.8, 0.3), Color(0.3, 0.6, 0.9)][randi() % 3])
+					Wear.hold(_figure, sn)
+				Character.play(_figure, "Idle_Talking")
 			if _timer <= 0.0:
 				say_aloud(People.EATING[randi() % People.EATING.size()])
 				idle()
@@ -265,7 +292,7 @@ func _process(dt: float) -> void:
 			_timer -= dt
 			_look(_face_at, 0.1)
 			Character.play(_figure, "Idle")
-			if _timer <= 0.0 or not Meet.main.match_on():
+			if _timer <= 0.0:
 				idle()
 		"sit":
 			_timer -= dt
@@ -289,7 +316,7 @@ func _process(dt: float) -> void:
 ## build at their own rates, and tonight's twist bends them, so no two nights run the same.
 func _choose() -> void:
 	var main: Node3D = Meet.main
-	if not is_riser:
+	if not is_riser and not guest:
 		idle()
 		return
 	var best := "talk"
@@ -312,6 +339,8 @@ func _choose() -> void:
 		"eat":
 			_go(main.SNACKS + Vector3(randf_range(-1.0, 1.0), 0, 1.0), "snack")
 		"talk":
+			if is_riser and randf() < 0.7 and _start_huddle():
+				return
 			var others: Array = Meet.risers.filter(func(r): return r != self and (r.state == "idle" or (r.passer and r.state == "watch")))
 			if others.is_empty():
 				_watch(main)
@@ -426,7 +455,7 @@ func go_pull(seat: Vector3, table_at: Vector3) -> void:
 	_seat = seat
 	_face_at = table_at
 	_legs = ["chalk", "seat"]
-	if not strap_known_gone:
+	if is_riser and not strap_known_gone:
 		_legs.push_front("bag")
 	state = "to_table"
 	_next_leg()
@@ -466,7 +495,9 @@ func _arrive() -> void:
 		"bag":
 			if has_strap():
 				state = "prep"
-				_timer = 1.0
+				_qanim = "Fixing_Kneeling"
+				_look(Meet.main._bags[id]["at"], 1.0)
+				_timer = 1.8
 			else:
 				Meet.main.drop_match(self)
 				strap_known_gone = true
@@ -478,6 +509,8 @@ func _arrive() -> void:
 				say_aloud(People.STRAP_HUNT[0])
 		"chalk":
 			state = "prep"
+			_qanim = "Interact"
+			_look(Meet.main.CHALK, 1.0)
 			_timer = 1.3
 			Fx.burst(Meet.main, global_position + Vector3(0, 1.1, 0), Vector3.UP, false, 5)
 		"quirk":
@@ -506,11 +539,15 @@ func _arrive() -> void:
 				idle()
 		"gawk":
 			state = "watch"
-			_face_at = Vector3(0, 0, 0)
-			_timer = randf_range(18.0, 40.0)
+			if passer:
+				_face_at = Vector3(0, 0, 0)
+			_timer = randf_range(18.0, 40.0) if passer else randf_range(5.0, 9.0)
 		"snack":
 			state = "snack"
-			_timer = randf_range(3.0, 5.0)
+			_phase = ""
+			_timer = randf_range(4.4, 6.5)
+		"huddle":
+			state = "huddle"
 		"watch":
 			state = "watch"
 			_timer = randf_range(8.0, 16.0)
@@ -526,6 +563,7 @@ func _arrive() -> void:
 					say_aloud(["You should have a go.", "We're here every month.", "It's all technique, honestly."][randi() % 3])
 					_partner.say_aloud(_partner.def["chat"][randi() % 3], 5.0)
 				else:
+					Meet.bump(id, _partner.id, 0.04)
 					_partner.state = "chat"
 					_partner._partner = self
 					_partner._timer = _timer
@@ -619,7 +657,7 @@ func take_hit(dmg: int, from: Vector3) -> void:
 	composure -= dmg
 	var away := global_position - from
 	away.y = 0
-	_knock += away.normalized() * (3.5 + dmg * 0.12)
+	_knock += away.normalized() * 0.6   # a stagger, not a flight
 	Character.play(_figure, "Hit_Chest", true)
 	Fx.tint(_figure, Color(1.0, 0.95, 0.5, 0.5), 0.1)
 	say_aloud(["Oof!", "Hey!", "Ow!", "Oi!"][randi() % 4], 1.2)
@@ -636,12 +674,13 @@ func take_hit(dmg: int, from: Vector3) -> void:
 		Meet.main.public_hit(self)
 		return
 	if state != "scrap":
+		Meet.main.defend(self, "punch")
+		Meet.main.stir(global_position, ["Whoa, whoa!", "Not at the meet!", "Break it up!", "Did you see that?"], 14.0, 0.7, true)
 		# Hit out of nowhere: everyone watching thinks less of the player for it.
 		mind.experience("scrap", -0.8, 2.5, true, riser_name)
 		for r in Meet.risers:
 			if r != self and r.is_riser and r.global_position.distance_to(global_position) < 9.0:
 				r.mind.experience("scrap", -0.4, 1.0, false, riser_name)
-				r.say_aloud(["Whoa, whoa!", "Not at the meet!", "Break it up!"][randi() % 3])
 		square_up()
 	if composure <= 0.0:
 		_go_down()
@@ -819,6 +858,7 @@ func caught_with_strap() -> void:
 	Meet.main.strap_back(id)
 	mind.experience("theft", -0.7, 2.0, true, "my strap")
 	say_aloud("That's MY strap. Hand it over.", 4.0)
+	Meet.main.stir(global_position, ["Ooh.", "Busted.", "In his BAG?", "Not cool."], 12.0, 0.6, false)
 	Meet.say("%s takes the strap back off you. That did not go unnoticed." % riser_name)
 	Meet.touch_state()
 	if mind.feeling() < -0.45:
@@ -851,7 +891,9 @@ func dusted(by: Node) -> void:
 	Fx.burst(Meet.main, global_position + Vector3(0, 1.5, 0), Vector3.UP, false, 10)
 	if by != Meet.player:
 		say_aloud("%s!" % by.first_name.to_upper(), 2.5)
+		Meet.bump(id, by.id, -0.08 if mind.grudge > 0.95 else 0.03)
 		return
+	Meet.main.defend(self, "chalk")
 	Meet.dusted += 1
 	if Meet.dusted >= 5:
 		Meet.grant("ghost")
@@ -905,3 +947,248 @@ func bolt(pace: float) -> void:
 	_stops = false
 	_pace = max(_pace, 1.4) * pace
 	state = "pass"
+
+# --- Standing about talking ---------------------------------------------------------------
+
+## Gather two or three people into a circle for a conversation of their own.
+func _start_huddle() -> bool:
+	var free := func(r): return r.is_riser and r.state in ["idle", "watch", "sit"] and r != self
+	var lines: Array = []
+	var members: Array = [self]
+	var b := bond()
+	if b in ["irritated", "gone"] or (b == "close" and randf() < 0.4):
+		var o: Array = Meet.risers.filter(free)
+		if o.is_empty():
+			return false
+		members.append(o[randi() % o.size()])
+		lines = People.ABOUT_YOU if b != "close" else People.ABOUT_YOU_GOOD
+		var news: Dictionary = mind.gossip()
+		if not news.is_empty():
+			members[1].mind.hear(news)
+	else:
+		var pool: Array = People.CONVOS.duplicate()
+		pool.shuffle()
+		for c in pool:
+			var who: Array = c["who"]
+			if not who.has(id) and not who.has("any"):
+				continue
+			var cast: Array = []
+			var others: Array = Meet.risers.filter(free)
+			others.shuffle()
+			var me_placed := false
+			var ok := true
+			for w in who:
+				if w == id:
+					cast.append(self)
+					me_placed = true
+				elif w == "any":
+					if not me_placed and not who.has(id):
+						cast.append(self)
+						me_placed = true
+					elif others.is_empty():
+						ok = false
+					else:
+						cast.append(others.pop_back())
+				else:
+					var named: Node = Meet.riser(w)
+					if named == null or not free.call(named):
+						ok = false
+					else:
+						others.erase(named)
+						cast.append(named)
+			if ok and me_placed:
+				members = cast
+				lines = c["lines"]
+				break
+		if lines.is_empty():
+			return false
+	var at: Vector3 = global_position
+	for m in members:
+		at += m.global_position
+	at = Meet.main.clear(at / (members.size() + 1))
+	var convo := {"who": members, "lines": lines, "i": 0, "t": 1.0, "wait": 12.0, "at": at, "lead": self}
+	for i in members.size():
+		var a := TAU * i / members.size() + randf() * 0.3
+		var m: Node3D = members[i]
+		m._convo = convo
+		m._partner = null
+		m._go(at + Vector3(cos(a), 0, sin(a)) * 0.95, "huddle")
+		m._convo = convo
+	return true
+
+func _huddle(dt: float) -> void:
+	if _convo.is_empty():
+		idle()
+		return
+	_look(_convo["at"], 0.12)
+	var i: int = _convo["i"]
+	var lines: Array = _convo["lines"]
+	var who: Array = _convo["who"]
+	var talking: bool = i > 0 and i <= lines.size() and who[lines[i - 1][0]] == self
+	Character.play(_figure, "Idle_Talking" if talking else "Idle")
+	if _convo["lead"] != self:
+		return
+	# Whoever started it keeps it moving.
+	var here := 0
+	for m in who:
+		if is_instance_valid(m) and m.state == "huddle" and m._convo == _convo:
+			here += 1
+		elif not is_instance_valid(m) or not (m.state == "walk" and m._convo == _convo):
+			_end_huddle()
+			return
+	_convo["wait"] -= dt
+	if here < who.size():
+		if _convo["wait"] <= 0.0:
+			_end_huddle()
+		return
+	_convo["t"] -= dt
+	if _convo["t"] > 0.0:
+		return
+	if i >= lines.size():
+		_end_huddle()
+		return
+	who[lines[i][0]].say_aloud(lines[i][1], 3.0)
+	if i == 0:
+		for m in who:
+			for o in who:
+				if m.id < o.id:
+					Meet.bump(m.id, o.id, 0.05)
+	_convo["i"] = i + 1
+	_convo["t"] = 3.1
+
+func _end_huddle() -> void:
+	var c := _convo
+	for m in c.get("who", []):
+		if is_instance_valid(m) and m._convo == c and m.state in ["huddle", "walk"]:
+			m.idle()
+
+# --- What gets said to them ---------------------------------------------------------------
+
+## The first thing out of their mouth on a later visit: the strongest thing they remember.
+func memory_line() -> String:
+	if Meet.flags.has(id) and not Meet.flags[id].is_empty():
+		for k in Meet.flags[id]:
+			if k.ends_with("_dig") or k in ["sore", "called_cheat", "weaker_brother", "beard_tug", "snitch"]:
+				return People.REMEMBER["insult-"]
+	var best := {}
+	var score := 0.0
+	for m in mind.memories:
+		var sc: float = absf(m["valence"]) * float(m.get("weight", 1.0))
+		if sc > score and m.get("firsthand", true):
+			score = sc
+			best = m
+	if best.is_empty():
+		return ""
+	return People.REMEMBER.get("%s%s" % [best["kind"], "+" if best["valence"] > 0.0 else "-"], "")
+
+## The player says something unkind. Most of it bounces off. One thing doesn't.
+func insult(key: String) -> String:
+	_insulted += 1
+	Meet.heckles += 1
+	if Meet.heckles >= 5:
+		Meet.grant("rubber_chicken")
+	Meet.main.defend(self, "insult")
+	if People.SORE.get(id, "") == key:
+		mind.experience("heckle", -0.95, 2.5, true, riser_name)
+		Meet.flag(id, "sore")
+		for r in Meet.risers:
+			if r != self and r.is_riser and r.global_position.distance_to(global_position) < 8.0:
+				r.mind.experience("heckle", -0.35, 0.8, false, riser_name)
+				r.say_aloud(People.TOO_FAR[randi() % People.TOO_FAR.size()], 3.0)
+		var line: String = People.SORE_REPLY[key][randi() % 2]
+		Meet.menu.close()
+		say_aloud(line, 4.0)
+		square_up()
+		return ""
+	mind.experience("heckle", -0.3, 0.8, true, riser_name)
+	if passer:
+		if _insulted >= 2:
+			Meet.menu.close()
+			say_aloud("Right. I'm going.")
+			bolt(1.6)
+			return ""
+		return ["Excuse me?", "I'm just walking here.", "Do I know you?"][randi() % 3]
+	if _insulted >= 3 or mind.feeling() < -0.45:
+		Meet.menu.close()
+		square_up()
+		return ""
+	return People.SHRUG[key][randi() % 2]
+
+## The player tries a line on a stranger. Returns [did it work, what they said].
+func pitch(key: String) -> Array:
+	_pitched += 1
+	if def.get("likes", "") == key or mind.feeling() + randf() * 0.4 > 0.6:
+		guest_ready = true
+		return [true, People.PITCH_YES[key]]
+	mind.experience("nagged", -0.15, 0.5)
+	if _pitched >= 3:
+		Meet.menu.close()
+		say_aloud("I said no. Goodnight.")
+		bolt(1.5)
+		return [false, ""]
+	return [false, People.PITCH_NO[randi() % People.PITCH_NO.size()]]
+
+## A passer-by who has had a pull stays on as one of the crowd.
+func join_meet() -> void:
+	passer = false
+	guest = true
+	guest_ready = false
+	life = {"pull": 1.2, "eat": 0.7, "talk": 0.3, "rest": 0.4, "quirk": 0.0}
+	wants_pull = true
+	state = "idle"
+	_timer = 3.0
+
+func after_pull(player_won: bool) -> void:
+	if not bet:
+		return
+	bet = false
+	if player_won:
+		Meet.snacks += 1
+		mind.experience("match", 0.3, 0.8)
+		say_aloud("A bet's a bet. Here. Don't gloat.", 4.0)
+		Meet.say("%s hands over a snack." % first_name)
+	else:
+		Meet.snacks = max(0, Meet.snacks - 1)
+		say_aloud("That's my snack, I believe.", 4.0)
+		Meet.say("%s takes a snack off you. A bet's a bet." % first_name)
+
+# --- Each other ---------------------------------------------------------------------------
+
+## Their closest friend among the founders, and how close.
+func best_mate() -> Array:
+	var best: Node = null
+	var v := -2.0
+	for r in Meet.risers:
+		if r != self and r.is_riser and Meet.tie(id, r.id) > v:
+			v = Meet.tie(id, r.id)
+			best = r
+	return [best, v]
+
+## Something worth looking at is happening over there.
+func gawp(at: Vector3, line: String, gather: bool) -> void:
+	if state in ["pull", "to_table", "prep", "scrap", "winded", "flee", "search", "pass"] and not (state == "pass" and gather):
+		if state == "pull":
+			say_aloud(line, 2.5)
+		return
+	say_aloud(line, 3.0)
+	_face_at = at
+	if gather and global_position.distance_to(at) > 4.5 and not passer:
+		var to := (global_position - at).normalized()
+		_go(at + to * randf_range(3.2, 4.2), "gawk")
+		_timer = 0.0
+	else:
+		state = "watch"
+		_timer = randf_range(5.0, 9.0)
+
+## A friend is being picked on. Step in, with words or with more than words.
+func stand_up_for(victim: Node, kind: String, closeness: float) -> void:
+	mind.experience("scrap" if kind == "punch" else "heckle", -0.45, 1.2, false, victim.riser_name)
+	Meet.bump(id, victim.id, 0.08)
+	var lines := {"punch": ["Hey! Hands off %s!", "You touch %s, you deal with me."], "chalk": ["Oi. Leave %s alone.", "Pick on someone else. Not %s."], "insult": ["Don't talk to %s like that.", "Say that about %s again."]}
+	say_aloud(lines[kind][randi() % 2] % victim.first_name, 4.5)
+	if kind == "punch" and (closeness > 0.55 or mind.feeling() < -0.3):
+		square_up()
+	else:
+		_face_at = Meet.player.global_position
+		var to: Vector3 = (victim.global_position - Meet.player.global_position).normalized()
+		_go(victim.global_position + to.rotated(Vector3.UP, 0.9) * 1.1, "gawk")
