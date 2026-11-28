@@ -214,6 +214,7 @@ func _run_bracket(dt: float) -> void:
 			Meet.bracket = "none"
 			return
 		Meet.sfx("whistle")
+		Meet.hud.banner("THE SIX O'CLOCK BRACKET", "Semi-finals. Money on the tables, please.")
 		var harry: Node = Meet.riser("harry")
 		if harry:
 			harry.say_aloud("SIX O'CLOCK BRACKET! Semi-finals! Clear the tables!", 6.0)
@@ -311,6 +312,7 @@ func _run_photo(dt: float) -> void:
 	if _photo == "" and Meet.clock >= PHOTO_AT and Meet.bracket not in ["semi", "final"]:
 		_photo = "call"
 		_photo_t = 22.0
+		Meet.hud.banner("GROUP PHOTO", "Everyone on the steps. George has the camera.")
 		var george: Node = Meet.riser("george")
 		if george:
 			george.say_aloud("GROUP PHOTO! Everyone on the steps! NOW!", 6.0)
@@ -362,6 +364,7 @@ func _run_photo(dt: float) -> void:
 
 func _start_pack() -> void:
 	_pack = true
+	Meet.hud.banner("PACK-DOWN", "Carry a table, or stand very still.")
 	var harry: Node = Meet.riser("harry")
 	if harry:
 		harry.say_aloud("Right! Tables down! Many hands!", 6.0)
@@ -581,6 +584,7 @@ func _m_blackout() -> void:
 	for l in _lights:
 		l.visible = false
 	Meet.dark = 14.0
+	Meet.hud.banner("POWER CUT", "Nobody can see what anybody is doing.")
 	Meet.sfx("zap", -6.0, 0.5)
 	main.stir(Vector3(0, 0, 2), ["Who turned the lights off?", "George! The generator!", "Nobody move. Guard your straps.", "Ooooh."], 30.0, 0.8, false)
 	Meet.say("The festoon lights go out. For a quarter of a minute nobody can see what anybody is doing. Including you.")
@@ -660,6 +664,7 @@ func _m_possum() -> void:
 	Build.cyl(th, 0.015, 0.025, 0.4, Vector3(0, 0.1, -0.35), Color(0.3, 0.28, 0.27), 5).rotation.x = 1.4
 	_possum = th
 	_possum_t = 40.0
+	Meet.hud.banner("POSSUM", "On the snack table. Like it pays membership.")
 	th.setup("Offer the possum a snack", func():
 		if Meet.snacks <= 0:
 			Meet.say("The possum looks at your empty hands with open contempt.")
@@ -843,6 +848,7 @@ func _m_cyclist() -> void:
 	cyclist.add_child(bike)
 	cyclist.riding = true
 	_bike_state = "arriving"
+	Meet.hud.banner("A CYCLIST", "Eleven thousand dollars of bicycle, and he's going to leave it unattended.")
 	Meet.sfx("blip", 0.0, 1.6)
 	Meet.say("A cyclist in a great deal of lycra is coming along the foreshore, ringing a bell at nobody.")
 

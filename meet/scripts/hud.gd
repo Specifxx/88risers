@@ -28,6 +28,10 @@ var _cam_origin := Vector2.ZERO
 var _cam_vec := Vector2.ZERO
 var _cam_moved := 0.0
 var _cam_knob: Panel
+var _banner: PanelContainer
+var _banner_title: Label
+var _banner_text: Label
+var _banner_tw: Tween
 var _dares: VBoxContainer
 var _prompt: Label
 var _log: VBoxContainer
@@ -193,15 +197,45 @@ func float_text(t: String) -> void:
 	_float.modulate.a = 1.0
 	create_tween().tween_property(_float, "modulate:a", 0.0, 0.8)
 
+## A card across the top of the screen for the things worth stopping to read.
+func banner(title: String, text: String) -> void:
+	if _banner == null:
+		_banner = UI.panel(_root, Color(0.05, 0.04, 0.04, 0.88))
+		_banner.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+		_banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		_banner.offset_top = 150
+		_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var v := VBoxContainer.new()
+		_banner.add_child(v)
+		_banner_title = UI.text(v, "", 38, UI.GOLD)
+		_banner_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_banner_title.autowrap_mode = TextServer.AUTOWRAP_OFF
+		_banner_text = UI.text(v, "", 20)
+		_banner_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_banner_text.custom_minimum_size = Vector2(520, 0)
+	_banner_title.text = title
+	_banner_text.text = text
+	_banner_text.visible = text != ""
+	_banner.reset_size()
+	_banner.modulate.a = 1.0
+	_banner.scale = Vector2(1.15, 1.15)
+	_banner.pivot_offset = _banner.size / 2.0
+	if _banner_tw:
+		_banner_tw.kill()
+	_banner_tw = _banner.create_tween()
+	_banner_tw.tween_property(_banner, "scale", Vector2.ONE, 0.18)
+	_banner_tw.tween_interval(3.6)
+	_banner_tw.tween_property(_banner, "modulate:a", 0.0, 0.6)
+
 func _toast(t: String) -> void:
-	var l := UI.text(_log, t, 17)
+	var l := UI.text(_log, t, 19)
 	l.custom_minimum_size = Vector2(520, 0)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_shadow(l)
 	if _log.get_child_count() > 4:
 		_log.get_child(0).queue_free()
 	var tw := l.create_tween()
-	tw.tween_interval(7.0)
+	tw.tween_interval(9.0)
 	tw.tween_property(l, "modulate:a", 0.0, 1.2)
 	tw.tween_callback(l.queue_free)
 
@@ -273,6 +307,8 @@ func _build_touch() -> void:
 	_pad(_touch_ui, "JUMP", 92, Vector2(124, 292), func(): Meet.player.jump())
 	_pad(_touch_ui, "CHALK", 84, Vector2(232, 214), func(): Meet.player.throw_chalk())
 	_pad(_touch_ui, "ITEM", 84, Vector2(366, 150), func(): Meet.player.use_item())
+	_pad(_touch_ui, "THROW", 80, Vector2(372, 54), func(): Meet.player.throw_snack())
+	_pad(_touch_ui, "SHOUT", 80, Vector2(486, 100), func(): Meet.main.shout_menu(), Color(0.35, 0.1, 0.08, 0.65))
 	# Less-used things, small, up the right-hand edge.
 	var k := 0
 	for b in [["BAG", toggle_bag], ["EAT", Meet.eat], ["VIEW", func(): Meet.player.toggle_view()], ["PHOTO", photo], ["SOUND", func(): Meet.audio.set_muted(not Meet.muted)]]:
@@ -614,7 +650,7 @@ func _build_title() -> void:
 	if Meet.touch:
 		UI.text(v, "Left thumb moves, drag to look around, buttons on the right.", 16, Color(0.75, 0.72, 0.62))
 	else:
-		UI.text(v, "WASD move  ·  mouse look  ·  Shift run  ·  Space jump  ·  E talk or use  ·  click or F punch  ·  G throw chalk  ·  X use what's in your hand  ·  C look at yourself  ·  R eat a snack  ·  M sound  ·  Tab bag  ·  P photo  ·  Esc free the mouse", 16, Color(0.75, 0.72, 0.62))
+		UI.text(v, "WASD move  ·  mouse look  ·  Shift run  ·  Space jump  ·  E talk or use  ·  click or F punch  ·  G throw chalk  ·  X use what's in your hand  ·  C look at yourself  ·  V shout at everyone  ·  T throw a snack  ·  R eat a snack  ·  M sound  ·  Tab bag  ·  P photo  ·  Esc free the mouse", 16, Color(0.75, 0.72, 0.62))
 	var g: Dictionary = load("res://scripts/people.gd").GUESTS[Meet.week() % 5]
 	var f: Dictionary = load("res://scripts/people.gd").FINDS[Meet.week() % 4]
 	var wk := "This week: %s is visiting." % g["name"]

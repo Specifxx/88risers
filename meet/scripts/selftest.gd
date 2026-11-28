@@ -719,6 +719,44 @@ func _run() -> void:
 			r._vs_player = false
 			r.idle()
 
+	# Shouting, and throwing food.
+	for r in Meet.risers:
+		if r.is_riser:
+			r.idle()
+			r._vs_player = false
+			r.global_position = Meet.main.ground(Vector3(randf_range(-5, 5), 0, randf_range(2, 8)))
+	stand(Vector3(0, 0, 12), Vector3(0, 0, 4))
+	Meet.main._shout_cd = 0.0
+	Meet.main.shout("snacks", "FREE SNACKS AT THE GATE!")
+	await wait(1.2)
+	await shot("15i_shout")
+	var running := 0
+	for r in Meet.risers:
+		if r._then == "fooled":
+			running += 1
+	check(running >= 6, "shout about free snacks and the whole club runs for the gate (%d)" % running)
+	await wait(7.0)
+	await shot("15j_fooled")
+	Meet.heat = 0.0
+	Meet.snacks = 5
+	var tgt_r: Node3D = Meet.riser("tommy")
+	tgt_r.idle()
+	for i in 3:
+		stand(tgt_r.global_position + Vector3(0, 0, 3.0), tgt_r.global_position)
+		p._cooldown = 0.0
+		p.throw_snack()
+		await wait(0.7)
+	check(Meet.main.food_fight() and Meet.snacks == 2, "three thrown snacks start a food fight")
+	await wait(3.0)
+	stand(Vector3(0, 0, 13), Vector3(0, 0, 4))
+	await wait(1.5)
+	await shot("15k_foodfight")
+	Meet.main._fight = 0.1
+	await wait(0.6)
+	Meet.heat = 0.0
+	Meet.menu._forced = false
+	Meet.menu.close()
+
 	# Kit put down, ripples, the boom box.
 	Meet.owned["boom_box"] = true
 	Meet.worn["hand"] = "boom_box"

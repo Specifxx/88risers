@@ -68,6 +68,8 @@ var bracket := ""                # this pull is the player's bracket semi or fin
 var _chalk_t := 0.0
 var backing := false             # has agreed to watch your back tonight
 var _asked := {}
+var _pace_boost := 1.0
+var _shout_then := 0.0
 var lefts := false               # the next pull is left-handed: everyone is worse at it
 var _act_anim := ""
 var _act_t := 0.0
@@ -131,7 +133,14 @@ func setup(d: Dictionary, riser: bool, at: Vector3) -> void:
 			Build.cyl(self, 0.01, 0.015, 0.3, Vector3(sx * 0.08, 1.42, 0), Color(0.3, 0.9, 0.4), 4)
 			Build.sphere(self, 0.04, Vector3(sx * 0.08, 1.58, 0), Color(1.0, 0.4, 0.9), 1.5)
 	_name_label = Build.label(self, riser_name, 2.2 if d["id"] != "alien" else 1.75, Color(1, 0.95, 0.8) if riser else Color(0.8, 0.8, 0.82), 34 if riser else 26)
-	_bark = Build.label(self, "", 2.5 if d["id"] != "alien" else 2.0, Color(1.0, 0.9, 0.6), 30)
+	_bark = Build.label(self, "", 2.75 if d["id"] != "alien" else 2.2, Color(1.0, 0.93, 0.6), 44)
+	# Speech stays the same size on screen however far away they are, so it can be read.
+	_bark.fixed_size = true
+	_bark.pixel_size = 0.0011
+	_bark.outline_size = 14
+	_bark.width = 520.0
+	_bark.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_bark.no_depth_test = true
 	_bark.visible = false
 	_timer = randf_range(1.0, 6.0)
 	wallet = 10 + randi() % 4 * 5 if riser else 0
@@ -225,7 +234,7 @@ func portrait() -> String:
 func say_aloud(text: String, seconds := 3.0) -> void:
 	_bark.text = text
 	_bark.visible = true
-	_bark_time = seconds
+	_bark_time = max(seconds, 2.2) + text.length() * 0.035
 
 ## How things stand between them and the player.
 func bond() -> String:
@@ -329,7 +338,8 @@ func _process(dt: float) -> void:
 			if _timer <= 0.0:
 				_choose()
 		"walk", "to_table":
-			if _walk(dt, 1.0):
+			if _walk(dt, _pace_boost if state == "walk" else 1.0):
+				_pace_boost = 1.0
 				_arrive()
 		"prep":
 			# Rummaging in the bag for the strap, or chalking up.
@@ -679,6 +689,30 @@ func _arrive() -> void:
 			_timer = randf_range(4.4, 6.5)
 		"huddle":
 			state = "huddle"
+		"fooled":
+			state = "quirk"
+			_qanim = "Idle"
+			_qlines = []
+			_face_at = Vector3(0, 0, 30)
+			_timer = 4.0
+			mind.experience("nagged", -0.12, 0.5, true, riser_name)
+			say_aloud("...I've been to the gate. There is NOTHING at the gate. I'm coming back for whoever shouted." if id == "kelvin" else ["There's nothing here.", "Where are the snacks?", "Who shouted that?", "...We've been had.", "I ran for this."][randi() % 5], 4.5)
+		"hug":
+			state = "quirk"
+			_qanim = "Interact"
+			_qlines = []
+			_face_at = Meet.player.global_position
+			_timer = 3.0
+			if not _asked.has("hug"):
+				_asked["hug"] = true
+				mind.experience("talk", 0.3, 0.8, true, "the hug")
+		"raced":
+			Meet.main.race_arrival(self)
+			state = "quirk"
+			_qanim = "Idle"
+			_qlines = []
+			_face_at = Vector3(global_position.x, 0, 60)
+			_timer = 5.0
 		"swarm":
 			state = "quirk"
 			_qanim = "Punch_Cross"
@@ -751,6 +785,8 @@ func _notice() -> void:
 		return
 	_noticed = true
 	mind.met()
+	if _costume():
+		return
 	# First thing they notice is whatever ridiculous thing you have on.
 	var on: Array = []
 	for slot in Meet.worn:
@@ -1955,3 +1991,138 @@ func bowled(dir: Vector3) -> void:
 	Character.play(_figure, "Death01" if passer else "Crouch_Idle", true)
 	if is_riser:
 		Meet.main.defend(self, "punch")
+
+# --- What you're wearing changes how they take you ---------------------------------------------------
+
+func _costume() -> bool:
+	var head: String = Meet.worn["head"]
+	var body: String = Meet.worn["body"]
+	var p: Vector3 = Meet.player.global_position
+	if body == "ghost" and not _asked.has("ghost"):
+		_asked["ghost"] = true
+		_look(p, 1.0)
+		if mind.grudge < 1.0 or Meet.dark > 0.0 or Meet.clock > 600.0:
+			say_aloud(["AAAH! ...Oh. It's you. Don't DO that.", "GHOST! GHOST! ...It's a bedsheet.", "NOPE."][randi() % 3], 4.0)
+			gesture("Hit_Chest", 0.6)
+			_knock += (global_position - p).normalized() * 2.5
+			Meet.sfx("ooh", -6.0, 1.3)
+			Meet.dare("item")
+		else:
+			say_aloud("It's a sheet with holes in. I can see your shoes.", 4.0)
+		return true
+	if head == "cone" and not _asked.has("cone_seen"):
+		_asked["cone_seen"] = true
+		say_aloud(["Has anyone seen %s? There's just this cone." % Meet.you("the new one"), "Who left a cone here? ...It's breathing.", "Evening, cone."][randi() % 3], 4.5)
+		return true
+	if head == "lion_mask" and not _asked.has("lion") and randf() < 0.6:
+		_asked["lion"] = true
+		_look(p, 1.0)
+		gesture("Crouch_Idle", 1.6)
+		say_aloud(["The lion walks among us. *bows*", "All rise for the lion. Or, kneel. One of those.", "Your Majesty."][randi() % 3], 4.0)
+		return true
+	if head == "possum_hat" and not _asked.has("possum"):
+		_asked["possum"] = true
+		say_aloud(["There is a POSSUM on your HEAD.", "Don't move. Don't. Move. It's looking at me.", "Is it... asleep? Can I pat it?"][randi() % 3], 4.5)
+		return true
+	if head == "antennae" and passer and not _asked.has("ant"):
+		_asked["ant"] = true
+		say_aloud("ONE OF THEM IS STILL HERE!", 3.5)
+		bolt(2.2)
+		return true
+	return false
+
+# --- Being shouted at, and being hit with a snack ----------------------------------------------------
+
+## The player has bellowed something at the whole plaza. Each person takes it their own way.
+func shouted(kind: String, i: int) -> void:
+	if alien or state in ["winded", "scrap", "confront", "search", "ride"] or (state == "pull" and kind != "tables"):
+		return
+	Meet.main.drop_match(self) if kind == "tables" else null
+	var keen: bool = mood_level() >= 1 or mind.chatty > 0.6 or passer or guest
+	match kind:
+		"dance":
+			if keen:
+				gesture("Dance", 5.0)
+				if i < 3:
+					say_aloud(["Oh, we're DANCING!", "This is my song!", "Go on then!"][i % 3], 3.0)
+			elif i < 3:
+				say_aloud(["I don't dance.", "No.", "Who is shouting?"][i % 3], 3.0)
+		"snacks":
+			# Every last one of them goes to the gate. There are no snacks at the gate.
+			_convo = {}
+			_partner = null
+			_shout_then = 0.0
+			_go(Vector3(randf_range(-3.5, 3.5), 0, randf_range(21.0, 23.5)), "fooled")
+			_pace_boost = 2.3 if id == "kelvin" else 1.7
+			if id == "kelvin":
+				say_aloud("FREE SNACKS?! MOVE. MOVE!", 3.5)
+			elif i < 3:
+				say_aloud(["At the gate? Go go go.", "Free?!", "Save me one!"][i % 3], 3.0)
+		"tables":
+			idle()
+			say_aloud("I said NO SUCH THING!" if id == "harry" else ["Already? It's not seven.", "Harry said that?", "But I'm mid-pull!", "Fine by me."][i % 4], 4.0)
+		"hug":
+			if keen:
+				_go(Meet.player.global_position + Vector3(cos(i * 1.3), 0, sin(i * 1.3)) * 1.1, "hug")
+				if i < 3:
+					say_aloud(["Bring it in!", "Aww. Fine.", "Group hug!"][i % 3], 3.0)
+			elif i < 4:
+				say_aloud(["No.", "I'm good over here.", "We're not that kind of club.", "..."][i % 4], 3.0)
+		"spider":
+			if id == "phillip":
+				say_aloud("It's a leaf.", 4.0)
+			elif id == "luie":
+				say_aloud("...Where? I like spiders.", 4.0)
+			else:
+				gesture("Hit_Chest", 0.5)
+				_knock += Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized() * 4.0
+				if i < 5:
+					say_aloud(["WHERE?!", "GET IT OFF ME!", "Is it on me? IS IT ON ME?", "AAAH!", "I'm not good with spiders!"][i % 5], 3.0)
+		"race":
+			_convo = {}
+			_partner = null
+			_go(Vector3(randf_range(-12, 12), 0, 26.4), "raced")
+			_pace_boost = 1.3 + (strength - 60.0) / 40.0 + randf() * 0.5
+			if i < 3:
+				say_aloud(["I'm not a novice!", "You're on!", "GO GO GO"][i % 3], 2.5)
+
+## A snack, thrown at them.
+func splatted(by: Node) -> void:
+	if alien or state == "winded":
+		return
+	Fx.tint(_figure, Color(0.95, 0.75, 0.2, 0.55), 12.0)
+	Fx.burst(Meet.main, global_position + Vector3(0, 1.5, 0), Vector3.UP, false, 8)
+	Meet.sfx("crunch", -2.0, 0.8)
+	if by != Meet.player:
+		if not Meet.main.food_fight():
+			say_aloud(["Oi!", "Who threw that?!", "Right in the ear!"][randi() % 3], 2.0)
+		return
+	var n: int = _asked.get("splat", 0)
+	_asked["splat"] = n + 1
+	var fun: bool = (mood_level() >= 1 or mind.chatty > 0.6 or id == "kelvin") and n < 2
+	if id == "kelvin":
+		say_aloud("You THREW it? At ME? ...Waste of a red one. *eats it off his shirt*", 4.5)
+		mind.experience("gift", 0.1, 0.4)
+	elif fun:
+		say_aloud(["FOOD FIGHT!", "Oh, it's ON.", "You'll pay for that!"][randi() % 3], 3.0)
+		mind.experience("chalk", 0.2, 0.5)
+		throw_at(Meet.player)
+	else:
+		say_aloud(["This is a clean shirt!", "Did you just throw FOOD at me?", "Unbelievable."][randi() % 3], 3.5)
+		mind.experience("nagged", -0.3, 0.9, true, riser_name)
+		Meet.add_heat(0.3)
+		if passer:
+			bolt(1.6)
+
+## Lob something at someone.
+func throw_at(target: Node) -> void:
+	gesture("Punch_Jab", 0.5)
+	var from := global_position + Vector3(0, 1.5, 0)
+	var tgt := target
+	Meet.main.lob(from, tgt.global_position + Vector3(0, 1.4, 0), [Color(0.9, 0.3, 0.2), Color(0.95, 0.8, 0.3), Color(0.3, 0.6, 0.9)][randi() % 3], func():
+		if not is_instance_valid(tgt):
+			return
+		if tgt == Meet.player:
+			tgt.splatted()
+		else:
+			tgt.splatted(self))

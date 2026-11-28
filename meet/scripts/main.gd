@@ -962,6 +962,7 @@ func _process(dt: float) -> void:
 				break
 	_run_drone(dt)
 	_run_gulls(dt)
+	_run_food_fight(dt)
 	for i in TABLES.size():
 		var on := false
 		for m in _matches:
@@ -1117,6 +1118,7 @@ func start_ufo() -> void:
 	_ufo.add_child(beam)
 	beam.position = Vector3(0, -2, 0)
 	Meet.audio.loop("ufo", true, -12.0)
+	Meet.hud.banner("SOMETHING IN THE SKY", "It is not a drone. It is not Tommy.")
 	Meet.say("Everyone has stopped talking. Something is coming down over the water.")
 	for r in Meet.risers:
 		r.say_aloud(["What is THAT?", "Is that... no.", "Are you seeing this?", "..."][randi() % 4], 4.0)
@@ -1254,6 +1256,7 @@ func start_drone() -> void:
 	_drone_t = 0.0
 	var a := randf() * TAU
 	_drone_to = Vector3(cos(a) * 5.0, 0.3, sin(a) * 5.0 + 1.0)
+	Meet.hud.banner("INCOMING", "Somebody's drone, and it doesn't sound well.")
 	Meet.say("There's a whining noise. Somebody's drone is coming in over the water, and it doesn't sound well.")
 
 func _run_drone(dt: float) -> void:
@@ -1296,6 +1299,7 @@ func start_gulls() -> void:
 			wing.set_meta("side", sx)
 	_gulls_t = 0.0
 	_gulls_off = false
+	Meet.hud.banner("SEAGULLS", "They have seen the snack table.")
 	Meet.say("Seagulls. A lot of seagulls. They have seen the snack table.")
 	var kelvin: Node = Meet.riser("kelvin")
 	if kelvin and kelvin.is_free():
@@ -1460,3 +1464,140 @@ func leave_item(item: String, at: Vector3) -> void:
 		if randf() < 0.5:
 			r.say_aloud(["You can't just leave that there.", "Is that... yours?", "Somebody's going to trip on that.", "Finders keepers?"][randi() % 4], 3.5)
 			break
+
+# --- Shouting at everyone, and throwing food --------------------------------------------------------
+
+const SHOUTS := [
+	["dance", "\"EVERYBODY DANCE!\"", "EVERYBODY DANCE!"],
+	["snacks", "\"FREE SNACKS AT THE GATE!\"", "FREE SNACKS AT THE GATE!"],
+	["tables", "\"HARRY SAYS TABLES DOWN!\"", "HARRY SAYS TABLES DOWN!"],
+	["hug", "\"GROUP HUG!\"", "GROUP HUG!"],
+	["spider", "\"IS THAT A SPIDER?!\"", "IS THAT A SPIDER?!"],
+	["race", "\"LAST ONE TO THE WATER'S A NOVICE!\"", "LAST ONE TO THE WATER'S A NOVICE!"],
+]
+var _shout_cd := 0.0
+var _shouts := 0
+var _race := 0
+var _thrown: Array = []
+var _fight := 0.0
+var _fight_tick := 0.0
+
+func shout_menu() -> void:
+	if Meet.modal:
+		return
+	if _shout_cd > 0.0:
+		Meet.say("You're still hoarse from the last one. Give it %d seconds." % int(ceil(_shout_cd)))
+		return
+	var opts: Array = []
+	for sh in SHOUTS:
+		var kind: String = sh[0]
+		var text: String = sh[2]
+		opts.append([sh[1], func(): shout(kind, text)])
+	opts.append(["(Say nothing.)", func(): pass])
+	Meet.menu.choice("Cup your hands and shout", "The whole amphitheatre will hear it.", opts)
+
+func shout(kind: String, text: String) -> void:
+	_shout_cd = 16.0
+	_shouts += 1
+	Meet.player.act("Punch_Jab", 0.7)
+	Meet.sfx("whistle", -8.0, 0.6)
+	Meet.hud.banner(text, "")
+	Meet.dare("shout")
+	if _shouts > 2:
+		Meet.add_heat(0.5, "shouting the place down")
+	var i := 0
+	for r in Meet.risers:
+		if r.global_position.distance_to(Meet.player.global_position) < 34.0:
+			r.shouted(kind, i)
+			i += 1
+	match kind:
+		"snacks":
+			Meet.ripple("You sent the whole club to the gate for snacks that weren't there.")
+			Meet.say("They've all gone. Every bag in the amphitheatre is unattended for the next little while.")
+		"tables":
+			for m in _matches.duplicate():
+				drop_match(m["a"])
+			var h: Node = Meet.riser("harry")
+			if h:
+				h.mind.experience("heckle", -0.3, 0.9, true, "the shouting")
+		"race":
+			_race = 0
+			Meet.say("They're off. Get to the railing first and it's you who isn't the novice.")
+
+## Someone has reached the water in the race.
+func race_arrival(r: Node) -> void:
+	_race += 1
+	if _race == 1:
+		if Meet.player.global_position.z > 25.0:
+			Meet.hud.banner("YOU WIN THE RACE", "%s comes second and wants a recount." % r.first_name.capitalize())
+			Meet.pay(5, "Winner's purse, by acclamation.")
+			for x in Meet.risers:
+				if x.is_riser:
+					x.mind.experience("match", 0.15, 0.4, false, "the race")
+		else:
+			r.say_aloud("FIRST! Not a novice! NOT A NOVICE!", 4.0)
+			Meet.hud.banner("%s WINS" % r.first_name.to_upper(), "You, technically, are the novice.")
+
+## A thrown thing that arcs.
+func lob(from: Vector3, to: Vector3, c: Color, landed: Callable) -> void:
+	var ball := Build.box(self, Vector3(0.14, 0.1, 0.1), from, c)
+	var tw := create_tween()
+	tw.tween_method(func(f: float):
+		ball.position = from.lerp(to, f) + Vector3(0, sin(f * PI) * 1.4, 0)
+		ball.rotation.x = f * 9.0, 0.0, 1.0, 0.45)
+	tw.tween_callback(func():
+		ball.queue_free()
+		landed.call())
+
+func food_fight() -> bool:
+	return _fight > 0.0
+
+## The player has thrown a snack. Three inside half a minute and nobody can stop what happens next.
+func snack_thrown() -> void:
+	var now := Meet.clock
+	_thrown.append(now)
+	_thrown = _thrown.filter(func(t): return now - t < 30.0)
+	if _thrown.size() >= 3 and _fight <= 0.0:
+		_thrown.clear()
+		_fight = 22.0
+		_fight_tick = 0.0
+		Meet.hud.banner("FOOD FIGHT", "Nobody knows who started it. (You started it.)")
+		Meet.sfx("ooh")
+		Meet.dare("foodfight")
+		Meet.ripple("You started a food fight at an arm wrestling meet.")
+		for m in _matches.duplicate():
+			drop_match(m["a"])
+		var h: Node = Meet.riser("harry")
+		if h:
+			h.say_aloud("NOT THE SNACKS! WHO STARTED THIS?!", 5.0)
+
+func _run_food_fight(dt: float) -> void:
+	_shout_cd = max(0.0, _shout_cd - dt)
+	if _fight <= 0.0:
+		return
+	_fight -= dt
+	_fight_tick -= dt
+	if _fight_tick <= 0.0:
+		_fight_tick = 0.28
+		var pool: Array = Meet.risers.filter(func(r): return not r.alien and r.state not in ["winded", "ride", "pull"] and r.id != "phillip")
+		if pool.size() >= 2:
+			var a: Node = pool[randi() % pool.size()]
+			var b: Node = Meet.player if randf() < 0.22 else pool[randi() % pool.size()]
+			if a != b:
+				a.throw_at(b)
+				if randf() < 0.18:
+					a.say_aloud(["TAKE THAT!", "For the red ones!", "I've wanted to do this for YEARS.", "Not the face!", "Reload! RELOAD!", "This is the best meet ever."][randi() % 6], 2.2)
+	if _fight <= 0.0:
+		_free_snacks = 0
+		Meet.hud.banner("CEASEFIRE", "The snack table is empty. Everyone is wearing it.")
+		var h: Node = Meet.riser("harry")
+		var ph: Node = Meet.riser("phillip")
+		if ph:
+			ph.say_aloud("...I trained through all of that.", 5.0)
+		for r in Meet.risers:
+			if r.is_riser and r.id not in ["harry", "phillip"]:
+				r.mind.experience("chalk", 0.3, 0.8, true, "the food fight")
+		if h:
+			h.mind.experience("heckle", -0.4, 1.2, true, "the food fight")
+			Meet.add_heat(1.2, "starting a food fight")
+			h.say_aloud("Whoever started this is sweeping. ALL of it.", 5.0)
