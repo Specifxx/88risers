@@ -1084,11 +1084,13 @@ func drop(items: Array, at: Vector3) -> void:
 	l.omni_range = 4.0
 	l.position.y = 0.8
 	th.add_child(l)
-	create_tween().set_loops().tween_property(m, "rotation:y", TAU, 3.0).from(0.0)
+	m.create_tween().set_loops().tween_property(m, "rotation:y", TAU, 3.0).from(0.0)   # dies with the item
 	th.setup("Pick up: %s" % Meet.ITEMS[item]["name"], func():
-		Meet.grant(item)
+		th.remove_from_group("interact")
+		Meet.player.target = null
 		Meet.player.act("PickUp_Table", 0.8)
-		th.queue_free())
+		th.queue_free()
+		Meet.grant(item))
 
 func start_drone() -> void:
 	if _drone != null:
