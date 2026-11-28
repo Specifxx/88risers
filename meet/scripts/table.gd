@@ -37,6 +37,7 @@ var _used := false
 var _wait := 0.0
 var _angry := 1.0
 var _table := -1
+var _lefts := false
 
 var _root: Control
 var _title: Label
@@ -117,6 +118,12 @@ func start(r: Node) -> void:
 	_title.text = "You  vs  %s" % r.riser_name
 	if r.pull_angry:
 		_angry = 1.15
+	if r.lefts:
+		r.lefts = false
+		_lefts = true
+		_title.text += "   (left arms)"
+	else:
+		_lefts = false
 	if r.stake > 0:
 		_title.text += "   ($%d on it)" % r.stake
 	if Meet.straps.has(r.id):
@@ -154,6 +161,11 @@ func _round() -> void:
 	move = CHAIN[(mine + theirs) % 3] if kind == "chain" else kind
 	width = clamp(0.2 + (Meet.strength() - rival.strength) * 0.003 - mine * 0.015, 0.1, 0.3)
 	speed = (4.2 + (rival.strength - 50.0) * 0.05 + (mine + theirs) * 0.35) * _angry
+	if _lefts:
+		# Nobody is as good left-handed: the zone is smaller, but the needle is slower and there are no tricks.
+		move = ""
+		width *= 0.8
+		speed *= 0.8
 	if Meet.chalked:
 		width *= 1.2
 	if not Meet.straps.is_empty():

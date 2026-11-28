@@ -54,6 +54,14 @@ var confront_kind := ""          # beef | warn
 var confront_text := ""
 var settle := false              # the pull in progress settles a grievance
 var _chase := 0.0
+var _dog_node: Node3D
+var _dog_wag := 0.0
+var _chalk_t := 0.0
+var backing := false             # has agreed to watch your back tonight
+var _asked := {}
+var lefts := false               # the next pull is left-handed: everyone is worse at it
+var _act_anim := ""
+var _act_t := 0.0
 var calling := 0.0              # seconds left on an open challenge to the player
 var composure := 100.0
 
@@ -139,6 +147,7 @@ func pass_by(dir: float) -> void:
 func _dog() -> void:
 	var dog := Node3D.new()
 	add_child(dog)
+	_dog_node = dog
 	dog.position = Vector3(0.75, 0, 0.5)
 	var c: Color = def.get("dog_color", Color(0.72, 0.52, 0.3))
 	var dog_name: String = def.get("dog_name", "Biscuit")
@@ -156,7 +165,8 @@ func _dog() -> void:
 	dog.add_child(pat)
 	pat.position = Vector3(0.3, 0, 0.3)
 	pat.setup("Pet %s" % dog_name, func():
-		Meet.player.act("Fixing_Kneeling", 1.2)
+		_dog_wag = 2.6
+		Meet.player.gesture("pet", 2.6, _dog_node.global_position + Vector3(0, 0.5 * _dog_node.scale.y, 0.2 * _dog_node.scale.y))
 		Meet.composure = min(100.0, Meet.composure + 10.0)
 		say_aloud(["She likes you.", "He doesn't do that for everyone.", "You've made a friend."][randi() % 3], 3.5)
 		Meet.say("%s leans into your hand. %s approves of you. You feel better about everything." % [dog_name, dog_name])
@@ -252,6 +262,13 @@ func _process(dt: float) -> void:
 		_alien(dt)
 		return
 	calling = max(0.0, calling - dt)
+	if _dog_wag > 0.0:
+		# Being petted: the dog wriggles and its owner waits.
+		_dog_wag -= dt
+		_dog_node.rotation.y = sin(_dog_wag * 16.0) * 0.25
+		_dog_node.position.y = absf(sin(_dog_wag * 9.0)) * 0.05
+		Character.play(_figure, "Idle")
+		return
 	_mood_check -= dt
 	if _mood_check <= 0.0 and (is_riser or guest):
 		_mood_check = 0.5
@@ -259,6 +276,11 @@ func _process(dt: float) -> void:
 	if is_riser or guest:
 		for k in needs:
 			needs[k] = min(1.5, needs[k] + float(life.get(k, 0.5)) * float(tonight.get(k, 1.0)) * dt / 45.0)
+	if _act_t > 0.0:
+		_act_t -= dt
+		_look(Meet.player.global_position, 0.2)
+		Character.play(_figure, _act_anim)
+		return
 	# Something has their whole attention: they stand and look straight at you.
 	if _stare > 0.0 and state not in ["pull", "to_table", "prep", "scrap", "winded", "flee", "search"]:
 		_stare -= dt
@@ -266,7 +288,7 @@ func _process(dt: float) -> void:
 		Character.play(_figure, "Idle")
 		return
 	_notice()
-	if state != "pull" and Pose.posed(_figure):
+	if state not in ["pull", "prep"] and Pose.posed(_figure):
 		Pose.stop(_figure)
 	match state:
 		"idle":
@@ -280,8 +302,13 @@ func _process(dt: float) -> void:
 		"prep":
 			# Rummaging in the bag for the strap, or chalking up.
 			_timer -= dt
-			Character.play(_figure, _qanim)
+			if _then == "chalk":
+				_chalk_t += dt
+				Pose.chalk(_figure, _chalk_t)
+			else:
+				Character.play(_figure, _qanim)
 			if _timer <= 0.0:
+				Pose.stop(_figure)
 				if _then == "bag":
 					# The strap comes out of the bag in their hand.
 					var st := Node3D.new()
@@ -572,7 +599,8 @@ func _arrive() -> void:
 			state = "prep"
 			_qanim = "Interact"
 			_look(Meet.main.CHALK, 1.0)
-			_timer = 1.3
+			_chalk_t = 0.0
+			_timer = 1.8
 			Fx.burst(Meet.main, global_position + Vector3(0, 1.1, 0), Vector3.UP, false, 5)
 		"quirk":
 			state = "quirk"
@@ -707,6 +735,16 @@ func heckle() -> String:
 
 ## Enough. They come for the player.
 func square_up() -> void:
+	for r in Meet.risers:
+		if r != self and r.backing and r.is_free() and r.global_position.distance_to(global_position) < 16.0:
+			r.backing = false
+			r.say_aloud("Leave it, %s. They're with me." % first_name, 4.5)
+			r._go(global_position + (Meet.player.global_position - global_position) * 0.5, "gawk")
+			say_aloud("...Fine. This time.", 3.5)
+			Meet.say("%s steps in between you. That was the favour used up." % r.riser_name)
+			Meet.bump(id, r.id, -0.05)
+			idle()
+			return
 	Meet.main.drop_match(self)
 	say_aloud(People.SQUARE_UP[randi() % People.SQUARE_UP.size()])
 	_vs_player = true
@@ -1552,3 +1590,9 @@ func read_clipboard(text: String) -> String:
 		return quote + "Where do I sign? There. That's my good signature, too."
 	mind.experience("talk", 0.05, 0.3)
 	return quote + ["...Okay? What do you want me to do with this?", "I've read it twice. I still don't know.", "Is this a quiz?", "Noted. I think."][randi() % 4]
+
+## A one-off movement of their own: a high five, a dance.
+func gesture(anim: String, seconds: float) -> void:
+	_act_anim = anim
+	_act_t = seconds
+	Character.play(_figure, anim, true)

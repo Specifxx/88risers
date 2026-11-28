@@ -166,6 +166,14 @@ const REMEMBER := {
 ## do: something that then happens in the world.
 const TALK := {
 	"harry": [
+		{"key": "comp", "ask": "Ask about next month's comp", "reply": "Newcastle. Six of us are going. Come and watch. Or enter novice, if you've got the nerve.", "opts": [
+			{"say": "Enter me.", "reply": "Just like that? ...Good. I like that. You're in.", "v": 0.5, "flag": "novice", "lead": "novice_erick"},
+			{"say": "I'll come and watch.", "reply": "Bring a chair. It runs long.", "v": 0.15},
+			{"say": "Newcastle's a dump.", "reply": "Don't let Erick hear you.", "v": -0.25, "kind": "heckle"}]},
+		{"key": "ref", "ask": "Ask what he watches for as a ref", "reply": "Elbows, shoulders, and whoever's about to do something stupid. Usually Tommy.", "opts": [
+			{"say": "What's the commonest foul?", "reply": "Elbow off the pad. Everyone thinks I can't see it. I can always see it.", "v": 0.25, "do": "tip"},
+			{"say": "Ever given a bad call?", "reply": "Once. 2021. I still think about it.", "v": 0.2},
+			{"say": "Refs are just failed pullers.", "reply": "I'm the 70kg champion.", "v": -0.5, "kind": "heckle"}]},
 		{"key": "title", "ask": "Ask about the 70kg title", "reply": "Three years, that took. Lost the first two finals on fouls.", "opts": [
 			{"say": "Fouls? So you cheat.", "reply": "I referee this club. Think about what you just said.", "v": -0.6, "kind": "heckle", "flag": "called_cheat"},
 			{"say": "Three years is real work.", "reply": "It is. Most quit inside one. Don't be most.", "v": 0.4},
@@ -176,6 +184,14 @@ const TALK := {
 			{"say": "What do you need doing tonight?", "reply": "Get three of the public to have a pull. That's how a club grows.", "v": 0.3, "flag": "harry_job"}]},
 	],
 	"george": [
+		{"key": "tin", "ask": "Ask how the club's paid for", "reply": "Out of my pocket and a tin. The tin is mostly buttons.", "opts": [
+			{"say": "Here's five for the tin.", "reply": "Actual money. In the tin. I might cry.", "v": 0.6, "cost": 5},
+			{"say": "Charge membership.", "reply": "Harry won't have it. 'Nobody pays to belong.' He's right. Annoyingly.", "v": 0.2, "lead": "fees_harry"},
+			{"say": "Not my problem.", "reply": "No. It's mine. Always is.", "v": -0.3}]},
+		{"key": "eighty", "ask": "\"Why 88 Risers?\"", "reply": "Eight founders. And eighty more we haven't met yet. That's the whole plan.", "opts": [
+			{"say": "Put me down as nine.", "reply": "Done. You're nine. Don't make me regret the paperwork.", "v": 0.5, "flag": "number_nine"},
+			{"say": "Eighty's a lot.", "reply": "One a month. Seven years. I've done the maths.", "v": 0.2},
+			{"say": "You'll never get there.", "reply": "Not with that attitude at the gate, no.", "v": -0.35, "kind": "heckle"}]},
 		{"key": "page", "ask": "Ask about the club's page", "reply": "I run it. I need someone in tonight's video who isn't one of us eight.", "opts": [
 			{"say": "Put me in it.", "reply": "Stand there. Look strong. No, stronger. Perfect.", "v": 0.4, "do": "photo"},
 			{"say": "What's it pay?", "reply": "Exposure. ...Yes, I heard it as I said it.", "v": -0.15},
@@ -186,6 +202,14 @@ const TALK := {
 			{"say": "Have you ever beaten him?", "reply": "Once. 2019. He says his elbow slipped. It did not slip.", "v": 0.2}]},
 	],
 	"phillip": [
+		{"key": "rain", "ask": "Ask what's in his headphones", "reply": "Rain sounds.", "opts": [
+			{"say": "Just rain?", "reply": "Heavy rain. For heavy sets.", "v": 0.3},
+			{"say": "That's serial killer behaviour.", "reply": "...", "v": -0.35, "kind": "heckle", "lead": "rain_tommy"},
+			{"say": "Send me the playlist.", "reply": "It's one track. Ten hours.", "v": 0.4}]},
+		{"key": "why", "ask": "Ask why he pulls", "reply": "It's the only thing where trying harder always works.", "opts": [
+			{"say": "That's the best answer I've heard.", "reply": "...Thanks.", "v": 0.5},
+			{"say": "Until someone's just stronger.", "reply": "Then you try for longer.", "v": 0.15},
+			{"say": "Bit grim.", "reply": "It's not grim. It's simple.", "v": -0.2}]},
 		{"key": "quiet", "ask": "Stand next to him and say nothing", "reply": "...", "opts": [
 			{"say": "(Keep saying nothing.)", "reply": "...You're alright.", "v": 0.5, "flag": "phillip_quiet"},
 			{"say": "So! Do you come here often?", "reply": "Every month. For four years. To train.", "v": -0.2, "kind": "nagged"},
@@ -196,6 +220,14 @@ const TALK := {
 			{"say": "Gold next year.", "reply": "...Yes.", "v": 0.45}]},
 	],
 	"bhavya": [
+		{"key": "silver", "ask": "Ask about the silver medal", "reply": "Lost the final to a nineteen-year-old who'd been pulling six months. Natural hand. Sickening.", "opts": [
+			{"say": "You'll get him next time.", "reply": "I've watched the tape forty times. I will.", "v": 0.3},
+			{"say": "So technique isn't everything.", "reply": "Technique is everything. He just had it by accident.", "v": -0.45, "kind": "heckle"},
+			{"say": "What did you learn?", "reply": "That I'd stopped training my rise. Never neglect the rise.", "v": 0.3, "do": "tip"}]},
+		{"key": "coach", "ask": "Ask who he'd most like to coach", "reply": "Phillip. All that work, and nobody's ever fixed his wrist. He'd be unbeatable.", "opts": [
+			{"say": "Tell him.", "reply": "He doesn't take advice. He takes rain sounds.", "v": 0.1, "lead": "wrist_phillip"},
+			{"say": "Coach me instead.", "reply": "You'd listen? Good. Lesson one: stop gripping like it owes you money.", "v": 0.35, "do": "tip"},
+			{"say": "Maybe he doesn't want your help.", "reply": "Nobody wants help. Everyone needs it.", "v": -0.2}]},
 		{"key": "form", "ask": "Ask him to look at your form", "reply": "Your wrist is low, your elbow is loose and your feet are doing nothing. Otherwise fine.", "opts": [
 			{"say": "Fix one thing for me.", "reply": "Wrist. Curl it like you're hiding a coin. Feel that? That's the pull.", "v": 0.4, "do": "tip"},
 			{"say": "I didn't ask for a list.", "reply": "You literally asked.", "v": -0.3},
@@ -206,6 +238,14 @@ const TALK := {
 			{"say": "I'm growing one.", "reply": "Good. Oil it. Don't tell Tommy I said oil.", "v": 0.35}]},
 	],
 	"kelvin": [
+		{"key": "bushys", "ask": "Ask about Bushy's", "reply": "Second place. First was a tree surgeon. Forearms like actual trees.", "opts": [
+			{"say": "Second's huge.", "reply": "It is, isn't it? Nobody says that.", "v": 0.4},
+			{"say": "What did second win?", "reply": "A meat tray. Best prize of my life. Gone in a day.", "v": 0.3, "lead": "meat_tommy"},
+			{"say": "So you lost.", "reply": "To a TREE SURGEON.", "v": -0.4, "kind": "heckle"}]},
+		{"key": "gentle", "ask": "\"You're the biggest one here. Ever lose your temper?\"", "reply": "Once. Someone took the last red one off my plate. I don't talk about it.", "opts": [
+			{"say": "Noted. Never touch the plate.", "reply": "That's all I ask.", "v": 0.35},
+			{"say": "(Take a snack off his plate.)", "reply": "...Put it back. Slowly.", "v": -0.6, "kind": "scrap"},
+			{"say": "What happened to them?", "reply": "We're friends now. He brings two.", "v": 0.25}]},
 		{"key": "errand", "ask": "Ask if he wants anything", "reply": "One of the red ones from the snack table. I'd go, but I've been six times and people are counting.", "opts": [
 			{"say": "I'll get you one.", "reply": "You're a good person. Red. Not the yellow.", "v": 0.2, "flag": "errand"},
 			{"say": "Get it yourself.", "reply": "Cold. That's cold.", "v": -0.3},
@@ -216,6 +256,14 @@ const TALK := {
 			{"say": "What's the secret?", "reply": "Rice. So much rice. And side pressure.", "v": 0.3, "do": "tip"}]},
 	],
 	"tommy": [
+		{"key": "van", "ask": "Ask how he became a founder", "reply": "I had a van. That's the whole story. I was the only one with a van.", "opts": [
+			{"say": "Vans matter.", "reply": "THANK you. Tables don't carry themselves.", "v": 0.35},
+			{"say": "Still got it?", "reply": "Sold it. Don't tell Harry. He thinks it's at the mechanic's. Since 2023.", "v": 0.2, "lead": "van_harry"},
+			{"say": "So you're the driver.", "reply": "Founder. FOUNDER. It's on the banner.", "v": -0.3, "kind": "heckle"}]},
+		{"key": "serious", "ask": "\"Are you ever serious?\"", "reply": "At the table. Ask anyone. I go quiet. It scares people.", "opts": [
+			{"say": "I'd like to see that.", "reply": "Then pull me. But you won't like it.", "v": 0.3},
+			{"say": "I don't believe you.", "reply": "Fair. Nobody does. That's how I get them.", "v": 0.15, "do": "tip"},
+			{"say": "You should try it more.", "reply": "And you should try being fun.", "v": -0.3}]},
 		{"key": "prank", "ask": "\"What are you up to?\"", "reply": "Harry's standing right by the chalk bucket. I'm just saying. He is RIGHT there.", "opts": [
 			{"say": "Do it. I'll say it was me.", "reply": "You are my favourite person.", "v": 0.5, "do": "prank_harry", "flag": "prank_pact"},
 			{"say": "Leave him alone.", "reply": "Boo. Fine. Boo.", "v": -0.15},
@@ -226,6 +274,14 @@ const TALK := {
 			{"say": "Tell it to Phillip.", "reply": "I did. He looked at me for a full minute.", "v": 0.25}]},
 	],
 	"luie": [
+		{"key": "little", "ask": "Ask why he says so little", "reply": "Most things don't need saying.", "opts": [
+			{"say": "(Say nothing.)", "reply": "...Exactly.", "v": 0.5},
+			{"say": "That needed saying, though.", "reply": "...Fair.", "v": 0.3},
+			{"say": "Bit pretentious.", "reply": "Mm.", "v": -0.4, "kind": "heckle"}]},
+		{"key": "others", "ask": "Ask who he'd want in his corner", "reply": "Kelvin. He'd say nothing useful and hand me food. That's all you need.", "opts": [
+			{"say": "I'll tell Kelvin.", "reply": "Don't make it a thing.", "v": 0.1, "lead": "corner_kelvin"},
+			{"say": "Not Harry?", "reply": "Harry would give me a plan. I don't want a plan.", "v": 0.2},
+			{"say": "What about me?", "reply": "...Ask me in a year.", "v": 0.15}]},
 		{"key": "water", "ask": "Ask what he's looking at", "reply": "The water. It's flat tonight. I like it flat.", "opts": [
 			{"say": "(Look at the water with him.)", "reply": "...Yeah. That's it. That's all it is.", "v": 0.55, "flag": "luie_water"},
 			{"say": "Shouldn't you be training?", "reply": "This is training.", "v": -0.2, "kind": "nagged"},
@@ -236,6 +292,14 @@ const TALK := {
 			{"say": "Who taught you?", "reply": "My dad. Thumb wars. He never let me win one.", "v": 0.4}]},
 	],
 	"erick": [
+		{"key": "newcastle", "ask": "Ask about the Newcastle title", "reply": "Won it left-handed. My right was strapped up. Nobody mentions that.", "opts": [
+			{"say": "Left-handed? That's mad.", "reply": "RIGHT? Tell the others. They act like it's nothing.", "v": 0.5},
+			{"say": "Who'd you beat?", "reply": "Fella called Gaz. He cried. I felt bad. Then I didn't.", "v": 0.2},
+			{"say": "Small pond.", "reply": "Say that with your hand on the pad.", "v": -0.5, "kind": "heckle"}]},
+		{"key": "lose", "ask": "\"How do you take losing?\"", "reply": "Badly. Next question.", "opts": [
+			{"say": "Who was the last one?", "reply": "Luie. With that shoulder thing. I still don't know what he did.", "v": 0.15, "lead": "erick_lost_luie"},
+			{"say": "That's why you're good.", "reply": "That's exactly why I'm good.", "v": 0.4},
+			{"say": "Sounds exhausting to be around.", "reply": "Ask me if I care.", "v": -0.3}]},
 		{"key": "bet", "ask": "\"Think you'd beat me?\"", "reply": "I know I would. Want to put a snack on it?", "opts": [
 			{"say": "You're on. A snack says I pin you.", "reply": "Easiest snack of my life. Go and chalk up.", "v": 0.2, "flag": "bet"},
 			{"say": "I don't gamble.", "reply": "Smart. You'd lose.", "v": 0.0},
@@ -325,3 +389,42 @@ const CONVOS := [
 ## What they say to each other about you, when one of them has had enough of you.
 const ABOUT_YOU := [[0, "The new one. What do we think?"], [1, "Don't get me started."], [0, "That bad?"], [1, "Watch your bag, is all I'm saying."]]
 const ABOUT_YOU_GOOD := [[0, "The new one's alright, you know."], [1, "Yeah?"], [0, "Brought snacks round. Pulled properly."], [1, "Huh. Good."]]
+
+## Small talk that is theirs alone.
+const SMALL := {
+	"harry": ["Tables go up at four. I'm here at three. Someone has to be.", "I check every pad before every meet. One loose peg and it's a hospital trip.", "People think the champion's the strongest. He's the one who turned up most.", "My wife times me. If I'm not home by eight she sends George a text.", "You see how they look at the tables when they walk in? That's why I do this."],
+	"george": ["I've got four hundred hours of footage and no idea how to edit.", "The council form asks 'nature of activity'. I put 'consensual hand fighting'. They rang me.", "Harry gets the trophies. I get the group chat.", "If you see the tin, shake it. If it rattles, that's buttons.", "I only started so I could beat him. Still working on it."],
+	"phillip": ["...", "Forty minutes of wrist work a day. Minimum.", "I don't warm up. I arrive warm.", "Talking uses energy.", "I counted the tiers once. There are eight."],
+	"bhavya": ["Your grip starts at your feet. Nobody believes that until it works.", "I've got a notebook on every puller in NSW. Yours has one line so far.", "The beard has been to three nationals. More than most people here.", "Seventy percent of pulls are lost before 'go'. I can show you the data.", "I coach for free. People still don't listen. Explain that."],
+	"kelvin": ["Red ones are barbecue. Yellow are cheese. Blue are a mistake.", "I'm not big. I'm in a bulk. Since 2019.", "People are scared to pull me. I'd never hurt anyone. I'd just win.", "My mum makes me bring a container for leftovers. There are never leftovers.", "Side pressure's just leaning with intent."],
+	"tommy": ["I've got a bit about wrist straps. It's not ready. Do you want to hear it? It's not ready.", "I chalked the inside of Harry's cap once. He wore it all day.", "Everyone needs a job at the meet. Mine's morale.", "I'm quick, not strong. So I talk till they're tired.", "If Phillip ever laughs out loud I'm retiring."],
+	"luie": ["The tide's going out.", "I like it here before everyone arrives.", "You can hear the ferry if you listen.", "...", "Good light tonight."],
+	"erick": ["Left arms. Right now. No? Later, then.", "I sleep with a grip trainer. Not a joke.", "Everyone here's a mate until we're on the pad.", "I've pulled every one of them. I keep a ledger.", "You look like you've got a hook in you. Prove me wrong."],
+}
+
+## What kind of compliment lands with each of them, and what kind of joke.
+const FLATTER := {"harry": "role", "george": "role", "phillip": "pull", "bhavya": "look", "kelvin": "pull", "tommy": "look", "luie": "pull", "erick": "pull"}
+const COMPLIMENTS := [
+	{"key": "pull", "say": "\"I've been watching you pull. You're the real thing.\""},
+	{"key": "look", "say": "\"You're the best-looking one here, and you know it.\""},
+	{"key": "role", "say": "\"This club wouldn't run without you.\""},
+]
+const FLATTERED := {
+	"pull": ["You were watching? ...What did you see? Tell me everything.", "That means something, from someone who's actually paying attention."],
+	"look": ["Finally. Someone with eyes.", "I've been saying it for years."],
+	"role": ["Say that again when the others are listening.", "...Thank you. Nobody says that."],
+}
+const FLATTER_MEH := ["Cheers. I suppose.", "Okay. Thanks?", "What are you after?", "Nice of you."]
+const HUMOUR := {"harry": "dad", "george": "roast", "phillip": "none", "bhavya": "dry", "kelvin": "dad", "tommy": "pun", "luie": "dry", "erick": "roast"}
+const JOKES := [
+	{"key": "pun", "say": "\"I used to arm wrestle. Then I lost my grip on reality.\""},
+	{"key": "dad", "say": "\"What do you call a puller with no arms? Whatever you like, he can't pin you.\""},
+	{"key": "dry", "say": "\"I chalked up once. The council sent me a bill.\""},
+	{"key": "roast", "say": "\"I've seen Tommy pull. I've seen stronger handshakes at a funeral.\""},
+]
+const LAUGHS := ["HA. Okay. That's good.", "Ha! I'm stealing that.", "...Heh. Alright.", "That's terrible. Tell it again."]
+const NO_LAUGH := ["...Right.", "Is that the whole joke?", "Keep working on it.", "Tommy does it better. And Tommy's bad."]
+const HIGH_FIVE := {"yes": ["YES. Up top.", "There it is!", "Solid."], "meh": ["...Sure.", "Okay. One."], "no": ["No.", "Put your hand down.", "We're not there."]}
+const DANCE := {"yes": ["Oh, we're doing this? We're doing this.", "Go on, then!", "I've got moves. Watch."], "no": ["I don't dance.", "Absolutely not.", "Not sober. Not here."]}
+const WATCHING_DANCE := ["What is happening?", "Somebody film this.", "Go on!", "I can't look.", "George! Camera!"]
+const LEFT_HANGING := ["Ooh. Left hanging.", "That's cold.", "Oof."]
