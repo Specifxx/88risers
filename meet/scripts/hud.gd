@@ -28,6 +28,7 @@ var _cam_origin := Vector2.ZERO
 var _cam_vec := Vector2.ZERO
 var _cam_moved := 0.0
 var _cam_knob: Panel
+var _gfx: Button
 var _banner: PanelContainer
 var _banner_title: Label
 var _banner_text: Label
@@ -203,28 +204,30 @@ func banner(title: String, text: String) -> void:
 		_banner = UI.panel(_root, Color(0.05, 0.04, 0.04, 0.88))
 		_banner.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 		_banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
-		_banner.offset_top = 150
+		_banner.offset_top = 12
+		(_banner.get_theme_stylebox("panel") as StyleBoxFlat).set_content_margin_all(8)
 		_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var v := VBoxContainer.new()
 		_banner.add_child(v)
-		_banner_title = UI.text(v, "", 38, UI.GOLD)
+		v.add_theme_constant_override("separation", 0)
+		_banner_title = UI.text(v, "", 22, UI.GOLD)
 		_banner_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_banner_title.autowrap_mode = TextServer.AUTOWRAP_OFF
-		_banner_text = UI.text(v, "", 20)
+		_banner_text = UI.text(v, "", 14)
 		_banner_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_banner_text.custom_minimum_size = Vector2(520, 0)
+		_banner_text.custom_minimum_size = Vector2(360, 0)
 	_banner_title.text = title
 	_banner_text.text = text
 	_banner_text.visible = text != ""
 	_banner.reset_size()
 	_banner.modulate.a = 1.0
-	_banner.scale = Vector2(1.15, 1.15)
+	_banner.scale = Vector2(1.06, 1.06)
 	_banner.pivot_offset = _banner.size / 2.0
 	if _banner_tw:
 		_banner_tw.kill()
 	_banner_tw = _banner.create_tween()
 	_banner_tw.tween_property(_banner, "scale", Vector2.ONE, 0.18)
-	_banner_tw.tween_interval(3.6)
+	_banner_tw.tween_interval(3.0)
 	_banner_tw.tween_property(_banner, "modulate:a", 0.0, 0.6)
 
 func _toast(t: String) -> void:
@@ -480,12 +483,18 @@ func _build_bag() -> void:
 	_bag_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_bag_list.add_theme_constant_override("separation", 6)
 	sc.add_child(_bag_list)
-	var row := HBoxContainer.new()
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 6)
+	row.add_theme_constant_override("v_separation", 6)
 	mid.add_child(row)
-	UI.button(row, "Eat a snack", Meet.eat, 18).custom_minimum_size = Vector2(150, 0)
-	UI.button(row, "Put down what's in your hand", _put_down.bind("hand"), 16).custom_minimum_size = Vector2(250, 0)
-	UI.button(row, "Take off and leave hat", _put_down.bind("head"), 16).custom_minimum_size = Vector2(200, 0)
-	UI.button(row, "Close", toggle_bag, 18).custom_minimum_size = Vector2(180, 0)
+	var close_b := UI.button(row, "Close  (Tab or Esc)", toggle_bag, 18)
+	close_b.custom_minimum_size = Vector2(190, 0)
+	close_b.add_theme_color_override("font_color", UI.GOLD)
+	for b in [["Eat a snack", Meet.eat, 130], ["Put down hand item", _put_down.bind("hand"), 170], ["Leave hat here", _put_down.bind("head"), 140]]:
+		var bb := UI.button(row, b[0], b[1], 15)
+		bb.custom_minimum_size = Vector2(b[2], 0)
+		bb.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_gfx = UI.button(mid, "", _cycle_gfx, 15)
 	# The club.
 	var right := VBoxContainer.new()
 	right.custom_minimum_size = Vector2(300, 0)
@@ -540,7 +549,26 @@ func _tile(parent: Node, id: String) -> void:
 	b.pressed.connect(Meet.wear.bind(id))
 	parent.add_child(b)
 
+func _unhandled_key_input(ev: InputEvent) -> void:
+	if _bag.visible and ev.pressed and not ev.echo and ev.keycode in [KEY_ESCAPE, KEY_TAB, KEY_I]:
+		get_viewport().set_input_as_handled()
+		toggle_bag()
+
+func _cycle_gfx() -> void:
+	# Auto, then each fixed level from sharpest to smoothest.
+	if Meet.quality_auto:
+		Meet.quality_auto = false
+		Meet.quality = 0
+	elif Meet.quality >= 3:
+		Meet.quality_auto = true
+	else:
+		Meet.quality += 1
+	Meet.main.apply_quality()
+	Meet.save()
+	_fill_bag()
+
 func _fill_bag() -> void:
+	_gfx.text = "Graphics: %s   (running at %d frames a second; tap to change)" % ["automatic" if Meet.quality_auto else ["sharpest", "sharp", "smooth", "smoothest"][Meet.quality], int(Meet.main.fps)]
 	Wear.dress(_doll, Meet.worn)
 	UI.clear(_bag_list)
 	for slot in [["hand", "In your hand (and what you swing)"], ["head", "On your head"], ["body", "On your body"]]:
@@ -586,6 +614,7 @@ func _fill_bag() -> void:
 		bar.max_value = 1.0
 		bar.step = 0.01
 		bar.value = f
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_bag_people.add_child(bar)
 		var bm: Array = r.best_mate()
 		var word: String = Meet.tie_word(bm[1])

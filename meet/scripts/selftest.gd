@@ -4,7 +4,31 @@ extends Node
 var _dir := ""
 var _fails := 0
 
+## --soak: let whole nights run at high speed with nobody playing, and print what happens.
+func _soak() -> void:
+	Meet.main.evening._moment = 20.0
+	Meet.toast.connect(func(t: String): print("  [%s] %s" % [Meet.time_text().replace("Sunday ", ""), t.left(110)]))
+	Meet.hud._begin()
+	Meet.muted = true
+	Engine.time_scale = 24.0
+	while not Meet.hud._over.visible:
+		if Meet.menu.active():
+			Meet.menu._forced = false
+			Meet.menu.close()
+		if Meet.table.active():
+			Meet.table._finish(false)
+			Meet.table._close()
+		if Meet.strapgame.active():
+			Meet.strapgame.tap()
+		await get_tree().create_timer(1.0).timeout
+	print("NIGHT OVER seen_ufo=", Meet.seen_ufo)
+	Meet.save()
+	get_tree().quit(0)
+
 func _ready() -> void:
+	if OS.get_cmdline_user_args().has("--soak"):
+		_soak.call_deferred()
+		return
 	var args := OS.get_cmdline_user_args()
 	var i := args.find("--selftest")
 	if i >= 0 and i + 1 < args.size():
@@ -41,6 +65,13 @@ func _run() -> void:
 	var p: Node3D = Meet.player
 	await wait(2.0)
 	await shot("01_arrive")
+	get_viewport().scaling_3d_scale = 0.5
+	await wait(0.3)
+	await shot("01a_half_res")
+	get_viewport().scaling_3d_scale = 1.0
+	if OS.get_cmdline_user_args().has("--quick"):
+		get_tree().quit(0)
+		return
 	# Phone controls: a thumb on the left moves the stick; a drag on the right turns the view.
 	var first := InputEventScreenTouch.new()
 	first.index = 5
@@ -540,6 +571,30 @@ func _run() -> void:
 	Meet.hud.toggle_bag()
 	await wait(0.3)
 	await shot("12_bag")
+	var close_btn: Button = null
+	for b in Meet.hud._bag.find_children("*", "Button", true, false):
+		if b.text.begins_with("Close"):
+			close_btn = b
+	var cr: Rect2 = close_btn.get_global_rect()
+	var panel_r: Rect2 = Meet.hud._bag.get_child(0).get_global_rect()
+	check(panel_r.encloses(cr) and cr.end.x < Meet.hud._bag_people.get_global_rect().position.x, "the kit's Close button sits inside its own column, clear of everything else")
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.position = cr.get_center()
+	click.global_position = cr.get_center()
+	click.pressed = true
+	Input.parse_input_event(click)
+	await wait(0.1)
+	click = InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.position = cr.get_center()
+	click.global_position = cr.get_center()
+	click.pressed = false
+	Input.parse_input_event(click)
+	await wait(0.3)
+	check(not Meet.hud._bag.visible, "a real mouse click on Close shuts the kit")
+	if not Meet.hud._bag.visible:
+		Meet.hud.toggle_bag()
 	Meet.hud.toggle_bag()
 	Meet.menu.notes(0)
 	await wait(0.2)
@@ -774,6 +829,9 @@ func _run() -> void:
 	check(not Meet.ripples.is_empty(), "what you change is noted: %s" % " | ".join(Meet.ripples.slice(0, 3)))
 	await wait(1.0)
 
+	stand(Vector3(-8.5, 0, 26), Vector3(-8.5, 0, 40))
+	p.global_position = Meet.main.clear(Vector3(-8.5, 0, 28.6))
+	check(p.global_position.z > 28.5, "you can walk right up to the railing (z %.1f)" % p.global_position.z)
 	# Sitting down, weights, and looking at yourself.
 	p.sit(Vector3(9, 0.5, 20), PI)
 	ev._join = 0.1
