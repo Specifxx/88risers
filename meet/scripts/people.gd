@@ -165,6 +165,12 @@ const REMEMBER := {
 ## v: how it lands (-1..1). flag: remembered between visits. need: only offered once that flag is set.
 ## do: something that then happens in the world.
 const TALK := {
+	"p_bike": [
+		{"key": "bike", "ask": "Ask about the bike", "reply": "Full carbon. Electronic shifting. It weighs less than my lunch and cost more than my car.", "opts": [
+			{"say": "Can I have a go?", "reply": "Absolutely not. Nobody touches it. I don't even let my wife look at it for long.", "v": -0.1},
+			{"say": "Eleven grand? For a bike?", "reply": "It's an INVESTMENT. That's what I told the bank.", "v": 0.2},
+			{"say": "You know it's just a pushbike.", "reply": "It is a MACHINE. Good day.", "v": -0.4, "kind": "heckle"}]},
+	],
 	"p_office": [
 		{"key": "boss", "ask": "\"Rough day at the office?\"", "reply": "Darren scheduled a meeting to discuss why we have too many meetings. It ran over.", "opts": [
 			{"say": "What did Darren say this time?", "reply": "He said 'let's take this offline' while we were all in the same room. I think about it constantly.", "v": 0.4, "lead_local": "darren"},
@@ -572,3 +578,7 @@ const BENCH := {
 	"luie": ["...Good spot.", "You can see the bridge from here."],
 	"erick": ["Sitting? In the middle of a meet? ...Fine. Two minutes.", "What do you do, outside this? I never ask anyone."],
 }
+
+const CYCLIST := {"id": "p_bike", "likes": "dare", "name": "The cyclist", "role": "Forty k before dinner", "strength": 61, "pace": 1.6, "stops": 0.0,
+	"look": {"body": "Male_Ranger", "hair": "Hair_Buzzed", "tint": Color(0.95, 0.85, 0.1)}, "mind": {"warmth": 0.0, "grudge": 1.2},
+	"chat": ["Carbon frame. Eleven grand. Don't breathe on it.", "I've done forty k and I'm not even warm.", "Is that arm wrestling? I've got the legs for it. Is it legs?"]}

@@ -7,6 +7,7 @@ const Build = preload("res://scripts/build.gd")
 const Asia = preload("res://scripts/asia.gd")
 const Character = preload("res://scripts/character.gd")
 const Thing = preload("res://scripts/thing.gd")
+const People = preload("res://scripts/people.gd")
 const Fx = preload("res://scripts/fx.gd")
 
 const BRACKET_AT := 360.0     # 6:00pm
@@ -37,6 +38,10 @@ var _balloon: Node3D
 var _possum: Node3D
 var _possum_t := 0.0
 var _join := 6.0
+var cyclist: Node3D
+var bike: Node3D             # the parked bike, when there is one
+var _bike_state := ""          # "" | arriving | parked | stolen | dropped | leaving
+var _bike_t := 0.0
 
 func setup(m: Node3D) -> void:
 	main = m
@@ -81,6 +86,10 @@ func _process(dt: float) -> void:
 				r.join_on_seat(Meet.player.global_position + side)
 	else:
 		_join = 6.0
+	_run_bike(dt)
+	if Meet.dares.any(func(d): return d["event"] in ["bike", "bowl"] and not d["done"]) and _bike_state == "" and Meet.clock > 50.0 and not _announced.has("bike"):
+		_announced["bike"] = true
+		_m_cyclist()
 	_moment -= dt
 	if _moment <= 0.0 and Meet.bracket not in ["semi", "final"] and _photo != "call":
 		_moment = randf_range(28.0, 50.0)
@@ -519,13 +528,14 @@ func _bin(b: Node) -> void:
 		if r.global_position.distance_to(p) < 8.0 and r.facing(p) and randf() < 0.5:
 			r.say_aloud(["Are you in the BIN?", "What are you doing in there?", "Things that bad?"][randi() % 3], 3.5)
 			break
-	match randi() % 5:
-		0: Meet.pay(randi_range(1, 4), "Loose change at the bottom of the bin.")
+	match randi() % 8:
+		0: Meet.pay(randi_range(1, 2), "Loose change at the bottom of the bin.")
 		1:
 			Meet.snacks = min(5, Meet.snacks + 1)
 			Meet.say("A snack, still wrapped. You're not proud. You are, however, up a snack.")
 		2: Meet.say("A parking ticket, a single sock and somebody's dreams.")
-		3: Meet.pay(5, "A five-dollar note stuck to a kebab wrapper.")
+		3: Meet.say("A kebab wrapper. Licked clean. Kelvin's work.")
+		4: Meet.say("Half a chalk block and a council fine addressed to 'The Arm People'.")
 		_: Meet.say("Nothing. And now your hand smells of bin.")
 	Meet.touch_state()
 	if _bins[b] <= 0:
@@ -538,7 +548,7 @@ func _free() -> Array:
 
 func _random_moment() -> void:
 	if _moments_left.is_empty():
-		_moments_left = ["fiver", "phone", "footy", "blackout", "conga", "balloon", "plank", "double", "possum", "wallet", "feast", "tiktok", "star", "sprinkler", "pushups", "tourist", "sneeze", "cap"]
+		_moments_left = ["cyclist", "phone", "footy", "blackout", "conga", "balloon", "plank", "double", "possum", "wallet", "feast", "tiktok", "star", "sprinkler", "pushups", "tourist", "sneeze", "cap", "fiver" if randf() < 0.4 else "sneeze"]
 		_moments_left.shuffle()
 	call("_m_" + _moments_left.pop_back())
 
@@ -799,3 +809,130 @@ func _m_cap() -> void:
 				t.mind.experience("helped", 0.5, 1.2, true, "the cap")
 				Meet.bump("harry", "tommy", -0.08)
 				t.say_aloud("YES. Accomplice. I knew I liked you.", 5.0)]]))
+
+# --- The cyclist ------------------------------------------------------------------------------------
+
+static func bike_model() -> Node3D:
+	var n := Node3D.new()
+	var frame := Color(0.95, 0.2, 0.15)
+	for z in [-0.52, 0.52]:
+		var w := Build.cyl(n, 0.34, 0.34, 0.04, Vector3(0, 0.34, z), Color(0.08, 0.08, 0.08), 16)
+		w.rotation.z = PI / 2.0
+		Build.cyl(n, 0.29, 0.29, 0.045, Vector3(0, 0.34, z), Color(0.75, 0.75, 0.78), 12).rotation.z = PI / 2.0
+	var top := Build.box(n, Vector3(0.04, 0.04, 0.72), Vector3(0, 0.82, 0.02), frame)
+	var down := Build.box(n, Vector3(0.04, 0.04, 0.72), Vector3(0, 0.58, 0.14), frame)
+	down.rotation.x = 0.62
+	var seat_tube := Build.box(n, Vector3(0.04, 0.56, 0.04), Vector3(0, 0.62, -0.3), frame)
+	seat_tube.rotation.x = -0.25
+	Build.box(n, Vector3(0.04, 0.5, 0.04), Vector3(0, 0.62, 0.44), frame).rotation.x = 0.3
+	Build.box(n, Vector3(0.12, 0.04, 0.24), Vector3(0, 0.93, -0.36), Color(0.1, 0.1, 0.1))
+	Build.box(n, Vector3(0.46, 0.035, 0.035), Vector3(0, 0.98, 0.4), Color(0.1, 0.1, 0.1))
+	return n
+
+func _m_cyclist() -> void:
+	if _bike_state != "" or Meet.main.invaded():
+		return
+	cyclist = load("res://scripts/riser.gd").new()
+	main.add_child(cyclist)
+	cyclist.setup(People.CYCLIST, false, Vector3(-30, 0, 27))
+	cyclist.passer = true
+	cyclist._stops = false
+	cyclist.state = "ride"
+	Meet.risers.append(cyclist)
+	bike = bike_model()
+	cyclist.add_child(bike)
+	cyclist.riding = true
+	_bike_state = "arriving"
+	Meet.sfx("blip", 0.0, 1.6)
+	Meet.say("A cyclist in a great deal of lycra is coming along the foreshore, ringing a bell at nobody.")
+
+func _park(at: Vector3) -> void:
+	bike.reparent(main)
+	bike.global_position = main.ground(at)
+	bike.rotation = Vector3(0, 0.6, -0.22)
+	var th := Thing.new()
+	bike.add_child(th)
+	th.setup("Take the cyclist's bike", _steal)
+	th.name = "Take"
+
+func _steal() -> void:
+	var p: Node3D = Meet.player
+	bike.get_node("Take").queue_free()
+	p.target = null
+	bike.reparent(p)
+	bike.position = Vector3.ZERO
+	bike.rotation = Vector3(0, PI, 0)
+	p.mount()
+	_bike_state = "stolen"
+	_bike_t = 0.0
+	Meet.dare("bike")
+	Meet.add_heat(1.0, "stealing a bicycle")
+	Meet.sfx("blip", 0.0, 1.6)
+	Meet.ripple("You stole a cyclist's eleven-thousand-dollar bike.")
+	if is_instance_valid(cyclist):
+		cyclist.mind.experience("theft", -0.9, 3.0, true, "the bike")
+		cyclist.say_aloud("OI! THAT'S ELEVEN GRAND! GET OFF MY BIKE!", 6.0)
+		cyclist.riding = false
+		cyclist.state = "ride"
+	main.stir(p.global_position, ["Is that... the cyclist's?", "They've nicked the bike!", "GO ON!", "Harry, are you seeing this?"], 20.0, 0.7, false)
+	Meet.say("You're on the bike. Go easy near people: hit someone at speed and they go down. E or USE to get off.")
+
+## The player has got off, or been pulled off.
+func dismounted() -> void:
+	bike.reparent(main)
+	bike.global_position = main.ground(Meet.player.global_position + Meet.player.global_transform.basis.x * 0.8)
+	bike.rotation = Vector3(0, Meet.player.rotation.y, -0.22)
+	_bike_state = "dropped"
+
+func _run_bike(dt: float) -> void:
+	if _bike_state == "" or not is_instance_valid(cyclist):
+		if _bike_state != "" and not Meet.player.riding:
+			_bike_state = ""
+		return
+	var c := cyclist
+	match _bike_state:
+		"arriving":
+			# Rides in along the water and up to the gate, then parks to watch.
+			var to := Vector3(1.8, 0, 22.6)
+			if c.ride_to(to if c.global_position.x > -2.0 else Vector3(0, 0, 27), 6.5, dt):
+				if c.global_position.distance_to(to) < 1.0:
+					c.riding = false
+					_park(to + Vector3(1.0, 0, 0.3))
+					_bike_state = "parked"
+					_bike_t = randf_range(45.0, 70.0)
+					c.say_aloud("Don't touch the bike.", 4.0)
+					c._go(Vector3(randf_range(-3, 3), 0, 11.0), "gawk")
+		"parked":
+			_bike_t -= dt
+			if _bike_t <= 0.0 and c.state in ["watch", "idle", "pass"] and not Meet.modal:
+				_bike_state = "leaving"
+		"leaving", "dropped":
+			# Back to the bike, on, and away.
+			if c.state in ["winded", "scrap"]:
+				return
+			c.state = "ride"
+			if c.ride_to(bike.global_position, 3.4 if _bike_state == "dropped" else 1.6, dt):
+				if bike.has_node("Take"):
+					bike.get_node("Take").queue_free()
+				bike.reparent(c)
+				bike.position = Vector3.ZERO
+				bike.rotation = Vector3.ZERO
+				c.riding = true
+				c.say_aloud("Eleven grand. ELEVEN." if _bike_state == "dropped" else "Right. Twenty k to go.", 4.0)
+				_bike_state = "away"
+		"away":
+			if c.ride_to(Vector3(34, 0, 27.2), 7.5, dt):
+				Meet.risers.erase(c)
+				c.queue_free()
+				cyclist = null
+				_bike_state = ""
+		"stolen":
+			# On foot, furious, after you.
+			_bike_t += dt
+			var p: Node3D = Meet.player
+			c.state = "ride"
+			if c.ride_to(p.global_position, 4.4, dt) and p.riding and p.speed() < 5.0:
+				p.dismount()
+				Meet.hud.shake()
+				c.say_aloud("GOT you. Off. OFF.", 4.0)
+				Meet.say("The cyclist hauls you off by the collar.")

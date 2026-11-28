@@ -62,6 +62,7 @@ var _dog_goal := Vector3.ZERO
 var _dog_ate := false
 var _lead: MeshInstance3D
 var coned := false
+var riding := false              # on a bicycle
 var keen := false                # already half talked into a pull
 var bracket := ""                # this pull is the player's bracket semi or final
 var _chalk_t := 0.0
@@ -364,6 +365,8 @@ func _process(dt: float) -> void:
 				idle()
 		"search":
 			_search(dt)
+		"ride":
+			pass   # moved by whoever is running the bike
 		"confront":
 			# Walking you down for a word. It happens when they reach you.
 			_chase += dt
@@ -1915,3 +1918,40 @@ func join_on_seat(at: Vector3) -> void:
 	_convo = {}
 	_partner = null
 	_go(at, "bench")
+
+## Go straight to a point, on a bike or on foot after one. True on arrival.
+func ride_to(to: Vector3, pace: float, dt: float) -> bool:
+	var d := to - global_position
+	d.y = 0
+	if d.length() < 0.9:
+		Character.play(_figure, "Idle")
+		return true
+	global_position = Meet.main.ground(global_position + d.normalized() * pace * dt)
+	_look(global_position + d, 0.2)
+	_figure.position.y = 0.3 if riding else 0.0
+	Character.play(_figure, "Driving" if riding else "Jog_Fwd")
+	return false
+
+## Hit by a bicycle going too fast.
+func bowled(dir: Vector3) -> void:
+	if state == "winded":
+		return
+	Meet.sfx("punch", 0.0, 0.8)
+	Meet.dare("bowl")
+	Fx.burst(Meet.main, global_position + Vector3(0, 1.0, 0), Vector3.UP, false, 10)
+	if alien:
+		take_hit(60, global_position - dir)
+		return
+	Meet.main.drop_match(self)
+	_knock += dir.normalized() * 3.0
+	say_aloud(["OOF!", "MY LEG!", "WATCH IT!", "Aaagh!"][randi() % 4], 3.0)
+	mind.experience("violence", -0.5, 1.6, true, riser_name)
+	_mood_check = 0.0
+	Meet.add_heat(0.8, "mowing people down")
+	Meet.main.stir(global_position, ["They just ran %s over!" % first_name, "On a BIKE?", "Somebody stop them!", "Ohhh!"], 14.0, 0.7, false)
+	_vs_player = false
+	state = "winded"
+	_timer = 5.0
+	Character.play(_figure, "Death01" if passer else "Crouch_Idle", true)
+	if is_riser:
+		Meet.main.defend(self, "punch")

@@ -440,6 +440,8 @@ const DARE_POOL := [
 	{"text": "Make two founders fall out", "event": "feud", "tier": 2},
 	{"text": "Lose a scrap. On purpose or otherwise.", "event": "floored", "tier": 2},
 	{"text": "Send a lost tourist through the middle of the meet", "event": "tourist", "tier": 2},
+	{"text": "Steal the cyclist's bike and go for a ride", "event": "bike", "tier": 2},
+	{"text": "Knock someone over with a bicycle", "event": "bowl", "tier": 2},
 ]
 const TIER_NAME := ["", "cheeky", "unhinged"]
 const TIER_PAY := [5, 8, 12]

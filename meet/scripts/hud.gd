@@ -23,6 +23,11 @@ var _use_pad: Button
 var _use_text: Button
 var _hint: Label
 var _hint_t := 9.0
+var _cam_id := -1
+var _cam_origin := Vector2.ZERO
+var _cam_vec := Vector2.ZERO
+var _cam_moved := 0.0
+var _cam_knob: Panel
 var _dares: VBoxContainer
 var _prompt: Label
 var _log: VBoxContainer
@@ -140,7 +145,7 @@ func _refresh() -> void:
 	UI.clear(_dares)
 	for d in Meet.dares:
 		var tier: int = int(d.get("tier", 0))
-		var l := UI.text(_dares, "%s %s%s%s" % ["✔" if d["done"] else "○", ("[%s] " % Meet.TIER_NAME[tier]) if tier > 0 else "", d["text"], " (%d/%d)" % [d["have"], d["need"]] if d["need"] > 1 and not d["done"] else ""], 14, Color(0.6, 0.9, 0.7) if d["done"] else [Color(0.95, 0.92, 0.85), Color(1.0, 0.8, 0.4), Color(1.0, 0.5, 0.45)][tier])
+		var l := UI.text(_dares, "%s %s%s%s" % ["✔" if d["done"] else "○", "", d["text"], " (%d/%d)" % [d["have"], d["need"]] if d["need"] > 1 and not d["done"] else ""], 14, Color(0.6, 0.9, 0.7) if d["done"] else Color(0.95, 0.92, 0.85))
 		l.autowrap_mode = TextServer.AUTOWRAP_OFF
 		_shadow(l)
 	if _bag and _bag.visible:
@@ -150,14 +155,19 @@ func _process(dt: float) -> void:
 	if Meet.player == null:
 		return
 	var t: Node = Meet.player.target if is_instance_valid(Meet.player.target) else null
-	_prompt.text = "[E]  %s" % t.prompt() if t != null and not Meet.modal and not Meet.touch else ""
+	var riding: bool = Meet.player.riding
+	_prompt.text = ("[E]  Get off the bike" if riding else "[E]  %s" % t.prompt()) if (t != null or riding) and not Meet.modal and not Meet.touch else ""
 	_touch_ui.visible = Meet.touch and not Meet.modal and not _title.visible
+	if _cam_id >= 0 and not Meet.modal:
+		Meet.player.look += Vector2(_cam_vec.x * 560.0, _cam_vec.y * 300.0) * dt
 	if Meet.touch:
 		# The big button and the pill above the stick say exactly what a tap will do.
-		_use_text.visible = t != null
-		if t != null:
+		_use_text.visible = t != null or riding
+		if riding:
+			_use_text.text = "Get off the bike"
+		elif t != null:
 			_use_text.text = t.prompt()
-		_use_pad.modulate.a = 1.0 if t != null else 0.35
+		_use_pad.modulate.a = 1.0 if (t != null or riding) else 0.35
 		if _touch_ui.visible and _hint_t > 0.0:
 			_hint_t -= dt
 			_hint.modulate.a = clamp(_hint_t, 0.0, 1.0)
@@ -249,7 +259,16 @@ func _build_touch() -> void:
 	_stick_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_shadow(_stick_label)
 	# Right thumb. The big one does whatever the prompt says.
-	_use_pad = _pad(_touch_ui, "USE", 132, Vector2(110, 120), func(): Meet.player.use(), Color(0.3, 0.22, 0.08, 0.7))
+	# Tap it to use; hold and drag it to swing the camera, like a second stick.
+	_use_pad = _pad(_touch_ui, "USE\ndrag: look", 138, Vector2(112, 122), func(): pass, Color(0.3, 0.22, 0.08, 0.7))
+	_use_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pads.erase(_use_pad)
+	_cam_knob = Panel.new()
+	_cam_knob.size = Vector2(54, 54)
+	_cam_knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_cam_knob.add_theme_stylebox_override("panel", _round(54, Color(1, 1, 1, 0.3), Color(1, 1, 1, 0.8)))
+	_cam_knob.visible = false
+	_touch_ui.add_child(_cam_knob)
 	_pad(_touch_ui, "PUNCH", 104, Vector2(250, 86), func(): Meet.player.slap())
 	_pad(_touch_ui, "JUMP", 92, Vector2(124, 292), func(): Meet.player.jump())
 	_pad(_touch_ui, "CHALK", 84, Vector2(232, 214), func(): Meet.player.throw_chalk())
@@ -281,7 +300,7 @@ func _build_touch() -> void:
 	_touch_ui.add_child(_use_text)
 	_pads.append(_use_text)
 	# Shown for the first few seconds.
-	_hint = UI.text(_touch_ui, "Left thumb: move  (push all the way to run)\nDrag anywhere on the right: look around\nThe big button does what it says", 20, Color(1, 1, 1, 0.95))
+	_hint = UI.text(_touch_ui, "Left thumb: move  (push all the way to run)\nTap the big button to use; hold and drag it to look around\nOr drag anywhere on the right to look", 20, Color(1, 1, 1, 0.95))
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	_hint.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -313,15 +332,24 @@ func _on_pad(p: Vector2) -> bool:
 ## that is not a button turns the camera.
 func _input(ev: InputEvent) -> void:
 	if not Meet.touch or Meet.modal:
-		if _stick_id >= 0 or _look_id >= 0:
+		if _stick_id >= 0 or _look_id >= 0 or _cam_id >= 0:
 			_stick_id = -1
 			_look_id = -1
+			_cam_id = -1
+			_cam_vec = Vector2.ZERO
+			_cam_knob.visible = false
 			Meet.stick = Vector2.ZERO
 			_rest_stick()
 		return
 	if ev is InputEventScreenTouch:
 		if ev.pressed:
 			var w := get_viewport().get_visible_rect().size
+			if _use_pad.get_global_rect().grow(6).has_point(ev.position) and _cam_id < 0:
+				_cam_id = ev.index
+				_cam_origin = ev.position
+				_cam_vec = Vector2.ZERO
+				_cam_moved = 0.0
+				return
 			if _on_pad(ev.position):
 				return
 			if ev.position.x < w.x * 0.45 and ev.position.y > 150 and _stick_id < 0:
@@ -338,7 +366,20 @@ func _input(ev: InputEvent) -> void:
 				_rest_stick()
 			if ev.index == _look_id:
 				_look_id = -1
+			if ev.index == _cam_id:
+				_cam_id = -1
+				_cam_vec = Vector2.ZERO
+				_cam_knob.visible = false
+				if _cam_moved < 16.0:
+					Meet.player.use()
 	elif ev is InputEventScreenDrag:
+		if ev.index == _cam_id:
+			_cam_moved = max(_cam_moved, (ev.position - _cam_origin).length())
+			var cv: Vector2 = ((ev.position - _cam_origin) / 75.0).limit_length(1.0)
+			_cam_vec = cv if cv.length() > 0.2 else Vector2.ZERO
+			_cam_knob.visible = _cam_moved >= 16.0
+			_cam_knob.position = _cam_origin + cv * 75.0 - Vector2(27, 27)
+			return
 		if ev.index == _stick_id:
 			var v: Vector2 = ((ev.position - _stick_origin) / STICK).limit_length(1.0)
 			# A small dead zone so a resting thumb doesn't creep.

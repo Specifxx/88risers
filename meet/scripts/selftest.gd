@@ -115,6 +115,8 @@ func _run() -> void:
 	var f0: float = tommy.mind.feeling()
 	tommy.interact()
 	check(Meet.menu.active(), "talking to someone opens the menu")
+	await wait(0.2)
+	check(Meet.menu._sub.size.x > 250.0 and Meet.menu._sub.size.y < 120.0, "the attitude line has room to read across (%d x %d)" % [Meet.menu._sub.size.x, Meet.menu._sub.size.y])
 	await wait(0.3)
 	await shot("04_talk")
 	Meet.menu._chat()
@@ -681,6 +683,41 @@ func _run() -> void:
 	Meet.stamina = 50.0
 	await wait(2.0)
 	check(Meet.stamina < 53.0, "stamina comes back slowly on its own (%.1f)" % Meet.stamina)
+
+	# The cyclist.
+	check(not Meet.hud._dares.get_child(1).text.contains("["), "dares are listed without tags: %s" % Meet.hud._dares.get_child(1).text)
+	ev._m_cyclist()
+	var parked := false
+	for i in 100:
+		await wait(0.25)
+		if ev._bike_state == "parked":
+			parked = true
+			break
+	check(parked, "a cyclist rides in and parks at the gate")
+	stand(ev.bike.global_position + Vector3(0, 0, 3.5), ev.bike.global_position)
+	await wait(0.4)
+	await shot("15g_bike")
+	Meet.heat = 0.0
+	ev._steal()
+	check(p.riding and ev._bike_state == "stolen", "the bike can be taken and ridden")
+	var victim: Node3D = Meet.riser("bhavya")
+	victim.state = "idle"
+	victim.global_position = Meet.main.ground(Vector3(-14, 0, 12))
+	p.global_position = Meet.main.ground(Vector3(-14, 0, 13.2))
+	p._ride_v = Vector3(0, 0, -10)
+	await wait(0.4)
+	check(victim.state == "winded", "riding into someone at speed knocks them over")
+	stand(p.global_position + Vector3(0, 0, 0.1), victim.global_position)
+	await shot("15h_riding")
+	p.use()
+	check(not p.riding and ev._bike_state == "dropped", "getting off leaves the bike for its owner")
+	Meet.heat = 0.0
+	Meet.menu._forced = false
+	Meet.menu.close()
+	for r in Meet.risers:
+		if r.state in ["confront", "scrap"]:
+			r._vs_player = false
+			r.idle()
 
 	# Kit put down, ripples, the boom box.
 	Meet.owned["boom_box"] = true
