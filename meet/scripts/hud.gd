@@ -193,6 +193,12 @@ func _refresh() -> void:
 func _process(dt: float) -> void:
 	if Meet.player == null:
 		return
+	# While the kit is open the cursor is free and the world is paused to input, whatever else
+	# has opened or closed behind it.
+	if _bag and _bag.visible:
+		Meet.modal = true
+		if Input.mouse_mode != Input.MOUSE_MODE_VISIBLE:
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var t: Node = Meet.player.target if is_instance_valid(Meet.player.target) else null
 	var riding: bool = Meet.player.riding
 	_prompt.text = ("[E]  Get off the bike" if riding else "[E]  %s" % t.prompt()) if (t != null or riding) and not Meet.modal and not Meet.touch else ""
@@ -650,8 +656,16 @@ func _tile(parent: Node, id: String) -> void:
 		sb.set_border_width_all(3)
 		sb.border_width_left = 10
 		sb.border_color = UI.GOLD
-	for st in ["normal", "hover", "pressed", "disabled"]:
+	for st in ["normal", "pressed", "disabled"]:
 		b.add_theme_stylebox_override(st, sb)
+	# Under the cursor a tile lights up, so it is plain which one a click will land on.
+	var hv: StyleBoxFlat = sb.duplicate()
+	hv.bg_color = sb.bg_color.lightened(0.18)
+	hv.set_border_width_all(3)
+	hv.border_width_left = 10
+	hv.border_color = UI.GOLD if on else Color(0.95, 0.9, 0.8)
+	b.add_theme_stylebox_override("hover", hv)
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	b.add_theme_color_override("font_color", UI.GOLD if on else (UI.PAPER if have else Color(0.5, 0.48, 0.44)))
 	b.add_theme_color_override("font_disabled_color", Color(0.5, 0.48, 0.44))
 	b.disabled = not have
