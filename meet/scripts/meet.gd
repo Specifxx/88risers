@@ -127,6 +127,8 @@ func _ready() -> void:
 	_action("eat", [KEY_R])
 	_action("item", [KEY_X])
 	_action("view", [KEY_C])
+	_action("shout", [KEY_V])
+	_action("throw", [KEY_T])
 	_action("mute", [KEY_M])
 	touch = DisplayServer.is_touchscreen_available()
 	if OS.get_cmdline_user_args().has("--selftest"):
@@ -441,6 +443,8 @@ const DARE_POOL := [
 	{"text": "Lose a scrap. On purpose or otherwise.", "event": "floored", "tier": 2},
 	{"text": "Send a lost tourist through the middle of the meet", "event": "tourist", "tier": 2},
 	{"text": "Steal the cyclist's bike and go for a ride", "event": "bike", "tier": 2},
+	{"text": "Start a food fight", "event": "foodfight", "tier": 2},
+	{"text": "Shout something at the whole meet", "event": "shout", "tier": 1},
 	{"text": "Knock someone over with a bicycle", "event": "bowl", "tier": 2},
 ]
 const TIER_NAME := ["", "cheeky", "unhinged"]

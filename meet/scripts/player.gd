@@ -87,6 +87,10 @@ func _unhandled_input(ev: InputEvent) -> void:
 	elif ev.is_action_pressed("mute"):
 		Meet.audio.set_muted(not Meet.muted)
 		Meet.say("Sound off." if Meet.muted else "Sound on.")
+	elif ev.is_action_pressed("shout"):
+		Meet.main.shout_menu()
+	elif ev.is_action_pressed("throw"):
+		throw_snack()
 	elif ev.is_action_pressed("view"):
 		toggle_view()
 	elif ev is InputEventMouseButton and ev.pressed and _orbit and ev.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
@@ -353,6 +357,33 @@ func use_item() -> void:
 		_:
 			act("Punch_Jab", 0.5)
 			Meet.say("You wave the %s about. Nothing happens, but you feel better." % Meet.ITEMS[item]["name"].to_lower())
+
+## Throw one of your snacks at whoever is in front of you.
+func throw_snack() -> void:
+	if _cooldown > 0.0 or Meet.modal or _down > 0.0 or riding:
+		return
+	if Meet.snacks <= 0:
+		Meet.say("You've nothing to throw. The snack table's by the lights.")
+		return
+	Meet.snacks -= 1
+	_cooldown = 0.5
+	act("Punch_Jab", 0.45)
+	Meet.touch_state()
+	var who := _in_front(11.0)
+	var from := global_position + Vector3(0, 1.5, 0)
+	var to: Vector3 = who.global_position + Vector3(0, 1.4, 0) if who else from - global_transform.basis.z * 7.0 + Vector3(0, -1.2, 0)
+	var tgt := who
+	Meet.main.lob(from, to, Color(0.9, 0.3, 0.2), func():
+		if tgt != null and is_instance_valid(tgt):
+			tgt.splatted(self))
+	Meet.main.snack_thrown()
+
+## Somebody landed one on you.
+func splatted() -> void:
+	Fx.tint(_figure, Color(0.95, 0.75, 0.2, 0.55), 10.0)
+	Meet.sfx("crunch", -2.0, 0.8)
+	Meet.hud.float_text("SPLAT")
+	Meet.hud.shake()
 
 ## A handful of chalk at whoever is in front of you.
 func throw_chalk() -> void:
