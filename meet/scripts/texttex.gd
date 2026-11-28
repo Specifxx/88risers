@@ -34,15 +34,30 @@ func show_text(t: String, font_size := 16, color := Color.WHITE, width := 0, ali
 		_label.text = ""
 		_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 		return
-	var f: Font = ThemeDB.fallback_font
+	# Measure with the very font the label will draw with, or the picture comes out a few
+	# pixels too small and the last letters wrap or fall off the edge.
+	var f: Font = _label.get_theme_font("font")
+	if f == null:
+		f = ThemeDB.fallback_font
 	var sz: Vector2 = f.get_multiline_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, float(width) if width > 0 else -1.0, font_size)
+	if width > 0:
+		# A short line needs no more room than it takes; a long one gets a spare line in case
+		# the label breaks it differently.
+		var one: Vector2 = f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size)
+		if one.x + 8.0 <= float(width) and not t.contains("\n"):
+			sz = one
+		else:
+			sz.y += f.get_height(font_size) * 0.5
 	var pad := outline + 3
-	var px := Vector2i(int(ceil(float(width) if width > 0 else sz.x)) + pad * 2, int(ceil(sz.y)) + pad * 2)
+	var px := Vector2i(int(ceil(float(width) if width > 0 else sz.x + 8.0)) + pad * 2, int(ceil(sz.y)) + pad * 2 + 2)
 	_vp.size = px
+	# Wrapping has to be switched on before the size is set: a label that isn't wrapping
+	# refuses to be narrower than its whole text, and then the end falls off the picture.
+	_label.autowrap_mode = TextServer.AUTOWRAP_WORD if width > 0 else TextServer.AUTOWRAP_OFF
 	_label.text = t
 	_label.position = Vector2(pad, pad)
+	_label.custom_minimum_size = Vector2.ZERO
 	_label.size = Vector2(px.x - pad * 2, px.y - pad * 2)
-	_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if width > 0 else TextServer.AUTOWRAP_OFF
 	_label.horizontal_alignment = [HORIZONTAL_ALIGNMENT_LEFT, HORIZONTAL_ALIGNMENT_CENTER, HORIZONTAL_ALIGNMENT_RIGHT][align]
 	_label.add_theme_font_size_override("font_size", font_size)
 	_label.add_theme_color_override("font_color", color)
@@ -50,3 +65,11 @@ func show_text(t: String, font_size := 16, color := Color.WHITE, width := 0, ali
 	custom_minimum_size = Vector2(px)
 	size = Vector2(px)
 	_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	# The label lays its words out a frame late; draw once more when it has, or the picture
+	# can keep the old line breaks.
+	if is_inside_tree():
+		var want := _sig
+		for delay in 2:
+			await get_tree().process_frame
+		if is_instance_valid(self) and _sig == want:
+			_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
