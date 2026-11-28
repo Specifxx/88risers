@@ -48,6 +48,8 @@ var table: CanvasLayer
 var strapgame: CanvasLayer
 var audio: Node
 var muted := false
+var quality := 0               # 0 sharpest .. 3 smoothest
+var quality_auto := true
 var risers: Array = []
 var stick := Vector2.ZERO      # touch joystick
 var touch := false
@@ -131,7 +133,7 @@ func _ready() -> void:
 	_action("throw", [KEY_T])
 	_action("mute", [KEY_M])
 	touch = DisplayServer.is_touchscreen_available()
-	if OS.get_cmdline_user_args().has("--selftest"):
+	if OS.get_cmdline_user_args().has("--selftest") or OS.get_cmdline_user_args().has("--soakfresh"):
 		wipe()
 	load_save()
 
@@ -239,7 +241,7 @@ func save() -> void:
 			bonds[r.id] = r.mind.to_data()
 	var data := {"owned": owned, "worn": worn, "bonds": bonds, "beaten": beaten, "notes": notes, "visits": visits,
 		"wins": wins, "losses": losses, "heckles": heckles, "snacks_given": snacks_given, "moments": moments, "seen_ufo": seen_ufo,
-		"joined": joined, "sets": sets, "points": points, "dares_done": dares_done, "last_recap": last_recap, "muted": muted, "flags": flags, "player_name": player_name, "money": money, "leads": leads, "used": used, "said": said, "paid": paid, "ties": ties, "tips": tips, "straps_lifted": straps_lifted, "recruits": recruits, "dusted": dusted}
+		"joined": joined, "sets": sets, "points": points, "dares_done": dares_done, "last_recap": last_recap, "muted": muted, "quality": quality, "quality_auto": quality_auto, "flags": flags, "player_name": player_name, "money": money, "leads": leads, "used": used, "said": said, "paid": paid, "ties": ties, "tips": tips, "straps_lifted": straps_lifted, "recruits": recruits, "dusted": dusted}
 	var f := FileAccess.open(SAVE, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(data))
@@ -274,6 +276,8 @@ func load_save() -> void:
 	dares_done = int(data.get("dares_done", 0))
 	last_recap = String(data.get("last_recap", ""))
 	muted = bool(data.get("muted", false))
+	quality = int(data.get("quality", 0))
+	quality_auto = bool(data.get("quality_auto", true))
 	tips = int(data.get("tips", 0))
 	ties = data.get("ties", {})
 	money = int(data.get("money", 10))

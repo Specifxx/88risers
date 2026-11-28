@@ -90,12 +90,19 @@ func _ready() -> void:
 		kinds.shuffle()
 		if first != "":
 			kinds.insert(0, first)
+		var had := {}
 		for i in 2 + randi() % 2:
-			_events.append({"at": randf_range(60.0, 800.0), "kind": kinds[i]})
+			if not had.has(kinds[i]):
+				had[kinds[i]] = true
+				_events.append({"at": randf_range(60.0, 800.0), "kind": kinds[i]})
 	evening = load("res://scripts/evening.gd").new()
 	add_child(evening)
 	evening.setup(self)
-	if OS.get_cmdline_user_args().has("--selftest"):
+	apply_quality()
+	Meet.changed.connect(func():
+		if _sun.shadow_enabled and Meet.touch:
+			apply_quality())
+	if OS.get_cmdline_user_args().has("--selftest") or OS.get_cmdline_user_args().has("--soak"):
 		add_child(load("res://scripts/selftest.gd").new())
 
 # --- The ground ----------------------------------------------------------------
@@ -119,7 +126,7 @@ func clear(p: Vector3) -> Vector3:
 			p.x = t.x + d.x
 			p.z = t.z + d.y
 	p.x = clamp(p.x, -24.0, 24.0)
-	p.z = clamp(p.z, -20.0, 26.5)
+	p.z = clamp(p.z, -20.0, 28.75)   # right up to the railing
 	return ground(p)
 
 # --- The place -------------------------------------------------------------------
@@ -181,14 +188,28 @@ func _place() -> void:
 		Build.tcyl(self, 0.05, 0.05, 1.1, Vector3(-30 + i * 3.0, 0.9, 29.3), "iron", Color(0.35, 0.35, 0.38), 6)
 	Build.tbox(self, Vector3(60, 0.06, 0.06), Vector3(0, 1.4, 29.3), "iron", Color(0.35, 0.35, 0.38))
 	# The seating: curved stone tiers behind the plaza.
-	for t in TIERS:
-		var radius := PLAZA + 0.5 + t
-		var n := 26
-		for i in n:
-			var a := PI + 0.12 + (PI - 0.24) * (i + 0.5) / n
-			var hgt := (t + 1) * TIER_H
-			var seg := Build.tbox(self, Vector3(1.0, hgt, (PI - 0.24) * radius / n + 0.06), Vector3(cos(a) * radius, hgt / 2.0, sin(a) * radius), "stone", stone * (0.92 + 0.04 * (t % 2)), false, 0.5)
-			seg.rotation.y = -a
+	# Two batches (alternate tiers are a shade apart) rather than a couple of hundred separate blocks.
+	var n := 26
+	for parity in 2:
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = BoxMesh.new()
+		mm.instance_count = n * TIERS / 2
+		var k := 0
+		for t in TIERS:
+			if t % 2 != parity:
+				continue
+			var radius := PLAZA + 0.5 + t
+			for i in n:
+				var a := PI + 0.12 + (PI - 0.24) * (i + 0.5) / n
+				var hgt := (t + 1) * TIER_H
+				var bs: Basis = Basis(Vector3.UP, -a) * Basis.from_scale(Vector3(1.0, hgt, (PI - 0.24) * radius / n + 0.06))
+				mm.set_instance_transform(k, Transform3D(bs, Vector3(cos(a) * radius, hgt / 2.0, sin(a) * radius)))
+				k += 1
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		mmi.material_override = Build.tmat("stone", stone * (0.92 + 0.04 * parity), 0.5)
+		add_child(mmi)
 	for sx in [-1.0, 1.0]:
 		Build.tbox(self, Vector3(9.0, TIERS * TIER_H + 0.5, 0.6), Vector3(sx * (PLAZA + 4.5), (TIERS * TIER_H + 0.5) / 2.0, -0.6), "stone", stone * 0.9, true, 0.5)
 	# Arm wrestling tables.
@@ -272,13 +293,31 @@ func _place() -> void:
 		at.y = height(at.x, at.z)
 		Build.tcyl(self, 0.06, 0.08, 5.0, at + Vector3(0, 2.5, 0), "iron", Color(0.25, 0.25, 0.28), 6)
 		poles.append(at + Vector3(0, 5.0, 0))
+	# The bulbs: three batches by colour.
+	var bulbs := [[], [], []]
 	for i in poles.size():
 		var a: Vector3 = poles[i]
 		var b: Vector3 = poles[(i + 1) % poles.size()]
 		for k in range(1, 7):
 			var f := k / 7.0
-			var p := a.lerp(b, f) - Vector3(0, sin(f * PI) * 0.8, 0)
-			Build.sphere(self, 0.09, p, [Color(1.0, 0.8, 0.45), Color(1.0, 0.45, 0.3), Color(1.0, 0.9, 0.7)][k % 3], 1.5)
+			bulbs[k % 3].append(a.lerp(b, f) - Vector3(0, sin(f * PI) * 0.8, 0))
+	var bulb_mesh := SphereMesh.new()
+	bulb_mesh.radius = 0.09
+	bulb_mesh.height = 0.18
+	bulb_mesh.radial_segments = 8
+	bulb_mesh.rings = 4
+	for c in 3:
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = bulb_mesh
+		mm.instance_count = bulbs[c].size()
+		for j in bulbs[c].size():
+			mm.set_instance_transform(j, Transform3D(Basis(), bulbs[c][j]))
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		mmi.material_override = Build.mat([Color(1.0, 0.8, 0.45), Color(1.0, 0.45, 0.3), Color(1.0, 0.9, 0.7)][c], 1.5)
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mmi)
 	for lp in [Vector3(-4, 4.2, 0), Vector3(4, 4.2, 0), Vector3(0, 4.2, 5), Vector3(6, 3.0, 6)]:
 		var l := OmniLight3D.new()
 		l.light_color = Color(1.0, 0.75, 0.5)
@@ -876,7 +915,9 @@ func _people() -> void:
 				Meet.risers[-1].recruited = true
 				Meet.risers[-1].join_meet()
 				Meet.risers[-1].wants_pull = false
-	_events.append({"at": randf_range(200.0, 520.0), "kind": People.RUMOURS[Meet.week() % People.RUMOURS.size()]})
+	var rumour: String = People.RUMOURS[Meet.week() % People.RUMOURS.size()]
+	if not _events.any(func(e): return e["kind"] == rumour):
+		_events.append({"at": randf_range(200.0, 520.0), "kind": rumour})
 	var f: Dictionary = People.FINDS[Meet.week() % People.FINDS.size()]
 	if not Meet.owned.has(f["item"]):
 		drop([f["item"]], f["at"])
@@ -930,6 +971,7 @@ func _process(dt: float) -> void:
 			_events.erase(ev)
 			call("start_" + ev["kind"])
 			break
+	_tune(dt)
 	# Heat cools with time; a hidden bucket turns up again.
 	if Meet.heat > 0.0:
 		var st: int = Meet.stars()
@@ -1601,3 +1643,40 @@ func _run_food_fight(dt: float) -> void:
 			h.mind.experience("heckle", -0.4, 1.2, true, "the food fight")
 			Meet.add_heat(1.2, "starting a food fight")
 			h.say_aloud("Whoever started this is sweeping. ALL of it.", 5.0)
+
+# --- Keeping it smooth ----------------------------------------------------------------------------
+
+const QUALITY := [[1.0, true], [0.8, false], [0.65, false], [0.5, false]]   # 3D resolution, shadows
+var _fps_t := 0.0
+var _fps_n := 0
+var _fps_wait := 6.0
+var fps := 60.0
+
+func apply_quality() -> void:
+	var q: Array = QUALITY[clamp(Meet.quality, 0, QUALITY.size() - 1)]
+	get_viewport().scaling_3d_scale = q[0]
+	_sun.shadow_enabled = q[1] and not Meet.touch
+
+## Watch the frame rate and give up sharpness before smoothness.
+func _tune(dt: float) -> void:
+	_fps_t += dt
+	_fps_n += 1
+	if _fps_t < 2.5:
+		return
+	fps = _fps_n / _fps_t
+	_fps_t = 0.0
+	_fps_n = 0
+	if _fps_wait > 0.0:
+		_fps_wait -= 2.5
+		return
+	if not Meet.quality_auto:
+		return
+	if fps < 27.0 and Meet.quality < QUALITY.size() - 1:
+		Meet.quality += 1
+		_fps_wait = 5.0
+		apply_quality()
+		Meet.save()
+	elif fps > 57.0 and Meet.quality > 0 and _clock > 60.0 and not Meet.touch:
+		Meet.quality -= 1
+		_fps_wait = 20.0
+		apply_quality()
