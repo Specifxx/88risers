@@ -428,3 +428,25 @@ const HIGH_FIVE := {"yes": ["YES. Up top.", "There it is!", "Solid."], "meh": ["
 const DANCE := {"yes": ["Oh, we're doing this? We're doing this.", "Go on, then!", "I've got moves. Watch."], "no": ["I don't dance.", "Absolutely not.", "Not sober. Not here."]}
 const WATCHING_DANCE := ["What is happening?", "Somebody film this.", "Go on!", "I can't look.", "George! Camera!"]
 const LEFT_HANGING := ["Ooh. Left hanging.", "That's cold.", "Oof."]
+
+## Visiting pullers. One turns up each real week.
+const GUESTS := [
+	{"id": "g_mei", "name": "Mei from Parramatta", "role": "Visiting: Parramatta Pullers", "strength": 74, "look": {"body": "Female_Ranger", "hair": "Hair_Buns", "tint": Color(0.2, 0.55, 0.5)}, "mind": {"warmth": 0.2, "open": 1.2},
+		"chat": ["Your tables are lower than ours. I like it.", "We've got forty members. No snacks, though. You win on snacks.", "I came to scout Erick. Don't tell him."]},
+	{"id": "g_baz", "name": "Baz the truckie", "role": "Visiting: pulls at servos", "strength": 83, "look": {"body": "Male_Peasant", "hair": "Hair_Buzzed", "beard": true, "tint": Color(0.85, 0.45, 0.15), "build": 1.15}, "mind": {"warmth": 0.1, "grudge": 1.2},
+		"chat": ["I pull at truck stops. Winner gets the pie.", "Never trained a day. Just gearboxes.", "Is that bloke counting his own reps? Out loud?"]},
+	{"id": "g_ana", "name": "Ana the physio", "role": "Visiting: here professionally", "strength": 62, "look": {"body": "Female_Peasant", "hair": "Hair_Long", "tint": Color(0.9, 0.9, 0.95)}, "mind": {"warmth": 0.4, "open": 1.3},
+		"chat": ["I have treated every elbow in this amphitheatre.", "None of you warm up. None.", "I'm not here to pull. I'm here to say I told you so."]},
+	{"id": "g_kai", "name": "Kai, sixteen", "role": "Visiting: somebody's little brother", "strength": 66, "look": {"body": "Male_Ranger", "hair": "Hair_SimpleParted", "tint": Color(0.95, 0.85, 0.2), "build": 0.9}, "mind": {"warmth": 0.3, "chatty": 0.9},
+		"chat": ["I'm going to be the youngest ever champion.", "I beat my PE teacher. Twice.", "Is the chalk free? Can I have some for school?"]},
+	{"id": "g_ron", "name": "Ron from the council", "role": "Visiting: 'just observing'", "strength": 57, "look": {"body": "Male_Ranger", "hair": "Hair_SimpleParted", "tint": Color(0.6, 0.65, 0.6)}, "mind": {"warmth": -0.1, "grudge": 1.3},
+		"chat": ["Is this booking for sport or 'gathering'? The form matters.", "Somebody's been feeding the gulls. That's a fine.", "...Could I have a go? Off the record."]},
+]
+## This week's find, and roughly where it has been left.
+const FINDS := [
+	{"item": "sweatband", "at": Vector3(-22, 0, 3), "hint": "out past the trees on the left"},
+	{"item": "boom_box", "at": Vector3(19, 2.4, -14), "hint": "up at the very top of the seating"},
+	{"item": "gold_chalk", "at": Vector3(22, 0, 26), "hint": "right down by the water's edge"},
+	{"item": "cape", "at": Vector3(-3, 0, 23.2), "hint": "near the lions at the gate"},
+]
+const RUMOURS := ["gulls", "drone", "ufo", "gulls", "drone"]

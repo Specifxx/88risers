@@ -77,6 +77,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 		jump()
 	elif ev.is_action_pressed("chalk"):
 		throw_chalk()
+	elif ev.is_action_pressed("mute"):
+		Meet.audio.set_muted(not Meet.muted)
+		Meet.say("Sound off." if Meet.muted else "Sound on.")
 	elif ev.is_action_pressed("eat"):
 		Meet.eat()
 	elif ev.is_action_pressed("bag"):
@@ -150,6 +153,7 @@ func slap() -> void:
 	_hold = 0.6
 	# Whatever is in your hand gets swung like it is meant to be swung.
 	Character.play(_figure, "Sword_Attack" if Meet.worn["hand"] != "" else "Punch_Cross", true)
+	Meet.sfx("whoosh", -6.0, randf_range(0.9, 1.2))
 	var fwd := -global_transform.basis.z
 	var best: Node3D = null
 	var bd := 99.0
@@ -163,6 +167,7 @@ func slap() -> void:
 			bd = to.length()
 	if best == null:
 		return
+	Meet.sfx("punch", -2.0, randf_range(0.85, 1.1))
 	best.take_hit(int(22.0 * Meet.hit_power()), global_position)
 	if Meet.worn["hand"] == "rubber_chicken":
 		Meet.hud.float_text("squeak")

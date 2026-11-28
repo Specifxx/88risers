@@ -7,7 +7,8 @@ const Asia = preload("res://scripts/asia.gd")
 const COLORS := {"foam_finger": Color(0.15, 0.35, 0.95), "rubber_chicken": Color(1.0, 0.85, 0.2), "pool_noodle": Color(0.2, 0.85, 0.9),
 	"katana_88": Color(0.72, 0.6, 0.42), "cone": Color(1.0, 0.45, 0.1), "chef_hat": Color(0.97, 0.97, 0.97), "antennae": Color(0.3, 0.9, 0.4),
 	"lion_mask": Color(0.93, 0.72, 0.28), "belt": Color(0.5, 0.35, 0.15), "medal": Color(0.2, 0.4, 0.9), "strap_scarf": Color(0.9, 0.15, 0.15),
-	"clipboard": Color(0.45, 0.3, 0.18), "ghost": Color(0.9, 0.9, 0.92), "raygun": Color(1.0, 0.4, 0.9), "prop_hat": Color(0.9, 0.2, 0.2), "golden_chip": Color(1.0, 0.82, 0.25)}
+	"clipboard": Color(0.45, 0.3, 0.18), "ghost": Color(0.9, 0.9, 0.92), "raygun": Color(1.0, 0.4, 0.9), "prop_hat": Color(0.9, 0.2, 0.2), "golden_chip": Color(1.0, 0.82, 0.25),
+	"dare_sash": Color(0.93, 0.72, 0.28), "sweatband": Color(0.95, 0.2, 0.3), "boom_box": Color(0.3, 0.3, 0.35), "gold_chalk": Color(1.0, 0.85, 0.3), "cape": Color(0.7, 0.1, 0.12)}
 
 static func dress(figure: Node3D, worn: Dictionary) -> void:
 	var skel: Skeleton3D = figure.find_child("Skeleton3D", true, false)
@@ -105,6 +106,22 @@ static func model(item: String) -> Node3D:
 			Build.box(n, Vector3(0.4, 0.012, 0.05), Vector3(0, 0.43, 0), Color(0.2, 0.5, 0.95)).rotation.y = 0.6
 		"golden_chip":
 			Build.box(n, Vector3(0.05, 0.42, 0.05), Vector3(0, 0.28, 0), Color(1.0, 0.82, 0.25), false, 0.6).rotation.z = 0.12
+		"dare_sash":
+			var sash := Build.box(n, Vector3(0.09, 0.62, 0.3), Vector3(0, 0.02, 0.0), Color(0.93, 0.72, 0.28), false, 0.3)
+			sash.rotation.z = 0.7
+		"sweatband":
+			Build.cyl(n, 0.125, 0.125, 0.05, Vector3(0, 0.13, 0.0), Color(0.95, 0.2, 0.3), 12)
+			Build.cyl(n, 0.127, 0.127, 0.015, Vector3(0, 0.13, 0.0), Color(1, 1, 1), 12)
+		"boom_box":
+			Build.box(n, Vector3(0.34, 0.2, 0.1), Vector3(0, 0.2, 0), Color(0.25, 0.25, 0.3))
+			for sx in [-1.0, 1.0]:
+				Build.cyl(n, 0.06, 0.06, 0.02, Vector3(sx * 0.1, 0.2, 0.055), Color(0.1, 0.1, 0.1), 10).rotation.x = PI / 2.0
+			Build.box(n, Vector3(0.26, 0.02, 0.02), Vector3(0, 0.34, 0), Color(0.7, 0.7, 0.75))
+		"gold_chalk":
+			Build.box(n, Vector3(0.12, 0.12, 0.08), Vector3(0, 0.14, 0), Color(1.0, 0.85, 0.3), false, 0.7)
+		"cape":
+			Build.box(n, Vector3(0.46, 0.75, 0.03), Vector3(0, -0.12, -0.17), Color(0.7, 0.1, 0.12))
+			Asia.quad(n, Vector2(0.26, 0.26), Vector3(0, 0.0, -0.19), PI, "ui/emblem.png", true)
 		"medal":
 			Build.box(n, Vector3(0.03, 0.2, 0.01), Vector3(0, 0.02, 0.16), Color(0.2, 0.4, 0.9))
 			Build.cyl(n, 0.05, 0.05, 0.012, Vector3(0, -0.1, 0.16), Color(0.93, 0.72, 0.28), 10).rotation.x = PI / 2.0
