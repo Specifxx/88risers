@@ -24,6 +24,7 @@ var _goal: Label
 var _band: Control
 var _slots := {}
 var _end_title: Label
+var _end_body: Label
 
 func _ready() -> void:
 	layer = 10
@@ -330,7 +331,7 @@ func _build_title(root: Control) -> void:
 	var t := UI.text(v, "88 RISERS", 64, UI.GOLD)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	UI.text(v, "The dead cannot rise on their own any more. Whatever dies unattended sinks into the ground and comes back as one of the Pinned.\n\nA Riser knows the rite that lets the dead pass on. There used to be 88. Now there are eight, in one village, inside one ring of safe ground.\n\nYou are a pilgrim. Find more.", 21)
-	UI.text(v, "WASD move  ·  mouse look  ·  Shift run  ·  Space jump  ·  left click or F attack  ·  right click or C block\nE talk or use  ·  Tab inventory  ·  V first or third person  ·  J journal  ·  H eat bread  ·  Esc free the mouse\nIn fights and conversations, click a choice or press its number.", 16, Color(0.7, 0.68, 0.6))
+	UI.text(v, "WASD move  ·  mouse look  ·  Shift run  ·  Space jump  ·  left click or F attack (hold to charge)  ·  right click or C block\nE talk or use  ·  Tab inventory  ·  V first or third person  ·  J journal  ·  H eat bread  ·  Esc free the mouse\nIn fights and conversations, click a choice or press its number.", 16, Color(0.7, 0.68, 0.6))
 	UI.button(v, "Begin", _begin, 24).alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 func _begin() -> void:
@@ -344,12 +345,18 @@ func _build_end(root: Control) -> void:
 	_end = v.get_parent().get_parent()
 	_end_title = UI.text(v, "", 40, UI.GOLD)
 	_end_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UI.text(v, "That is the end of this slice: Rhodes, one road, one village.\n\nMost of the board is still empty. You can keep walking the island as it is: raise what is left on the road, trade, or do worse.", 21)
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(820, 430)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(sc)
+	_end_body = UI.text(sc, "", 18)
+	_end_body.custom_minimum_size = Vector2(800, 0)
 	UI.button(v, "Keep playing", _hide_end, 22).alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_end.visible = false
 
-func show_end() -> void:
+func show_end(what_became := "") -> void:
 	Game.dialogue.close()
+	_end_body.text = what_became
 	_end_title.text = "THE REGISTER STANDS AT %d OF %d" % [Game.register_count(), Game.QUOTA]
 	_end.visible = true
 	UI.open_modal()

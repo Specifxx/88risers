@@ -232,7 +232,7 @@ const SPIRITS := {
 			["Rhodes commands you to rise.", "He does not seem to hear you.", false],
 		],
 	},
-	"guard": {
+	"edda": {
 		"shape": "A Pinned", "name": "Edda Vane, of the Wall", "hp": 20, "atk": 4, "grip": 2, "strain": 1,
 		"seen": "A soldier in a Wall House coat, one hand still raised as if to knock. She is facing the Ring.",
 		"say": [
@@ -264,13 +264,51 @@ const SPIRITS := {
 		],
 	},
 	"farmer": {
-		"shape": "A Pinned", "name": "Hale Harrow, a farmer", "hp": 16, "atk": 3, "grip": 2, "strain": 0,
-		"seen": "A farmer with a scythe-handle and no blade, cutting at wheat that was harvested years ago.",
+		"shape": "A Pinned in the barley", "name": "Hale Harrow, a farmer", "hp": 20, "atk": 4, "grip": 2, "strain": 0,
+		"seen": "A farmer with a scythe handle and no blade, cutting at barley that has stood uncut for two seasons because of him.",
 		"say": [
-			["The field was brought in. Your people ate that winter.", "He lowers the handle. \"All in?\"", true],
-			["Ned's grown. He's stronger than he thinks.", "\"The boy?\" A dry laugh. \"Good.\"", true],
+			["Ned will cut it. Put the handle down.", "He lowers the handle. \"The boy?\" A dry laugh. \"He's stronger than he thinks. Tell him I said it.\"", true],
+			["Your mother sent me. She's still at the farm.", "\"Still? Stubborn.\" Something in him eases.", true],
 			["The harvest is lost.", "He goes back to cutting, faster.", false],
 			["This land belongs to the dead now.", "\"It's mine.\" He will not look at you.", false],
+		],
+	},
+	"ysolt": {
+		"shape": "A Pinned in the water", "name": "Ysolt Quill, the ferryman's wife", "hp": 30, "atk": 6, "grip": 2, "strain": 1,
+		"speed": 2.5, "windup": 0.95, "reach": 2.5, "body": "Female_Peasant", "shade": Color(0.05, 0.09, 0.1),
+		"seen": "A woman with river-weed in her hair, hands closed on a pole that the river took long ago.",
+		"say": [
+			["Oswin is on the jetty. He has been waiting for you.", "\"Waiting.\" Her hands open. \"The old fool. In this cold.\"", true],
+			["Your daughter poles the ferry now.", "\"Mara? She was always better than him.\" Almost a smile.", true],
+			["The river is only water.", "She looks at you as the river might.", false],
+			["Rhodes commands you to rise.", "The strap goes taut.", false],
+		],
+	},
+	"cinder": {
+		"shape": "A cinder", "name": "One of the burnt", "hp": 9, "atk": 2, "grip": 1, "strain": 0, "speed": 4.6, "windup": 0.4, "shade": Color(0.42, 0.42, 0.44),
+		"seen": "It has no face left to speak of. It is turned toward the village, and the smoke.",
+		"say": [
+			["The fire was meant kindly.", "It turns, slowly, away from the smoke.", true],
+			["You can cross the river now.", "It takes a step toward the water.", true],
+			["You should have been chalked.", "It only stares at the far roofs.", false],
+		],
+	},
+	"anwen": {
+		"shape": "A cinder", "name": "Anwen Pell", "hp": 10, "atk": 2, "grip": 2, "strain": 0, "speed": 4.2, "windup": 0.45, "body": "Female_Peasant", "shade": Color(0.42, 0.42, 0.44),
+		"seen": "A woman of ash, apron still tied, watching the door of the shop across the water.",
+		"say": [
+			["Your son still keeps the shop. He sent me over the bridge.", "\"Pell.\" The ash of her mouth moves. \"He always overcharged.\"", true],
+			["He never believed the fire. He was right.", "She nods, as at a thing long known.", true],
+			["Ivo did this to you.", "\"Ivo wept when he lit it.\" She will not hear it.", false],
+		],
+	},
+	"guard": {
+		"shape": "A Pinned in old armour", "name": "A guard of the last Pilgrimage", "hp": 26, "atk": 5, "grip": 2, "strain": 1, "body": "Male_Ranger",
+		"seen": "Lacquer plates gone to flakes, a spear worn to a stick. It is still standing its post over the camp.",
+		"say": [
+			["The camp is struck. You are relieved.", "It grounds the stick, exactly as drilled.", true],
+			["They went home. All five reached the Ring.", "\"Then the post held.\"", true],
+			["There is nothing left here to guard.", "It levels the stick at you.", false],
 		],
 	},
 	"oswin": {
@@ -302,8 +340,14 @@ static func victim_spirit(who: String) -> Dictionary:
 const ROAD_PINNED := [
 	["carter", Vector3(78, 0, -6)],
 	["child", Vector3(112, 0, -22)],
-	["guard", Vector3(58, 0, 14)],
-	["farmer", Vector3(176, 0, 16)],
+	["edda", Vector3(58, 0, 14)],
 	["porter", Vector3(146, 0, -34)],
+	["farmer", Vector3(258, 0, -18)],
 	["oswin", Vector3(262, 0, 64)],
+	["ysolt", Vector3(281, 0, 134)],
+	["cinder", Vector3(320, 0, 12)],
+	["cinder", Vector3(332, 0, 28)],
+	["anwen", Vector3(326, 0, 21)],
+	["guard", Vector3(145, 0, -106)],
+	["guard", Vector3(155, 0, -116)],
 ]

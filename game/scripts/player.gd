@@ -23,6 +23,8 @@ var _cooldown := 0.0
 var _swing := 0.0          # time until the blow in progress lands
 var _anim_hold := 0.0
 var _push := Vector3.ZERO
+var _held_since := -1.0
+var _power := 0.0
 var _shake := 0.0
 var _worn := {}
 
@@ -71,7 +73,12 @@ func _unhandled_input(ev: InputEvent) -> void:
 		if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		elif ev.button_index == MOUSE_BUTTON_LEFT:
-			swing()
+			_held_since = Time.get_ticks_msec() / 1000.0
+	elif ev is InputEventMouseButton and not ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and _held_since >= 0.0:
+		# A quick click is a quick blow. Holding it draws back for a heavier one.
+		var held := Time.get_ticks_msec() / 1000.0 - _held_since
+		_held_since = -1.0
+		swing(clamp((held - 0.15) / 0.6, 0.0, 1.0))
 	elif ev is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		rotation.y -= ev.relative.x * 0.0025
 		_pitch = clamp(_pitch - ev.relative.y * 0.0025, -1.3, 1.3)
@@ -94,14 +101,15 @@ func _unhandled_input(ev: InputEvent) -> void:
 # --- Fighting ------------------------------------------------------------------
 
 ## Start a blow with whatever is in hand. It lands a moment later, if anything is there.
-func swing() -> bool:
+func swing(power := 0.0) -> bool:
 	if _cooldown > 0.0 or Game.modal:
 		return false
 	var w := Game.weapon()
-	_cooldown = float(w["speed"])
+	_power = power
+	_cooldown = float(w["speed"]) + power * 0.25
 	_swing = 0.2
 	_anim_hold = 0.55
-	Game.spend(5.0 + float(w["weight"]) * 0.6)
+	Game.spend(5.0 + float(w["weight"]) * 0.6 + power * 7.0)
 	Character.play(_figure, "Sword_Attack" if Game.equip["weapon"] != "" else "Punch_Cross", true)
 	var tw := create_tween()
 	tw.tween_property(_hand, "rotation", Vector3(-1.1, 0.5, 0.3), 0.14)
@@ -135,8 +143,8 @@ func _land_blow() -> void:
 		return
 	var dmg := randi_range(w["dmg"][0], w["dmg"][1])
 	dmg = int(round(dmg * (0.75 + Game.skills[skill] * 0.012) * (0.6 + 0.4 * Game.fatigue / Game.max_fatigue)))
-	dmg = max(dmg, 1)
-	Game.hud.float_text(str(dmg))
+	dmg = max(int(round(dmg * (1.0 + _power * 0.9))), 1)
+	Game.hud.float_text(str(dmg) + ("!" if _power > 0.6 else ""))
 	Game.train(skill, 1.0)
 	best.take_hit(dmg, global_position)
 

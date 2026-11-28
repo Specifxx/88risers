@@ -53,6 +53,7 @@ var hud: CanvasLayer
 var dialogue: CanvasLayer
 var battle: CanvasLayer
 var inventory: CanvasLayer
+var story: Node
 var npcs: Array = []
 var pinned: Array = []
 

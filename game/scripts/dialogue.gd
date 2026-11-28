@@ -12,6 +12,7 @@ var _list: VBoxContainer
 var _portrait: TextureRect
 var _mind: Label
 var _neurons: HBoxContainer
+var _mind_row: HBoxContainer
 
 func _ready() -> void:
 	layer = 15
@@ -42,6 +43,7 @@ func _ready() -> void:
 	_name = UI.text(left, "", 28, UI.GOLD)
 	_sub = UI.text(left, "", 16, Color(0.7, 0.68, 0.6))
 	var mind_row := HBoxContainer.new()
+	_mind_row = mind_row
 	mind_row.add_theme_constant_override("separation", 10)
 	left.add_child(mind_row)
 	_neurons = HBoxContainer.new()
@@ -67,8 +69,27 @@ func _ready() -> void:
 func active() -> bool:
 	return _root.visible
 
+## A written scene: someone speaks, and the player chooses. Each choice is [label, callable].
+func scene(title: String, sub: String, text: String, choices: Array, portrait := "") -> void:
+	if title != "" or not active():
+		_name.text = title
+		_sub.text = sub
+		_portrait.visible = portrait != ""
+		if portrait != "":
+			_portrait.texture = load("res://assets/portraits/%s.jpg" % portrait)
+	_mind_row.visible = false
+	_text.clear()
+	_text.append_text(text + "\n")
+	if not active():
+		_root.visible = true
+		UI.open_modal()
+	UI.clear(_list)
+	for c in choices:
+		UI.button(_list, c[0], c[1], 17)
+
 func open(n: Node) -> void:
 	npc = n
+	_mind_row.visible = true
 	_name.text = n.npc_name
 	var pic: String = n.portrait()
 	_portrait.visible = pic != ""
@@ -85,6 +106,7 @@ func confront(guard: Node) -> void:
 	if active() or Game.modal:
 		return
 	npc = guard
+	_mind_row.visible = true
 	_name.text = guard.npc_name
 	var pic: String = guard.portrait()
 	_portrait.visible = pic != ""
@@ -161,6 +183,9 @@ func _rebuild() -> void:
 	_sub.text = npc.role
 	_show_mind()
 	UI.clear(_list)
+	if not npc.hostile():
+		for a in Game.story.actions(npc):
+			UI.button(_list, "◆  " + a[0], a[1], 17).add_theme_color_override("font_color", UI.GOLD)
 	for t in npc.topics():
 		UI.button(_list, t, _ask.bind(t), 17)
 	for a in npc.actions():
