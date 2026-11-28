@@ -469,7 +469,7 @@ func _process(dt: float) -> void:
 			var tp: Vector3 = Meet.player.global_position
 			if global_position.distance_to(tp) > 2.4:
 				_goal = tp
-				_walk(dt, 1.6 if global_position.distance_to(tp) > 5.0 else 1.0)
+				_walk(dt, (2.4 if _follows else 1.6) if global_position.distance_to(tp) > 5.0 else (1.4 if _follows else 1.0))
 			else:
 				_look(tp, 0.15)
 				Character.play(_figure, "Idle")
@@ -751,6 +751,9 @@ func _quirk(main: Node3D) -> void:
 
 func _go(to: Vector3, then: String) -> void:
 	if dead:
+		return
+	# Someone who agreed to come with you isn't pulled away by the crowd's business.
+	if state == "tail" and _follows and _tail > 0.0 and then in ["gawk", "watch", "idle", "chat", "snack", "quirk", "huddle", "give", "hug", "lift"]:
 		return
 	_goal = Meet.main.clear(to)
 	_then = then
@@ -2509,10 +2512,17 @@ func react(v: float) -> String:
 func after_talk() -> void:
 	var what := _after_talk
 	_after_talk = ""
+	if what == "tail" and _follows and state in ["to_table", "prep", "walk", "search"] and not post:
+		# They said they'd come. Whatever they were on their way to can wait.
+		Meet.main.drop_match(self)
+		state = "idle"
 	if state in ["scrap", "confront", "winded", "pull", "to_table"] or post:
+		_follows = false
 		return
 	if what == "tail":
 		state = "tail"
+		if _follows:
+			say_aloud(["Right behind you.", "Lead on.", "After you."][randi() % 3], 3.0)
 	elif what == "storm":
 		say_aloud(["I'm done here.", "Unbelievable.", "Don't follow me."][randi() % 3], 3.5)
 		var away := (global_position - Meet.player.global_position).normalized()
