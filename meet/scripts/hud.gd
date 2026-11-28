@@ -13,6 +13,7 @@ var _doll: Node3D
 var _bag_side: VBoxContainer
 var _bag_people: VBoxContainer
 var _over_title: Label
+var _name_box: LineEdit
 var _prompt: Label
 var _log: VBoxContainer
 var _float: Label
@@ -115,7 +116,7 @@ func _shadow(l: Label) -> void:
 
 func _refresh() -> void:
 	_bar.value = Meet.composure
-	_stats.text = "Snacks %d  ·  Chalk %d%s%s  ·  Won %d, lost %d" % [Meet.snacks, Meet.chalk, "  ·  Hands chalked" if Meet.chalked else "",
+	_stats.text = "$%d  ·  Snacks %d  ·  Chalk %d%s%s  ·  Won %d, lost %d" % [Meet.money, Meet.snacks, Meet.chalk, "  ·  Hands chalked" if Meet.chalked else "",
 		"  ·  Straps in pocket %d" % Meet.straps.size() if not Meet.straps.is_empty() else "", Meet.wins, Meet.losses]
 	if _bag and _bag.visible:
 		_fill_bag()
@@ -123,7 +124,7 @@ func _refresh() -> void:
 func _process(dt: float) -> void:
 	if Meet.player == null:
 		return
-	var t: Node = Meet.player.target
+	var t: Node = Meet.player.target if is_instance_valid(Meet.player.target) else null
 	var key := "Tap USE" if Meet.touch else "[E]"
 	_prompt.text = "%s  %s" % [key, t.prompt()] if t != null and not Meet.modal else ""
 	_touch_ui.visible = Meet.touch and not Meet.modal
@@ -338,6 +339,7 @@ func _fill_bag() -> void:
 	rep.value = Meet.reputation()
 	UI.text(_bag_side, "Reputation %d / 100" % Meet.reputation(), 14)
 	UI.text(_bag_side, "Health %d   Stamina %d" % [Meet.composure, Meet.stamina], 14)
+	UI.text(_bag_side, "Money $%d" % Meet.money, 16, UI.GOLD)
 	UI.text(_bag_side, "Snacks %d   Chalk %d%s" % [Meet.snacks, Meet.chalk, "   Hands chalked" if Meet.chalked else ""], 14)
 	if not Meet.straps.is_empty():
 		var names: Array = Meet.straps.map(func(id): return Meet.riser(id).first_name)
@@ -421,9 +423,21 @@ func _build_title() -> void:
 		UI.text(v, "Left thumb moves, drag to look around, buttons on the right.", 16, Color(0.75, 0.72, 0.62))
 	else:
 		UI.text(v, "WASD move  ·  mouse look  ·  Shift run  ·  Space jump  ·  E talk or use  ·  click or F punch  ·  G throw chalk  ·  R eat a snack  ·  Tab bag  ·  P photo  ·  Esc free the mouse", 16, Color(0.75, 0.72, 0.62))
+	UI.text(v, "What do they call you?", 16, UI.GOLD)
+	_name_box = LineEdit.new()
+	_name_box.placeholder_text = "Your name"
+	_name_box.max_length = 16
+	_name_box.text = Meet.player_name
+	_name_box.add_theme_font_size_override("font_size", 22)
+	_name_box.custom_minimum_size = Vector2(0, 48)
+	_name_box.text_submitted.connect(func(_t): _begin())
+	v.add_child(_name_box)
 	UI.button(v, "Walk in", _begin, 26).alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 func _begin() -> void:
+	Meet.player_name = _name_box.text.strip_edges()
+	_name_box.release_focus()
+	Meet.player.set_name_tag()
 	_title.visible = false
 	Meet.modal = false
 	if not Meet.touch:

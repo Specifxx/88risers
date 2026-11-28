@@ -115,6 +115,10 @@ func start(r: Node) -> void:
 	won = false
 	_angry = 1.0
 	_title.text = "You  vs  %s" % r.riser_name
+	if r.pull_angry:
+		_angry = 1.15
+	if r.stake > 0:
+		_title.text += "   ($%d on it)" % r.stake
 	if Meet.straps.has(r.id):
 		# Turning up to pull someone with their own strap round your wrist.
 		r.caught_with_strap()

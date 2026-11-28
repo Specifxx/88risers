@@ -24,6 +24,7 @@ var _cooldown := 0.0
 var _hold := 0.0
 var _down := 0.0
 var _worn := {}
+var _tag: Label3D
 
 func _ready() -> void:
 	var cs := CollisionShape3D.new()
@@ -77,8 +78,13 @@ func _unhandled_input(ev: InputEvent) -> void:
 	elif ev.is_action_pressed("photo"):
 		Meet.hud.photo()
 
+func set_name_tag() -> void:
+	if _tag == null:
+		_tag = Build.label(self, "", 2.15, Color(0.75, 0.9, 1.0), 30)
+	_tag.text = Meet.player_name
+
 func use() -> void:
-	if target != null and not Meet.modal:
+	if is_instance_valid(target) and not Meet.modal:
 		target.interact()
 
 func jump() -> void:
@@ -190,7 +196,7 @@ func _process(dt: float) -> void:
 	if _down > 0.0:
 		_down -= dt
 		return
-	if _hold <= 0.0:
+	if _hold <= 0.0 and not _figure.has_meta("posed"):
 		var speed := Vector2(velocity.x, velocity.z).length()
 		Character.play(_figure, "Jump" if _jump > 0.05 else ("Idle" if speed < 0.4 else ("Jog_Fwd" if speed > 5.0 else "Walk")))
 
