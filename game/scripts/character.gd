@@ -2,6 +2,7 @@ extends RefCounted
 ## Builds an animated person from the model packs: an outfit, a head, hair, and the shared animations.
 
 const DIR := "res://assets/chars/"
+const ONE_SHOT := ["Sword_Attack", "Punch_Cross", "Hit_Chest", "Death01"]
 const LOOPING := ["Idle", "Idle_Talking", "Walk", "Jog_Fwd", "Sitting_Idle", "Sword_Idle", "Crouch_Idle"]
 
 static var _anims: AnimationLibrary
@@ -100,7 +101,12 @@ static func _shade(c: Color) -> StandardMaterial3D:
 	m.roughness = 1.0
 	return m
 
-static func play(root: Node3D, anim: String) -> void:
+static func play(root: Node3D, anim: String, restart := false) -> void:
 	var ap: AnimationPlayer = root.get_meta("anim")
-	if ap.current_animation != anim and ap.has_animation(anim):
+	if not ap.has_animation(anim):
+		return
+	if restart:
+		ap.stop()
+		ap.play(anim)
+	elif ap.current_animation != anim and not (ap.is_playing() and ap.current_animation in ONE_SHOT):
 		ap.play(anim)

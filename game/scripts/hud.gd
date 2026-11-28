@@ -16,6 +16,9 @@ var _fade: ColorRect
 var _fade_text: Label
 var _cross: Label
 var _health: ProgressBar
+var _wind: ProgressBar
+var _float: Label
+var _hurt: ColorRect
 var _register: ProgressBar
 var _goal: Label
 var _band: Control
@@ -45,6 +48,7 @@ func _ready() -> void:
 	col.add_theme_constant_override("separation", 4)
 	row.add_child(col)
 	_health = _bar(col, Color(0.74, 0.14, 0.13))
+	_wind = _bar(col, Color(0.2, 0.45, 0.72))
 	_register = _bar(col, UI.GOLD)
 	_stats = UI.text(col, "", 15, UI.PAPER)
 	_stats.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -91,6 +95,22 @@ func _ready() -> void:
 		l.autowrap_mode = TextServer.AUTOWRAP_OFF
 		_slots[item] = n
 
+	_hurt = ColorRect.new()
+	_hurt.color = Color(0.6, 0.02, 0.02)
+	_hurt.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_hurt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hurt.modulate.a = 0.0
+	root.add_child(_hurt)
+	_float = UI.text(root, "", 24, Color(1.0, 0.92, 0.7))
+	_float.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_float.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_float.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_float.offset_left = -100
+	_float.offset_right = 100
+	_float.offset_top = -70
+	_float.offset_bottom = -40
+	_float.modulate.a = 0.0
+	_shadow(_float)
 	_cross = UI.text(root, "·", 30, Color(1, 1, 1, 0.7))
 	_cross.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_cross.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -160,7 +180,7 @@ func _refresh() -> void:
 	_health.value = Game.hp
 	_register.max_value = Game.QUOTA
 	_register.value = Game.register_count()
-	_stats.text = "Health %d / %d      Register %d / %d" % [Game.hp, Game.max_hp, Game.register_count(), Game.QUOTA]
+	_stats.text = "Health %d / %d      Register %d / %d      %s" % [max(Game.hp, 0), Game.max_hp, Game.register_count(), Game.QUOTA, Game.weapon()["name"]]
 	_goal.text = _objective()
 	_slots["Chalk"].text = str(Game.chalk)
 	_slots["Straps"].text = str(Game.straps)
@@ -191,9 +211,23 @@ func _draw_band() -> void:
 			_band.draw_line(Vector2(x, 12), Vector2(x, 22), Color(0.75, 0.72, 0.65, 0.6), 1.0)
 	_band.draw_line(Vector2(w / 2.0, 0), Vector2(w / 2.0, 7), UI.GOLD, 2.0)
 
+## A quick word at the crosshair: the damage dealt, or "miss".
+func float_text(t: String) -> void:
+	_float.text = t
+	_float.modulate.a = 1.0
+	var tw := create_tween()
+	tw.tween_interval(0.35)
+	tw.tween_property(_float, "modulate:a", 0.0, 0.4)
+
+func hurt_flash() -> void:
+	_hurt.modulate.a = 0.45
+	create_tween().tween_property(_hurt, "modulate:a", 0.0, 0.5)
+
 func _process(_dt: float) -> void:
 	if Game.player == null:
 		return
+	_wind.max_value = Game.max_fatigue
+	_wind.value = Game.fatigue
 	_band.queue_redraw()
 	var where := "Inside the Ring" if Game.in_ring(Game.player.global_position) else "Outside the Ring"
 	var h := int(Game.hour)
@@ -296,7 +330,7 @@ func _build_title(root: Control) -> void:
 	var t := UI.text(v, "88 RISERS", 64, UI.GOLD)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	UI.text(v, "The dead cannot rise on their own any more. Whatever dies unattended sinks into the ground and comes back as one of the Pinned.\n\nA Riser knows the rite that lets the dead pass on. There used to be 88. Now there are eight, in one village, inside one ring of safe ground.\n\nYou are a pilgrim. Find more.", 21)
-	UI.text(v, "WASD move  ·  mouse look (arrow keys also turn)  ·  Shift run  ·  E talk or use  ·  V first or third person  ·  J journal  ·  H eat bread  ·  Esc free the mouse\nIn fights and conversations, click a choice or press its number.", 16, Color(0.7, 0.68, 0.6))
+	UI.text(v, "WASD move  ·  mouse look  ·  Shift run  ·  Space jump  ·  left click or F attack  ·  right click or C block\nE talk or use  ·  Tab inventory  ·  V first or third person  ·  J journal  ·  H eat bread  ·  Esc free the mouse\nIn fights and conversations, click a choice or press its number.", 16, Color(0.7, 0.68, 0.6))
 	UI.button(v, "Begin", _begin, 24).alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 func _begin() -> void:

@@ -143,7 +143,7 @@ func armor() -> int:
 func toggle_equip(id: String) -> void:
 	var it: Dictionary = Items.ITEMS[id]
 	var slot: String = "weapon" if it["type"] == "weapon" else it.get("slot", "")
-	if slot == "":
+	if slot == "" or count(id) <= 0:
 		return
 	equip[slot] = "" if equip[slot] == id else id
 	touch()

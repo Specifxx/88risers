@@ -7,6 +7,7 @@ const Build = preload("res://scripts/build.gd")
 const Data = preload("res://scripts/data.gd")
 const Character = preload("res://scripts/character.gd")
 const Mind = preload("res://scripts/mind.gd")
+const Items = preload("res://scripts/items.gd")
 
 const WALK := 1.35
 
@@ -27,6 +28,11 @@ var gifts := 0
 var mind: RefCounted
 var post := Vector3.ZERO
 var aggro := false
+var hp := 30
+var max_hp := 30
+var _strike := 0.0
+var _wind := 0.0
+var _flee := false
 
 var _served := {}
 var _figure: Node3D
@@ -56,6 +62,12 @@ func setup(d: Dictionary, founder: bool) -> void:
 		willing_cap = d["willing_cap"]
 		capable = d["capable"]
 		disp = d["disp"]
+	if id in ["phillip", "kelvin", "wren"]:
+		def = d.duplicate()
+		def["guard"] = true
+	max_hp = 60 if def.get("guard", false) else (45 if founder else 20 + int(capable / 4.0))
+	hp = max_hp
+	add_to_group("hittable")
 	position = d["pos"]
 	post = d["pos"]
 	mind = Mind.new()
@@ -109,6 +121,9 @@ func _process(dt: float) -> void:
 			_bark.visible = false
 	if Game.modal:
 		Character.play(_figure, "Idle_Talking" if Game.dialogue.npc == self and Game.dialogue.active() else "Idle")
+		return
+	if aggro:
+		_fight(dt)
 		return
 	_think -= dt
 	if _think <= 0.0:
@@ -236,6 +251,62 @@ func _face(at: Vector3, speed: float) -> void:
 	if Vector2(to.x, to.z).length() > 0.05:
 		rotation.y = lerp_angle(rotation.y, atan2(to.x, to.z), speed)
 
+# --- Being attacked ---------------------------------------------------------------
+
+func can_be_hit() -> bool:
+	return alive
+
+func take_hit(dmg: int, _from: Vector3) -> void:
+	if not alive:
+		return
+	hp -= dmg
+	Character.play(_figure, "Hit_Chest", true)
+	if not aggro:
+		# First blood: they will never see you the same way, and neither will anyone watching.
+		mind.experience("violence", -1.0, 3.0, true, npc_name)
+		Game.deed("violence", -0.9, 3.0, global_position, village, npc_name)
+		_flee = not (is_founder or capable >= 55 or def.get("guard", false))
+		say_aloud("Help! Murder!" if _flee else "So that's what you are.")
+		if Game.dialogue.active():
+			Game.dialogue.close()
+	aggro = true
+	if hp <= 0:
+		die()
+
+## Hostile: the brave close in and strike, the rest run. It ends when the player is gone.
+func _fight(dt: float) -> void:
+	var p: Vector3 = Game.player.global_position
+	var to := p - global_position
+	to.y = 0
+	var d := to.length()
+	if d > 45.0:
+		aggro = false
+		hp = max_hp
+		_go(post, "walk")
+		return
+	_strike = max(0.0, _strike - dt)
+	if _flee:
+		_state = "avoid"
+		_step_towards(global_position - to.normalized() * 6.0, dt)
+		return
+	if _wind > 0.0:
+		_wind -= dt
+		if _wind <= 0.0:
+			_strike = 1.4
+			if d < 2.6:
+				Game.hurt_player(2 + int(capable / 20.0) + (3 if def.get("guard", false) else 0) + randi_range(-1, 1), global_position)
+		return
+	if d > 1.9:
+		_state = "avoid"
+		_step_towards(p, dt)
+		return
+	_face(p, 0.2)
+	if _strike <= 0.0:
+		_wind = 0.5
+		Character.play(_figure, "Sword_Attack" if def.get("guard", false) else "Punch_Cross", true)
+	else:
+		Character.play(_figure, "Sword_Idle")
+
 # --- Conversation ----------------------------------------------------------------
 
 func greeting() -> String:
@@ -317,33 +388,51 @@ func actions() -> Array:
 	var out: Array = []
 	if not alive:
 		return out
-	if not hostile():
-		match id:
-			"harry":
-				if not _served.has("kit"):
-					out.append(["Ask for chalk and straps", _give_kit])
-			"phillip":
-				if not _served.has("train"):
-					out.append(["Train with Phillip", _phillip_train])
-			"bhavya":
-				out.append(["Ask Bhavya to tend your wounds", _heal])
-			"tommy":
-				out.append(["Buy chalk (4 coin)", _buy.bind("chalk", 4)])
-				out.append(["Buy a strap (10 coin)", _buy.bind("straps", 10)])
-				out.append(["Buy bread (3 coin)", _buy.bind("bread", 3)])
-			"pell":
-				out.append(["Buy chalk (5 coin)", _buy.bind("chalk", 5)])
-				out.append(["Buy a strap (12 coin)", _buy.bind("straps", 12)])
-				out.append(["Buy bread (3 coin)", _buy.bind("bread", 3)])
-		if not is_founder and not recruited:
-			if willing < willing_cap and willing < 60 and persuaded < 3:
-				out.append(["Make the case for the Risers", _persuade])
-			if willing >= 50 and capable < 60:
-				out.append(["Train together against the Pinned", _train])
-			if gifts < 2 and Game.chalk > 0:
-				out.append(["Give them chalk for their dead", _gift])
-	out.append(["Attack %s" % npc_name, _attack])
+	if hostile():
+		var price := 60 if mind.remembers("violence") else 25
+		out.append(["Offer %d coin to make amends" % price, _amends.bind(price)])
+		return out
+	match id:
+		"harry":
+			if not _served.has("kit"):
+				out.append(["Ask for chalk and straps", _give_kit])
+		"phillip":
+			if not _served.has("train"):
+				out.append(["Train with Phillip", _phillip_train])
+		"bhavya":
+			out.append(["Ask Bhavya to tend your wounds", _heal])
+	var stock: Dictionary = Items.STOCK.get(id, {})
+	for item in stock:
+		out.append(["Buy %s (%d coin)" % [Items.ITEMS[item]["name"].to_lower(), stock[item]], _buy.bind(item, stock[item])])
+	if not stock.is_empty():
+		for item in Game.items:
+			var worth: int = int(Items.ITEMS[item]["value"] / 2.0)
+			if worth > 0 and not Game.equip.values().has(item):
+				out.append(["Sell %s (%d coin)" % [Items.ITEMS[item]["name"].to_lower(), worth], _sell.bind(item, worth)])
+	if not is_founder and not recruited:
+		if willing < willing_cap and willing < 60 and persuaded < 3:
+			out.append(["Make the case for the Risers", _persuade])
+		if willing >= 50 and capable < 60:
+			out.append(["Train together against the Pinned", _train])
+		if gifts < 2 and Game.chalk > 0:
+			out.append(["Give them chalk for their dead", _gift])
 	return out
+
+func _amends(price: int) -> String:
+	if Game.coins < price:
+		return "You haven't the coin, and they can see it."
+	Game.coins -= price
+	mind.forgive()
+	Game.touch()
+	return "They take it without looking at you. It does not undo anything. But they will speak to you again."
+
+func _sell(item: String, worth: int) -> String:
+	if mind.expects("trade") < -0.35:
+		return "I'm not buying from you."
+	Game.remove_item(item)
+	Game.coins += worth
+	Game.train("speech", 0.5)
+	return "They turn it over, and count out the coin."
 
 func _give_kit() -> String:
 	_served["kit"] = true
@@ -354,7 +443,8 @@ func _give_kit() -> String:
 
 func _phillip_train() -> String:
 	_served["train"] = true
-	Game.power += 2
+	for sk in ["blunt", "blade", "spear", "block"]:
+		Game.skills[sk] += 5
 	Game.max_hp += 6
 	Game.hp = Game.max_hp
 	mind.experience("trained", 0.5, 0.6)
@@ -372,7 +462,8 @@ func _buy(what: String, cost: int) -> String:
 	if Game.coins < cost:
 		return "You haven't the coin."
 	Game.coins -= cost
-	Game.set(what, Game.get(what) + 1)
+	Game.add_item(what)
+	Game.train("speech", 0.3)
 	if not _served.has("traded"):
 		_served["traded"] = true
 		mind.experience("trade", 0.35, 0.4)
@@ -408,12 +499,6 @@ func _gift() -> String:
 	Game.touch()
 	return "They take it in both hands. \"For my own, when the time comes. Thank you.\""
 
-func _attack() -> String:
-	Game.dialogue.close()
-	mind.experience("violence", -1.0, 3.0, true, npc_name)
-	Game.battle.start_npc(self)
-	return ""
-
 ## Called when the player kills this person.
 func die() -> void:
 	alive = false
@@ -430,5 +515,8 @@ func die() -> void:
 	else:
 		Game.say("Nobody saw. %s lies where they fell, unrisen." % npc_name)
 	Game.note("You killed %s. Unless someone raises them, they will come back as one of the Pinned." % npc_name)
+	aggro = false
+	remove_from_group("hittable")
+	Game.main.drop_loot("%s's belongings" % npc_name, Items.CARRIED.get(id, {}), randi_range(3, 14), global_position)
 	Game.main.spawn_victim(npc_name, global_position)
 	Game.touch()

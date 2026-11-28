@@ -236,7 +236,7 @@ const SPIRITS := {
 		],
 	},
 	"porter": {
-		"shape": "A tall Pinned", "name": "A porter of the last Pilgrimage", "hp": 28, "atk": 5, "grip": 3, "strain": 2,
+		"shape": "A tall Pinned", "name": "A porter of the last Pilgrimage", "hp": 28, "atk": 5, "grip": 3, "strain": 2, "leaves": "old_sword",
 		"seen": "An old, old shape under a pack frame that rotted away long ago. It is still bent as if carrying it. It has been here 134 years.",
 		"say": [
 			["They got home. All five reached the Ring.", "\"Then it was carried.\" The bent back eases a little.", true],
