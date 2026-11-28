@@ -301,8 +301,12 @@ func use_item() -> void:
 		"raygun":
 			act("Pistol_Shoot", 0.5)
 			Meet.sfx("zap", -2.0, 1.2)
+			var muzzle := global_position + Vector3(0, 1.35, 0) - global_transform.basis.z * 0.5
+			var hit_at: Vector3 = who.global_position + Vector3(0, 1.2, 0) if who else muzzle - global_transform.basis.z * 14.0
+			Meet.main.laser(muzzle, hit_at)
 			if who:
 				Fx.tint(who._figure, Color(1.0, 0.3, 0.9, 0.7), 0.4)
+				Fx.burst(Meet.main, hit_at, Vector3.UP, false, 8)
 				if who.alien:
 					who.take_hit(45, global_position)
 				else:

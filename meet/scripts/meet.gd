@@ -43,6 +43,42 @@ const ITEMS := {
 	"signed_band": {"name": "Headband signed by Big Don", "slot": "head", "how": "Meet a legend. Ask nicely."},
 	"giant_band": {"name": "The giant's wristband (fits your thigh)", "slot": "body", "how": "Earn a nod from Lasha."},
 	"kaiju_claw": {"name": "A claw the size of a door", "slot": "hand", "how": "Beat what comes out of the bay.", "atk": 9},
+	"club_cap": {"name": "88 Risers cap", "slot": "head", "shape": "cap", "col": Color(0.75, 0.1, 0.12), "src": "merch", "how": "George's merch table, $8.", "price": 8},
+	"club_beanie": {"name": "88 Risers beanie", "slot": "head", "shape": "beanie", "col": Color(0.1, 0.1, 0.12), "src": "merch", "how": "George's merch table, $10.", "price": 10},
+	"club_scarf": {"name": "Supporter's scarf", "slot": "body", "shape": "scarf", "col": Color(0.75, 0.1, 0.12), "src": "merch", "how": "George's merch table, $12.", "price": 12},
+	"club_flag": {"name": "Club flag on a stick", "slot": "hand", "shape": "flag", "col": Color(0.75, 0.1, 0.12), "src": "merch", "how": "George's merch table, $15.", "price": 15, "atk": 4},
+	"club_mug": {"name": "'World's Okayest Puller' mug", "slot": "hand", "shape": "mug", "col": Color(0.95, 0.95, 0.9), "src": "merch", "how": "George's merch table, $9.", "price": 9, "atk": 3},
+	"visor": {"name": "Poker visor", "slot": "head", "shape": "visor", "col": Color(0.1, 0.6, 0.3), "src": "merch", "how": "George's merch table, $14.", "price": 14},
+	"gold_chain": {"name": "A chain, definitely real gold", "slot": "body", "shape": "chain", "col": Color(1.0, 0.82, 0.25), "src": "merch", "how": "George's merch table, $25.", "price": 25},
+	"megaphone": {"name": "Megaphone", "slot": "hand", "shape": "horn", "col": Color(0.9, 0.9, 0.9), "src": "merch", "how": "George's merch table, $30.", "price": 30, "atk": 5},
+	"top_hat": {"name": "Top hat", "slot": "head", "shape": "tophat", "col": Color(0.08, 0.08, 0.1), "src": "merch", "how": "George's merch table, $40.", "price": 40},
+	"tux_tie": {"name": "Bow tie", "slot": "body", "shape": "tie", "col": Color(0.08, 0.08, 0.1), "src": "merch", "how": "George's merch table, $18.", "price": 18},
+	"bin_lid": {"name": "Bin lid (shield)", "slot": "hand", "shape": "lid", "col": Color(0.3, 0.45, 0.35), "src": "bin", "how": "Rummage in the bins. Often.", "atk": 4},
+	"old_boot": {"name": "One left boot", "slot": "hand", "shape": "boot", "col": Color(0.35, 0.22, 0.12), "src": "bin", "how": "Rummage in the bins. Often.", "atk": 5},
+	"pizza_box": {"name": "Pizza box hat", "slot": "head", "shape": "box", "col": Color(0.85, 0.75, 0.6), "src": "bin", "how": "Rummage in the bins. Often."},
+	"banana": {"name": "A banana skin", "slot": "hand", "shape": "banana", "col": Color(0.98, 0.88, 0.2), "src": "bin", "how": "Rummage in the bins. Often.", "atk": 1},
+	"lost_sock": {"name": "Somebody's sock, worn as a mitten", "slot": "hand", "shape": "sock", "col": Color(0.9, 0.9, 0.95), "src": "bin", "how": "Rummage in the bins. Often.", "atk": 2},
+	"tin_crown": {"name": "Crown made of a tin", "slot": "head", "shape": "crown", "col": Color(0.7, 0.72, 0.75), "src": "bin", "how": "Rummage in the bins. Often."},
+	"jandal": {"name": "The jandal that fought", "slot": "hand", "shape": "jandal", "col": Color(0.2, 0.6, 0.9), "src": "fish", "how": "Keep fishing with Old Con's rod.", "atk": 3},
+	"bottle_msg": {"name": "Message in a bottle", "slot": "hand", "shape": "bottle", "col": Color(0.5, 0.8, 0.6), "src": "fish", "how": "Keep fishing with Old Con's rod.", "atk": 4},
+	"trolley_wheel": {"name": "Shopping trolley wheel", "slot": "hand", "shape": "wheel", "col": Color(0.6, 0.6, 0.65), "src": "fish", "how": "Keep fishing with Old Con's rod.", "atk": 6},
+	"sea_crown": {"name": "Crown from the deep", "slot": "head", "shape": "crown", "col": Color(0.3, 0.8, 0.75), "src": "fish", "how": "Keep fishing with Old Con's rod."},
+	"life_ring": {"name": "Life ring", "slot": "body", "shape": "ring", "col": Color(0.95, 0.4, 0.1), "src": "fish", "how": "Keep fishing with Old Con's rod."},
+	"alien_helm": {"name": "Visitor's helmet (too small)", "slot": "head", "shape": "helmet", "col": Color(0.4, 0.9, 0.6), "src": "alien", "how": "The visitors drop them when beaten."},
+	"probe": {"name": "A probe. Don't ask.", "slot": "hand", "shape": "stick", "col": Color(0.6, 0.9, 1.0), "src": "alien", "how": "The visitors drop them when beaten.", "atk": 7},
+	"space_wings": {"name": "Little jet wings", "slot": "body", "shape": "wings", "col": Color(0.75, 0.8, 0.85), "src": "alien", "how": "The visitors drop them when beaten."},
+	"halo": {"name": "Hovering ring, origin unknown", "slot": "head", "shape": "halo", "col": Color(1.0, 0.95, 0.5), "src": "alien", "how": "The visitors drop them when beaten."},
+	"regular_pin": {"name": "'Regular' badge", "slot": "body", "shape": "bib", "col": Color(0.2, 0.5, 0.9), "src": "milestone", "how": "Come to three meets."},
+	"veteran_sash": {"name": "Veteran's sash", "slot": "body", "shape": "scarf", "col": Color(0.3, 0.2, 0.5), "src": "milestone", "how": "Come to eight meets."},
+	"ten_wins": {"name": "Ten-pin trophy (for ten wins)", "slot": "hand", "shape": "trophy", "col": Color(0.8, 0.5, 0.2), "src": "milestone", "how": "Win ten pulls.", "atk": 6},
+	"ladder_crown": {"name": "Ladder crown", "slot": "head", "shape": "crown", "col": Color(1.0, 0.82, 0.25), "src": "milestone", "how": "Reach 40 ladder points."},
+	"dare_horns": {"name": "Daredevil horns", "slot": "head", "shape": "horns", "col": Color(0.85, 0.1, 0.1), "src": "milestone", "how": "Finish fifteen dares."},
+	"lifesaver": {"name": "Lifesaver's whistle", "slot": "hand", "shape": "whistle", "col": Color(0.95, 0.85, 0.2), "src": "milestone", "how": "Pull two people out of the bay.", "atk": 2},
+	"umbrella": {"name": "Someone's umbrella", "slot": "hand", "shape": "umbrella", "col": Color(0.15, 0.3, 0.6), "src": "lost", "how": "Lost property. It turns up.", "atk": 5},
+	"backpack": {"name": "A kid's backpack", "slot": "body", "shape": "backpack", "col": Color(0.95, 0.4, 0.6), "src": "lost", "how": "Lost property. It turns up."},
+	"wig": {"name": "A wig", "slot": "head", "shape": "wig", "col": Color(0.95, 0.85, 0.3), "src": "lost", "how": "Lost property. It turns up."},
+	"plunger": {"name": "A plunger", "slot": "hand", "shape": "plunger", "col": Color(0.75, 0.2, 0.15), "src": "lost", "how": "Lost property. It turns up.", "atk": 6},
+	"apron": {"name": "'Kiss the Cook' apron", "slot": "body", "shape": "apron", "col": Color(0.95, 0.95, 0.95), "src": "lost", "how": "Lost property. It turns up."},
 	"medal": {"name": "Participation medal", "slot": "body", "how": "Lose three matches. It's the taking part."},
 }
 
@@ -87,6 +123,8 @@ var said: Array = []           # [{by, about, tone, told}]: what one founder sai
 var paid := {}                 # reputation rewards George has already handed over
 var joined: Array = []          # strangers you talked into the club; they come back
 var lions := 0                 # stone lions you have let out; they come with you
+var saved_total := 0
+var potions := 0               # revival potions in your pocket
 var sets := 0                  # dumbbell sets, ever: slow real strength
 var points := 0                # ladder points
 var dares_done := 0
@@ -115,6 +153,7 @@ var ripples: Array = []         # what you changed tonight
 var away := {}                 # kit you have put down somewhere tonight
 var wind := 0.0                # seconds of proper wind left
 var carrying := -1             # the table you have hold of, or -1
+var dead := {}                 # who has been taken tonight, and by what
 var pump := 0                  # sets of curls done tonight, up to 4
 var double_points := false
 var peak_heat := 0
@@ -236,6 +275,7 @@ func new_night() -> void:
 	fish = 0
 	bracket = "open"
 	dark = 0.0
+	dead = {}
 	wind = 0.0
 	carrying = -1
 	ripples = []
@@ -258,7 +298,7 @@ func save() -> void:
 			bonds[r.id] = r.mind.to_data()
 	var data := {"owned": owned, "worn": worn, "bonds": bonds, "beaten": beaten, "notes": notes, "visits": visits,
 		"wins": wins, "losses": losses, "heckles": heckles, "snacks_given": snacks_given, "moments": moments, "seen_ufo": seen_ufo,
-		"joined": joined, "lions": lions, "sets": sets, "points": points, "dares_done": dares_done, "last_recap": last_recap, "muted": muted, "quality": quality, "quality_auto": quality_auto, "flags": flags, "player_name": player_name, "money": money, "leads": leads, "used": used, "said": said, "paid": paid, "ties": ties, "tips": tips, "straps_lifted": straps_lifted, "recruits": recruits, "dusted": dusted}
+		"joined": joined, "lions": lions, "saved_total": saved_total, "potions": potions, "sets": sets, "points": points, "dares_done": dares_done, "last_recap": last_recap, "muted": muted, "quality": quality, "quality_auto": quality_auto, "flags": flags, "player_name": player_name, "money": money, "leads": leads, "used": used, "said": said, "paid": paid, "ties": ties, "tips": tips, "straps_lifted": straps_lifted, "recruits": recruits, "dusted": dusted}
 	var f := FileAccess.open(SAVE, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(data))
@@ -289,6 +329,8 @@ func load_save() -> void:
 	flags = data.get("flags", {})
 	points = int(data.get("points", 0))
 	sets = int(data.get("sets", 0))
+	potions = int(data.get("potions", 0))
+	saved_total = int(data.get("saved_total", 0))
 	lions = int(data.get("lions", 0))
 	joined = data.get("joined", [])
 	dares_done = int(data.get("dares_done", 0))
@@ -468,6 +510,7 @@ const DARE_POOL := [
 	{"text": "Start a food fight", "event": "foodfight", "tier": 2},
 	{"text": "Kiss Kelvin's cousin", "event": "kiss", "tier": 2},
 	{"text": "Pull someone out of the bay", "event": "rescue", "tier": 0},
+	{"text": "Fly on the balloon", "event": "fly", "tier": 2},
 	{"text": "Shout something at the whole meet", "event": "shout", "tier": 1},
 	{"text": "Knock someone over with a bicycle", "event": "bowl", "tier": 2},
 ]
@@ -537,3 +580,17 @@ func errand(id: String, state: String) -> void:
 	if errands.get(id, "") in ["open", "ready"] or state == "open":
 		errands[id] = state
 		changed.emit()
+
+## Things earned by turning up and by sticking at it.
+func milestones() -> void:
+	for m in [["regular_pin", visits >= 3], ["veteran_sash", visits >= 8], ["ten_wins", wins >= 10], ["ladder_crown", points >= 40], ["dare_horns", dares_done >= 15], ["lifesaver", saved_total >= 2]]:
+		if m[1] and not owned.has(m[0]):
+			grant(m[0])
+
+## A random thing you don't yet own from one of the places kit comes from.
+func unowned(src: String) -> String:
+	var pool: Array = []
+	for id in ITEMS:
+		if ITEMS[id].get("src", "") == src and not owned.has(id):
+			pool.append(id)
+	return pool[randi() % pool.size()] if not pool.is_empty() else ""

@@ -72,7 +72,10 @@ var _zap := 0.0
 var legend := ""                 # a visiting great: "don" or "lasha"
 var sulking := false             # walked off on you tonight; won't pull until you make it right
 var _tail := 0.0
+var _far_t := 0.0
+var _grief := {}
 var _after_talk := ""
+var dead := false                # gone for the rest of tonight, unless somebody has a potion
 var keen := false                # already half talked into a pull
 var bracket := ""                # this pull is the player's bracket semi or final
 var _chalk_t := 0.0
@@ -142,7 +145,7 @@ func setup(d: Dictionary, riser: bool, at: Vector3) -> void:
 		for sx in [-1.0, 1.0]:
 			Build.cyl(self, 0.01, 0.015, 0.3, Vector3(sx * 0.08, 1.42, 0), Color(0.3, 0.9, 0.4), 4)
 			Build.sphere(self, 0.04, Vector3(sx * 0.08, 1.58, 0), Color(1.0, 0.4, 0.9), 1.5)
-	_name_label = Build.label(self, riser_name, 2.2 if d["id"] != "alien" else 1.75, Color(1, 0.95, 0.8) if riser else Color(0.8, 0.8, 0.82), 34 if riser else 26)
+	_name_label = Build.label(self, riser_name, 2.2 if d["id"] != "alien" else 1.75, Color(1, 0.95, 0.8) if riser else Color(0.8, 0.8, 0.82), 16)
 	_bark = Build.label(self, "", 2.75 if d["id"] != "alien" else 2.2, Color(1.0, 0.93, 0.6), 44)
 	# Speech stays the same size on screen however far away they are, so it can be read.
 	_bark.fixed_size = true
@@ -264,6 +267,8 @@ func portrait() -> String:
 	return def.get("portrait", "")
 
 func say_aloud(text: String, seconds := 3.0) -> void:
+	if dead:
+		return
 	_bark.text = text
 	_bark.visible = true
 	_bark_time = max(seconds, 2.2) + text.length() * 0.035
@@ -294,7 +299,7 @@ func set_post(at: Vector3, yaw: float) -> void:
 	_timer = randf_range(6.0, 14.0)
 
 func is_free() -> bool:
-	if post:
+	if post or dead:
 		return false
 	if state == "walk" and _then in ["answer", "bench", "swarm"]:
 		return false   # on their way to the player; nothing else gets to claim them
@@ -312,6 +317,8 @@ func at_table() -> bool:
 	return state == "pull"
 
 func idle() -> void:
+	if dead:
+		return
 	if post:
 		state = "post"
 		global_position = _post_at
@@ -328,8 +335,18 @@ func idle() -> void:
 # --- The evening -----------------------------------------------------------------------
 
 func _process(dt: float) -> void:
-	if Meet.player == null:
+	if Meet.player == null or dead:
 		return
+	# Far away, their animation only needs to tick over now and then.
+	_far_t -= dt
+	if _far_t <= 0.0:
+		_far_t = 1.0
+		var ap: AnimationPlayer = _figure.get_meta("anim")
+		var far: bool = global_position.distance_to(Meet.player.global_position) > 26.0
+		ap.speed_scale = 1.0
+		ap.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL if far else AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_IDLE
+		if far:
+			ap.advance(1.0)
 	mind.tick(dt)
 	if _bark_time > 0.0:
 		_bark_time -= dt
@@ -707,6 +724,8 @@ func _quirk(main: Node3D) -> void:
 			idle()
 
 func _go(to: Vector3, then: String) -> void:
+	if dead:
+		return
 	_goal = Meet.main.clear(to)
 	_then = then
 	state = "walk"
@@ -1123,6 +1142,8 @@ func _threat() -> Vector3:
 	return best
 
 func aliens_arrive() -> void:
+	if dead:
+		return
 	if state == "winded":
 		return
 	# The bold ones go for the visitors; everyone else gets up the steps.
@@ -1137,6 +1158,8 @@ func aliens_arrive() -> void:
 	state = "flee"
 
 func aliens_gone() -> void:
+	if dead:
+		return
 	if state in ["flee", "scrap"]:
 		idle()
 	if is_riser:
@@ -1147,11 +1170,11 @@ func aliens_gone() -> void:
 func _alien(dt: float) -> void:
 	if state == "winded":
 		return
-	if not is_instance_valid(_foe) or randf() < dt * 0.15:
+	if not is_instance_valid(_foe) or _foe.dead or randf() < dt * 0.15:
 		_foe = null
 		_vs_player = randf() < 0.6 and not (Meet.worn["head"] == "antennae" and composure >= 150.0)
 		if not _vs_player:
-			var pick: Array = Meet.risers.filter(func(r): return r.state != "winded")
+			var pick: Array = Meet.risers.filter(func(r): return r.state != "winded" and not r.dead and not r.post)
 			if not pick.is_empty():
 				_foe = pick[randi() % pick.size()]
 			else:
@@ -1167,9 +1190,9 @@ func _alien(dt: float) -> void:
 			if to.length() < 2.4:
 				if _vs_player:
 					Meet.player.slapped(22.0, global_position, self)
-				elif _foe.state != "scrap":
-					_foe.knock(to.normalized() * 4.0)
-					_foe.say_aloud("Aah!", 1.0)
+				else:
+					_foe.knock(to.normalized() * 2.5)
+					_foe.zapped(34.0, "the visitors")
 		return
 	# From a distance they shoot. It hurts less than a zap up close, but it finds you.
 	_zap -= dt
@@ -1284,6 +1307,8 @@ func strap_returned() -> String:
 
 ## A faceful of chalk, from the player or from Tommy.
 func dusted(by: Node) -> void:
+	if dead:
+		return
 	if state == "winded":
 		return
 	Wear.dust(_figure, 50.0)
@@ -1325,11 +1350,23 @@ func dusted(by: Node) -> void:
 			if state not in ["pull", "to_table", "prep", "scrap"]:
 				Meet.main.puff(global_position + Vector3(0, 1.4, 0), Meet.player.global_position + Vector3(0, 1.4, 0), func(): Meet.player.dusted(), 0.9)
 		"known":
-			mind.experience("chalk", -0.15, 0.6)
-		_:
-			mind.experience("chalk", -0.4, 1.0)
-			if mind.feeling() < -0.45 and state != "scrap":
+			# Someone who barely knows you: it lands badly, and the touchy ones come over about it.
+			var n: int = _asked.get("chalked", 0)
+			_asked["chalked"] = n + 1
+			mind.experience("chalk", -0.35 - 0.2 * n, 1.2 + n, true, riser_name)
+			gesture("Hit_Chest", 0.6)
+			_look(Meet.player.global_position, 1.0)
+			if (mind.grudge >= 1.1 or n >= 1) and state != "scrap":
 				confront()
+			elif randf() < 0.4 and state not in ["pull", "to_table", "prep", "scrap"]:
+				say_aloud("Right. Have some back.", 3.0)
+				Meet.main.puff(global_position + Vector3(0, 1.4, 0), Meet.player.global_position + Vector3(0, 1.4, 0), func(): Meet.player.dusted(), 0.9)
+		_:
+			mind.experience("chalk", -0.5, 1.5, true, riser_name)
+			gesture("Hit_Chest", 0.6)
+			if state != "scrap":
+				confront()
+	_mood_check = 0.0
 
 # --- Passing by ---------------------------------------------------------------------------
 
@@ -1600,6 +1637,8 @@ func best_mate() -> Array:
 
 ## Something worth looking at is happening over there.
 func gawp(at: Vector3, line: String, gather: bool) -> void:
+	if dead:
+		return
 	if state == "walk" and _then in ["answer", "bench", "prank", "coach", "callout", "chat", "huddle", "swarm"]:
 		say_aloud(line, 2.5)
 		return
@@ -1619,6 +1658,8 @@ func gawp(at: Vector3, line: String, gather: bool) -> void:
 
 ## A friend is being picked on. Step in, with words or with more than words.
 func stand_up_for(victim: Node, kind: String, closeness: float) -> void:
+	if dead:
+		return
 	mind.experience("scrap" if kind == "punch" else "heckle", -0.45, 1.2, false, victim.riser_name)
 	Meet.bump(id, victim.id, 0.08)
 	var lines := {"punch": ["Hey! Hands off %s!", "You touch %s, you deal with me."], "chalk": ["Oi. Leave %s alone.", "Pick on someone else. Not %s."], "insult": ["Don't talk to %s like that.", "Say that about %s again."]}
@@ -1822,12 +1863,16 @@ func back_down() -> void:
 
 ## Stop and look at the player for a while.
 func stare(seconds: float, line := "") -> void:
+	if dead:
+		return
 	_stare = max(_stare, seconds)
 	if line != "":
 		say_aloud(line, min(seconds, 4.0))
 
 ## They watched the player put someone on the floor.
 func saw_beating(victim: Node) -> void:
+	if dead:
+		return
 	if passer:
 		say_aloud("I'm calling someone.", 3.0)
 		bolt(2.0)
@@ -1907,6 +1952,8 @@ func _wallet_missed() -> void:
 
 ## They have had enough: they come over and make you talk about it.
 func confront(kind := "beef", text := "") -> void:
+	if dead:
+		return
 	if alien or state in ["winded", "scrap", "confront"]:
 		return
 	if passer:
@@ -1994,6 +2041,8 @@ func read_clipboard(text: String) -> String:
 
 ## A one-off movement of their own: a high five, a dance.
 func gesture(anim: String, seconds: float) -> void:
+	if dead:
+		return
 	_act_anim = anim
 	_act_t = seconds
 	Character.play(_figure, anim, true)
@@ -2147,6 +2196,8 @@ func ride_to(to: Vector3, pace: float, dt: float) -> bool:
 
 ## Hit by a bicycle going too fast.
 func bowled(dir: Vector3) -> void:
+	if dead:
+		return
 	if state == "winded":
 		return
 	Meet.sfx("punch", 0.0, 0.8)
@@ -2212,6 +2263,8 @@ func _costume() -> bool:
 
 ## The player has bellowed something at the whole plaza. Each person takes it their own way.
 func shouted(kind: String, i: int) -> void:
+	if dead:
+		return
 	if alien or state in ["winded", "scrap", "confront", "search", "ride"] or (state == "pull" and kind != "tables"):
 		return
 	Meet.main.drop_match(self) if kind == "tables" else null
@@ -2265,6 +2318,8 @@ func shouted(kind: String, i: int) -> void:
 
 ## A snack, thrown at them.
 func splatted(by: Node) -> void:
+	if dead:
+		return
 	if alien or state == "winded":
 		return
 	Fx.tint(_figure, Color(0.95, 0.75, 0.2, 0.55), 12.0)
@@ -2306,6 +2361,8 @@ func throw_at(target: Node) -> void:
 
 ## One of the player's stone lions has come over to have a look at them.
 func pet_visit() -> void:
+	if dead:
+		return
 	if state in ["pull", "winded", "scrap", "confront"]:
 		return
 	_look(Meet.player.global_position, 0.5)
@@ -2416,3 +2473,95 @@ func after_talk() -> void:
 			_go(mate.global_position + Vector3(1.2, 0, 0.6), "chat")
 		else:
 			_go(global_position + away * 9.0, "idle")
+
+# --- Gone, and back ------------------------------------------------------------------------------------
+
+## Hit by something not of this world. Enough of it and they are gone for the night.
+func zapped(dmg: float, cause: String) -> void:
+	if dead or alien or passer or post:
+		return
+	composure -= dmg
+	Fx.tint(_figure, Color(0.5, 1.0, 0.6, 0.6), 0.3)
+	if composure > 0.0:
+		say_aloud(["Aah!", "That STINGS!", "Get OFF!", "My arm!"][randi() % 4], 1.5)
+		return
+	die(cause)
+
+func die(cause: String) -> void:
+	if dead or not (is_riser or guest):
+		return
+	Meet.main.drop_match(self)
+	Pose.stop(_figure)
+	dead = true
+	state = "dead"
+	_vs_player = false
+	_convo = {}
+	visible = false
+	remove_from_group("interact")
+	remove_from_group("hittable")
+	Meet.dead[id] = cause
+	Meet.sfx("lose")
+	for k in 5:
+		Fx.burst(Meet.main, global_position + Vector3(0, 0.4 + k * 0.3, 0), Vector3.UP, false, 12)
+	Meet.hud.banner("%s IS GONE" % first_name.to_upper(), "Taken by %s. There is a strap on the paving where they stood." % cause)
+	Meet.ripple("%s was taken by %s." % [first_name, cause])
+	Meet.main.memorial(self)
+	# Everyone who was close to them takes it hard, and remembers whether you were any use.
+	for r in Meet.risers:
+		if r == self or r.dead or not r.is_riser:
+			continue
+		var t: float = Meet.tie(id, r.id) if is_riser else 0.1
+		r._grief[id] = t
+		if t > 0.3:
+			r._stare = 0.0
+			r.say_aloud(["%s! NO!" % first_name.to_upper(), "Not %s. Not %s." % [first_name, first_name], "...%s?" % first_name][randi() % 3], 5.0)
+			r._act_anim = "Crouch_Idle"
+			r._act_t = 4.0
+		elif randf() < 0.5:
+			r.say_aloud(["Was that... %s?" % first_name, "Oh no.", "Somebody DO something."][randi() % 3], 4.0)
+
+## Brought back. They remember who did it.
+func revive() -> void:
+	if not dead:
+		return
+	dead = false
+	Meet.dead.erase(id)
+	visible = true
+	composure = 80.0
+	add_to_group("interact")
+	add_to_group("hittable")
+	state = "idle"
+	_timer = 6.0
+	for k in 6:
+		Fx.burst(Meet.main, global_position + Vector3(0, 0.3 + k * 0.3, 0), Vector3.UP, false, 14)
+	Fx.tint(_figure, Color(0.6, 1.0, 0.8, 0.6), 2.0)
+	Meet.sfx("win")
+	Meet.hud.banner("%s IS BACK" % first_name.to_upper(), "Coughing, furious, and covered in something that glows.")
+	mind.experience("helped", 0.95, 4.0, true, "bringing me back")
+	_mood_check = 0.0
+	say_aloud(["I saw a light. It was the kebab van.", "...Was I GONE? How long? Who's got my strap?", "I'm fine. I'm fine. What year is it?"][randi() % 3], 6.0)
+	Meet.ripple("You brought %s back." % first_name)
+	Meet.dare("revive")
+	for r in Meet.risers:
+		if r != self and r.is_riser and not r.dead:
+			r._grief.erase(id)
+			var t: float = Meet.tie(id, r.id) if is_riser else 0.1
+			r.mind.experience("helped", 0.3 + max(t, 0.0) * 0.6, 2.0, true, "bringing %s back" % first_name)
+			r._mood_check = 0.0
+			if t > 0.3:
+				r.say_aloud("%s! You're... HOW?" % first_name, 5.0)
+				r.gesture("Dance", 4.0)
+
+## What they say about someone who is gone, by how close they were and what they make of you.
+func grief_line(who_id: String) -> String:
+	var gone: Node = Meet.riser(who_id)
+	var t: float = _grief.get(who_id, 0.1)
+	var name: String = gone.first_name if gone else "them"
+	var blame: bool = mood_level() < 0
+	if t > 0.5:
+		return ("%s was the best of us. And where were YOU?" % name) if blame else ("I keep looking over to where %s stands. Stood. ...If there's any way to get them back, find it." % name)
+	if t > 0.2:
+		return ("%s is gone and you're asking me how I FEEL?" % name) if blame else ("We weren't always easy, me and %s. I'd give anything for one more argument." % name)
+	if t < 0.0:
+		return "We weren't speaking, me and %s. Now we can't. That's worse than I thought it'd be." % name
+	return ("Don't. Just don't." if blame else "I didn't know %s as well as I should have. That's on me." % name)

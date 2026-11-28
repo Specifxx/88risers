@@ -29,6 +29,11 @@ var _cam_vec := Vector2.ZERO
 var _cam_moved := 0.0
 var _cam_knob: Panel
 var _gfx: Button
+var _dares_sig := ""
+var _snd: Label
+var _snd_tw: Tween
+var _keys: Label
+var _kit_title: Label
 var _jump_pad: Button
 var _bag_dirty := false
 var _banner: PanelContainer
@@ -91,6 +96,15 @@ func _ready() -> void:
 	_prompt.offset_top = -210
 	_prompt.offset_bottom = -180
 	_shadow(_prompt)
+	# A line along the bottom saying which key does what. Keyboard only.
+	_keys = UI.text(_root, "E use/talk   ·   Click punch   ·   G chalk   ·   T throw snack   ·   X use held item   ·   V shout   ·   R eat   ·   C look at yourself   ·   Tab kit   ·   P photo   ·   M sound", 14, Color(1, 1, 1, 0.78))
+	_keys.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_keys.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	_keys.offset_top = -30
+	_keys.offset_bottom = -8
+	_keys.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_shadow(_keys)
 	_float = UI.text(_root, "", 26, Color(1.0, 0.92, 0.6))
 	_float.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_float.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -149,6 +163,13 @@ func _refresh() -> void:
 		"  ·  Straps in pocket %d" % Meet.straps.size() if not Meet.straps.is_empty() else "", Meet.wins, Meet.losses]
 	_heat.text = "Heat  %s%s" % ["★".repeat(Meet.stars()), "☆".repeat(5 - Meet.stars())] if Meet.stars() > 0 else ""
 	_heat.visible = Meet.stars() > 0
+	var sig := str(Meet.dares.map(func(d): return [d["done"], d["have"]]))
+	if sig == _dares_sig:
+		if _bag and _bag.visible and _bag_dirty:
+			_bag_dirty = false
+			_fill_bag.call_deferred()
+		return
+	_dares_sig = sig
 	UI.clear(_dares)
 	for d in Meet.dares:
 		var tier: int = int(d.get("tier", 0))
@@ -167,6 +188,7 @@ func _process(dt: float) -> void:
 	var riding: bool = Meet.player.riding
 	_prompt.text = ("[E]  Get off the bike" if riding else "[E]  %s" % t.prompt()) if (t != null or riding) and not Meet.modal and not Meet.touch else ""
 	_touch_ui.visible = Meet.touch and not Meet.modal and not _title.visible
+	_keys.visible = not Meet.touch and not Meet.modal and not _title.visible
 	if _jump_pad != null and Meet.touch:
 		# Holding the button counts as holding the key, for flying.
 		if _jump_pad.button_pressed:
@@ -207,6 +229,25 @@ func float_text(t: String) -> void:
 	_float.text = t
 	_float.modulate.a = 1.0
 	create_tween().tween_property(_float, "modulate:a", 0.0, 0.8)
+
+## Says in words what a sound is, bottom-left, so nothing loud is ever a mystery.
+func sound_caption(text: String, seconds: float) -> void:
+	if _snd == null:
+		_snd = UI.text(_root, "", 16, Color(0.8, 0.9, 1.0))
+		_snd.autowrap_mode = TextServer.AUTOWRAP_OFF
+		_snd.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+		_snd.offset_left = 16
+		_snd.offset_top = -64
+		_snd.offset_bottom = -40
+		_snd.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_shadow(_snd)
+	_snd.text = "♪  You can hear: %s   (M mutes)" % text
+	_snd.modulate.a = 1.0
+	if _snd_tw:
+		_snd_tw.kill()
+	_snd_tw = _snd.create_tween()
+	_snd_tw.tween_interval(seconds)
+	_snd_tw.tween_property(_snd, "modulate:a", 0.0, 0.8)
 
 ## A card across the top of the screen for the things worth stopping to read.
 func banner(title: String, text: String) -> void:
@@ -483,7 +524,7 @@ func _build_bag() -> void:
 	var mid := VBoxContainer.new()
 	mid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(mid)
-	UI.text(mid, "Your kit", 28, UI.GOLD)
+	_kit_title = UI.text(mid, "Your kit", 28, UI.GOLD)
 	UI.text(mid, "Won, found or dropped from the sky. Yours between visits. Tap to wear or take off.", 14, Color(0.75, 0.72, 0.62))
 	var sc := ScrollContainer.new()
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -543,13 +584,14 @@ func _tile(parent: Node, id: String) -> void:
 	b.add_theme_font_size_override("font_size", 14)
 	var atk := ("\nATTACK %d/10" % it["atk"]) if it.has("atk") else ""
 	b.text = (it["name"] + atk + ("\n(left on the ground)" if Meet.away.has(id) else "")) if have else "? ? ?\n%s" % it["how"]
+	b.custom_minimum_size = Vector2(170, 84 if have else 70)
 	b.tooltip_text = it["how"]
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.2, 0.16, 0.12) if have else Color(0.1, 0.09, 0.09)
 	sb.set_corner_radius_all(6)
 	sb.set_content_margin_all(8)
 	sb.border_width_left = 10
-	sb.border_color = Wear.COLORS.get(id, Color.GRAY) if have else Color(0.25, 0.25, 0.25)
+	sb.border_color = Wear.COLORS.get(id, it.get("col", Color.GRAY)) if have else Color(0.25, 0.25, 0.25)
 	if on:
 		sb.set_border_width_all(3)
 		sb.border_width_left = 10
@@ -583,6 +625,7 @@ func _cycle_gfx() -> void:
 	_fill_bag()
 
 func _fill_bag() -> void:
+	_kit_title.text = "Your kit  (%d of %d found)" % [Meet.owned.size(), Meet.ITEMS.size()]
 	_gfx.text = "Graphics: %s   (running at %d frames a second; tap to change)" % ["automatic" if Meet.quality_auto else ["sharpest", "sharp", "smooth", "smoothest"][Meet.quality], int(Meet.main.fps)]
 	Wear.dress(_doll, Meet.worn)
 	UI.clear(_bag_list)
@@ -608,7 +651,7 @@ func _fill_bag() -> void:
 	rep.value = Meet.reputation()
 	UI.text(_bag_side, "Reputation %d / 100" % Meet.reputation(), 14)
 	UI.text(_bag_side, "Health %d   Stamina %d   Attack %d/10" % [Meet.composure, Meet.stamina, Meet.attack()], 14)
-	UI.text(_bag_side, "Money $%d" % Meet.money, 16, UI.GOLD)
+	UI.text(_bag_side, "Money $%d%s" % [Meet.money, "   Revival potions %d" % Meet.potions if Meet.potions > 0 else ""], 16, UI.GOLD)
 	UI.text(_bag_side, "Snacks %d   Chalk %d%s" % [Meet.snacks, Meet.chalk, "   Hands chalked" if Meet.chalked else ""], 14)
 	if not Meet.straps.is_empty():
 		var names: Array = Meet.straps.map(func(id): return Meet.riser(id).first_name)

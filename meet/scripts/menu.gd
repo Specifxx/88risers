@@ -169,6 +169,13 @@ func _options() -> void:
 		for e in Meet.said:
 			if e["about"] == who.id and not e.get("told", false) and Meet.riser(e["by"]) != null:
 				UI.button(_list, "\"%s was talking about you.\"" % Meet.riser(e["by"]).first_name, _carry.bind(e), 18).add_theme_color_override("font_color", blue)
+	for gone_id in Meet.dead:
+		var gone: Node = Meet.riser(gone_id)
+		if gone != null and who.is_riser and not who.done_topics.has("grief:" + gone_id):
+			UI.button(_list, "\"About %s...\"" % gone.first_name, func():
+				who.done_topics["grief:" + gone_id] = true
+				who.gesture("Crouch_Idle", 1.5)
+				_line("[color=#b9b3a0]\"About %s...\"[/color]\n\"%s\"" % [gone.first_name, who.grief_line(gone_id)]), 18).add_theme_color_override("font_color", Color(0.75, 0.75, 0.95))
 	if who.mood_level() < 0:
 		UI.button(_list, "Apologise", _sorry.bind(false), 18).add_theme_color_override("font_color", Color(0.6, 0.9, 0.7))
 		UI.button(_list, "Apologise, with a snack as a peace offering  (%d)" % Meet.snacks, _sorry.bind(true), 18).add_theme_color_override("font_color", Color(0.6, 0.9, 0.7))
