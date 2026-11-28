@@ -259,12 +259,12 @@ func _draw_tags() -> void:
 	for t in entries:
 		var at: Vector3 = t["at"]
 		var dist: float = cam.global_position.distance_to(at)
-		if cam.is_position_behind(at) or dist > 44.0:
+		if cam.is_position_behind(at) or dist > 70.0:
 			continue
 		var sp: Vector2 = cam.unproject_position(at)
-		var near: bool = dist < 14.0
+		var near: bool = dist < 26.0
 		var y := sp.y
-		for part in [["n", t["name"], t["color"], 15 if near else 12, 0, 30.0], ["s", t["say"], Color(1.0, 0.93, 0.6), 19 if near else 15, 300, 44.0]]:
+		for part in [["n", t["name"], t["color"], 15 if near else 13, 0, 70.0], ["s", t["say"], Color(1.0, 0.93, 0.6), 19 if near else 15, 300, 55.0]]:
 			if part[1] == "" or dist > part[5]:
 				continue
 			var key := "%d%s" % [t["id"], part[0]]
