@@ -29,6 +29,7 @@ var _cam_vec := Vector2.ZERO
 var _cam_moved := 0.0
 var _cam_knob: Panel
 var _gfx: Button
+var _bag_dirty := false
 var _banner: PanelContainer
 var _banner_title: Label
 var _banner_text: Label
@@ -153,8 +154,10 @@ func _refresh() -> void:
 		var l := UI.text(_dares, "%s %s%s%s" % ["✔" if d["done"] else "○", "", d["text"], " (%d/%d)" % [d["have"], d["need"]] if d["need"] > 1 and not d["done"] else ""], 14, Color(0.6, 0.9, 0.7) if d["done"] else Color(0.95, 0.92, 0.85))
 		l.autowrap_mode = TextServer.AUTOWRAP_OFF
 		_shadow(l)
-	if _bag and _bag.visible:
-		_fill_bag()
+	# The kit is only rebuilt when you do something in it, never under your cursor.
+	if _bag and _bag.visible and _bag_dirty:
+		_bag_dirty = false
+		_fill_bag.call_deferred()
 
 func _process(dt: float) -> void:
 	if Meet.player == null:
@@ -490,7 +493,9 @@ func _build_bag() -> void:
 	var close_b := UI.button(row, "Close  (Tab or Esc)", toggle_bag, 18)
 	close_b.custom_minimum_size = Vector2(190, 0)
 	close_b.add_theme_color_override("font_color", UI.GOLD)
-	for b in [["Eat a snack", Meet.eat, 130], ["Put down hand item", _put_down.bind("hand"), 170], ["Leave hat here", _put_down.bind("head"), 140]]:
+	for b in [["Eat a snack", func():
+			_bag_dirty = true
+			Meet.eat(), 130], ["Put down hand item", _put_down.bind("hand"), 170], ["Leave hat here", _put_down.bind("head"), 140]]:
 		var bb := UI.button(row, b[0], b[1], 15)
 		bb.custom_minimum_size = Vector2(b[2], 0)
 		bb.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -529,7 +534,8 @@ func _tile(parent: Node, id: String) -> void:
 	b.clip_text = true
 	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	b.add_theme_font_size_override("font_size", 14)
-	b.text = (it["name"] + ("\n(left on the ground)" if Meet.away.has(id) else "")) if have else "? ? ?\n%s" % it["how"]
+	var atk := ("\nATTACK %d/10" % it["atk"]) if it.has("atk") else ""
+	b.text = (it["name"] + atk + ("\n(left on the ground)" if Meet.away.has(id) else "")) if have else "? ? ?\n%s" % it["how"]
 	b.tooltip_text = it["how"]
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.2, 0.16, 0.12) if have else Color(0.1, 0.09, 0.09)
@@ -546,7 +552,9 @@ func _tile(parent: Node, id: String) -> void:
 	b.add_theme_color_override("font_color", UI.GOLD if on else (UI.PAPER if have else Color(0.5, 0.48, 0.44)))
 	b.add_theme_color_override("font_disabled_color", Color(0.5, 0.48, 0.44))
 	b.disabled = not have
-	b.pressed.connect(Meet.wear.bind(id))
+	b.pressed.connect(func():
+		_bag_dirty = true
+		Meet.wear(id))
 	parent.add_child(b)
 
 func _unhandled_key_input(ev: InputEvent) -> void:
@@ -592,7 +600,7 @@ func _fill_bag() -> void:
 	rep.custom_minimum_size = Vector2(170, 12)
 	rep.value = Meet.reputation()
 	UI.text(_bag_side, "Reputation %d / 100" % Meet.reputation(), 14)
-	UI.text(_bag_side, "Health %d   Stamina %d" % [Meet.composure, Meet.stamina], 14)
+	UI.text(_bag_side, "Health %d   Stamina %d   Attack %d/10" % [Meet.composure, Meet.stamina, Meet.attack()], 14)
 	UI.text(_bag_side, "Money $%d" % Meet.money, 16, UI.GOLD)
 	UI.text(_bag_side, "Snacks %d   Chalk %d%s" % [Meet.snacks, Meet.chalk, "   Hands chalked" if Meet.chalked else ""], 14)
 	if not Meet.straps.is_empty():
@@ -624,9 +632,12 @@ func _fill_bag() -> void:
 func toggle_bag() -> void:
 	if _bag.visible:
 		_bag.visible = false
+		get_viewport().disable_3d = false
 		UI.close_modal()
 	elif not Meet.modal:
 		_bag.visible = true
+		# Nothing behind the kit needs drawing while it is open.
+		get_viewport().disable_3d = true
 		_fill_bag()
 		UI.open_modal()
 

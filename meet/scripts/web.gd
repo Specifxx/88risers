@@ -151,6 +151,12 @@ const LEADS := {
 		{"say": "Are you going to tell him?", "reply": "When he stops asking.", "v": 0.3},
 		{"say": "He's losing sleep over it.", "reply": "...I'll give him a rematch. He won't learn anything.", "v": 0.2, "do": "match:luie:erick"}]},
 
+	"busker_request": {"to": "tommy", "ask": "\"The busker wants your real request.\"", "reply": "My REAL request? ...Don't laugh. 'Eye of the Tiger'. On acoustic. Slow.", "opts": [
+		{"say": "That's actually a great choice.", "reply": "I know. I've thought about it for years.", "v": 0.4, "lead": "busker_tiger"},
+		{"say": "I'm telling her the Wiggles.", "reply": "...Also fine.", "v": 0.1, "lead": "busker_tiger"}]},
+	"busker_tiger": {"to": "s_busker", "ask": "\"Tommy wants 'Eye of the Tiger'. Slow. On acoustic.\"", "reply": "...That's the best request I've had in four years. Watch his face.", "v": 0.6, "do": "busk_tommy"},
+	"kebab_kelvin": {"to": "kelvin", "ask": "\"Delivery. One lamb, from Sami.\"", "reply": "You CARRIED it? Here? For me? Nobody's ever... it's still warm.", "v": 0.8, "do": "pay:6"},
+
 	# Harry's job for you.
 	"job_done": {"to": "harry", "ask": "\"That's three of the public I've got to the table.\"", "reply": "Three? In one night? You're hired. It's unpaid. Well done.", "v": 0.8, "do": "pay:20"},
 }

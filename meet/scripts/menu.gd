@@ -157,7 +157,7 @@ func _options() -> void:
 	UI.clear(_list)
 	var gold := UI.GOLD
 	var blue := Color(0.65, 0.85, 1.0)
-	if who.is_riser:
+	if who.is_riser or who.post:
 		# Things other people told you that concern this one come first.
 		if Meet.has_flag("harry", "harry_job") and Meet.recruits >= 3:
 			Meet.leads["job_done"] = true
@@ -174,11 +174,19 @@ func _options() -> void:
 		UI.button(_list, "\"Found this. Yours?\"  (hand back the strap)", _strap, 18)
 	if who.coned:
 		UI.button(_list, "Take your traffic cone back", func(): _line("[i]You lift the cone off their head.[/i]\n\"%s\"" % who.cone_off()), 18).add_theme_color_override("font_color", Color(1.0, 0.6, 0.3))
-	if who.is_riser and Meet.errands.get(who.id, "") == "ready":
+	if Meet.errands.get(who.id, "") == "ready":
 		UI.button(_list, "\"Done. That thing you asked for.\"", _errand_done, 18).add_theme_color_override("font_color", blue)
 	UI.button(_list, "Talk...", _menu_talk, 18)
 	UI.button(_list, "Be friendly...", _menu_friendly, 18)
-	if who.is_riser or who.guest:
+	if who.legend != "":
+		for lo in Meet.main.evening.legend_options(who):
+			var cb: Callable = lo[1]
+			UI.button(_list, lo[0], func():
+				close()
+				cb.call(), 18).add_theme_color_override("font_color", gold)
+	if who.post or who.legend != "":
+		pass   # at work, or far too famous: not through the usual menu
+	elif who.is_riser or who.guest:
 		UI.button(_list, "Pull...", _menu_pull, 18).add_theme_color_override("font_color", gold)
 	else:
 		UI.button(_list, "Talk them into a pull...", _pitches, 18).add_theme_color_override("font_color", gold)
@@ -510,6 +518,37 @@ func _answer(o: Dictionary, show_say := true) -> void:
 				close()
 				Meet.say("Tommy heads for Harry with a fistful of chalk. You said you'd take the blame.")
 				return
+		"errand":
+			_errand()
+			return
+		"food", "food1":
+			Meet.snacks = min(5, Meet.snacks + (3 if o["do"] == "food" else 1))
+			Meet.add_heat(0.2)
+			Meet.touch_state()
+			_text.append_text("[i]You are now holding somebody else's dinner. It counts as snacks.[/i]\n")
+			Meet.ripple("Unit 1408 never got their pad thai.")
+		"kiss":
+			var kelvin: Node = Meet.riser("kelvin")
+			close()
+			r.gesture("Interact", 1.6)
+			r.say_aloud("Come here, idiot.", 3.5)
+			Meet.player.act("Interact", 1.6)
+			Meet.hud.banner("A KISS", "On the cheek. In front of everyone. At an arm wrestling meet.")
+			Meet.sfx("win", -4.0, 1.3)
+			for k in 6:
+				Meet.main.lob(r.global_position + Vector3(0, 1.6, 0), r.global_position + Vector3(randf_range(-1, 1), 3.0, randf_range(-1, 1)), Color(1.0, 0.3, 0.5), func(): pass)
+			r.mind.experience("gift", 0.9, 3.0, true, "the kiss")
+			Meet.main.stir(r.global_position, ["OOOOOH!", "Get a room!", "Did that just happen?", "George! Did you get that?"], 30.0, 0.8, true)
+			if kelvin:
+				kelvin.say_aloud("That's my COUSIN. ...Treat her right. I mean it.", 6.0)
+				kelvin.stare(5.0)
+			Meet.ripple("Kelvin's cousin kissed you at the meet.")
+			Meet.dare("kiss")
+			return
+		"busk":
+			Meet.main.evening.busk()
+		"busk_tommy":
+			Meet.main.evening.busk(true)
 		"keen":
 			r.keen = true
 			_text.append_text("[i]They're half talked into it already. Ask them for a pull.[/i]\n")
@@ -520,6 +559,14 @@ func _answer(o: Dictionary, show_say := true) -> void:
 				h.say_aloud("Tommy. Put the chalk DOWN.", 4.0)
 				Meet.bump("harry", "tommy", -0.1)
 	Meet.save()
+	if o.has("then") and People.MORE.has(o["then"]) and active():
+		# The conversation carries on from here.
+		var nxt: Dictionary = People.MORE[o["then"]]
+		_text.append_text("\n\"%s\"\n" % nxt["reply"])
+		UI.clear(_list)
+		for o2 in nxt["opts"]:
+			UI.button(_list, o2["say"], _answer.bind(o2), 18)
+		return
 	if v <= -0.55 and r.mind.feeling() < -0.45:
 		close()
 		r.confront()
@@ -858,6 +905,9 @@ const ERRANDS := {
 	"kelvin": ["A cold drink. I'd go myself, but I'd pass the snack table on the way and I know what I'm like.", "Cold. Perfect. You understand me."],
 	"tommy": ["Get chalk on Kelvin. I can't, he's watching me. He's not watching YOU.", "DIRECT HIT. I saw it. I'll treasure it."],
 	"luie": ["I dropped an earbud down by the railing. The left one. I need the left one.", "The left one. ...Thank you. Really."],
+	"s_busker": ["It's a little silver clamp. Up in the seating somewhere.", "My capo! You absolute star. Here: my spare harmonica. Blow, don't suck. Mostly."],
+	"s_fisher": ["Tartan. Dented. Thirty years old. If it's at that van, I want it washed.", "My thermos. ...Still warm. Here. I pulled this up in the net years back. No idea what it's for. Something to catch things with, maybe."],
+	"s_kebab": ["My GOOD tongs. Check the bins. Check the trees. It had little hands.", "MY TONGS. You found them! That's it, you eat free. Kebabs. For life. Don't tell the big one."],
 	"erick": ["Find me someone new to pull. Talk a stranger into staying. I've beaten everyone here twice.", "Fresh arms! Finally. I owe you one."],
 }
 
@@ -867,6 +917,12 @@ func _errand() -> void:
 	match who.id:
 		"bhavya":
 			Meet.main.pickup("Bhavya's notebook", Vector3(-6.0, 0, -15.5), Color(0.2, 0.3, 0.6), func(): Meet.errand("bhavya", "ready"))
+		"s_busker":
+			Meet.main.pickup("a small silver capo", Vector3(randf_range(-6, 6), 0, -13.5), Color(0.85, 0.85, 0.9), func(): Meet.errand("s_busker", "ready"))
+		"s_fisher":
+			Meet.main.pickup("a dented tartan thermos", Vector3(-13.6, 0, 25.0), Color(0.7, 0.2, 0.2), func(): Meet.errand("s_fisher", "ready"))
+		"s_kebab":
+			Meet.main.pickup("a pair of tongs, slightly chewed", Vector3(16.5, 0, 9.0), Color(0.75, 0.75, 0.8), func(): Meet.errand("s_kebab", "ready"))
 		"luie":
 			Meet.main.pickup("Luie's left earbud", Vector3(-8.5, 0, 28.6), Color(0.95, 0.95, 0.95), func(): Meet.errand("luie", "ready"))
 		"phillip":
@@ -888,7 +944,16 @@ func _errand_done() -> void:
 	Meet.dare("errand")
 	if who.id in ["bhavya", "luie"]:
 		Meet.tips = min(4, Meet.tips + 1)
-	Meet.pay(5, "%s slips you a fiver for your trouble." % who.first_name)
+	match who.id:
+		"s_busker":
+			Meet.grant("harmonica")
+		"s_fisher":
+			Meet.grant("catch_ball")
+		"s_kebab":
+			Meet.flag("s_kebab", "free")
+			Meet.ripple("Sami the kebab man feeds you free for life.")
+		_:
+			Meet.pay(5, "%s slips you a fiver for your trouble." % who.first_name)
 	_line("[color=#b9b3a0]\"Done. That thing you asked for.\"[/color]\n\"%s\"" % ERRANDS[who.id][1])
 
 ## Somebody has sat down next to you.

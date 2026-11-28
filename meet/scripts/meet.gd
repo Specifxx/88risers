@@ -8,34 +8,41 @@ const SAVE := "user://meet_night.json"
 
 ## Things to win, find and wear. None of them are sensible.
 const ITEMS := {
-	"foam_finger": {"name": "Giant foam finger", "slot": "hand", "how": "Win your first match at the table.", "hit": 1.6},
-	"rubber_chicken": {"name": "Rubber chicken", "slot": "hand", "how": "Heckle five people.", "hit": 1.2},
-	"pool_noodle": {"name": "Pool noodle", "slot": "hand", "how": "Somebody left it down by the water.", "hit": 1.4},
-	"katana_88": {"name": "The 88 Risers katana (cardboard)", "slot": "hand", "how": "Beat every founder at the table.", "hit": 2.0},
+	"foam_finger": {"name": "Giant foam finger", "slot": "hand", "how": "Win your first match at the table.", "atk": 3},
+	"rubber_chicken": {"name": "Rubber chicken", "slot": "hand", "how": "Heckle five people.", "atk": 2},
+	"pool_noodle": {"name": "Pool noodle", "slot": "hand", "how": "Somebody left it down by the water.", "atk": 3},
+	"katana_88": {"name": "The 88 Risers katana (cardboard)", "slot": "hand", "how": "Beat every founder at the table.", "atk": 7},
 	"cone": {"name": "Traffic cone", "slot": "head", "how": "It was just sitting there behind the steps."},
 	"chef_hat": {"name": "Snack captain's hat", "slot": "head", "how": "Hand out five snacks."},
 	"antennae": {"name": "Alien antennae", "slot": "head", "how": "The visitors from the sky leave them behind."},
 	"lion_mask": {"name": "Paper lion mask", "slot": "head", "how": "Be on good terms with four founders."},
 	"belt": {"name": "Cardboard champion's belt", "slot": "body", "how": "Beat Harry at the table."},
 	"strap_scarf": {"name": "Scarf of other people's straps", "slot": "body", "how": "Lift three straps without being caught."},
-	"clipboard": {"name": "Recruiter's clipboard", "slot": "hand", "how": "Talk three passers-by into having a go.", "hit": 1.3},
+	"clipboard": {"name": "Recruiter's clipboard", "slot": "hand", "how": "Talk three passers-by into having a go.", "atk": 4},
 	"ghost": {"name": "Chalk ghost sheet", "slot": "body", "how": "Cover five people in chalk."},
-	"raygun": {"name": "Toy ray gun (probably a toy)", "slot": "hand", "how": "Something from the sky leaves it behind.", "hit": 1.8},
+	"raygun": {"name": "Toy ray gun (probably a toy)", "slot": "hand", "how": "Something from the sky leaves it behind.", "atk": 8},
 	"prop_hat": {"name": "Propeller hat", "slot": "head", "how": "Fell off something that crashed."},
-	"golden_chip": {"name": "The golden chip", "slot": "hand", "how": "The seagulls drop it, if you see them off.", "hit": 1.1},
+	"golden_chip": {"name": "The golden chip", "slot": "hand", "how": "The seagulls drop it, if you see them off.", "atk": 1},
 	"dare_sash": {"name": "Sash of the Dared", "slot": "body", "how": "Finish all three of a night's dares."},
 	"sweatband": {"name": "Retro sweatband", "slot": "head", "how": "This week's find. Somewhere at the meet."},
-	"boom_box": {"name": "Tiny boom box", "slot": "hand", "how": "This week's find. Somewhere at the meet.", "hit": 1.5},
-	"gold_chalk": {"name": "Block of golden chalk", "slot": "hand", "how": "This week's find. Somewhere at the meet.", "hit": 1.1},
+	"boom_box": {"name": "Tiny boom box", "slot": "hand", "how": "This week's find. Somewhere at the meet.", "atk": 6},
+	"gold_chalk": {"name": "Block of golden chalk", "slot": "hand", "how": "This week's find. Somewhere at the meet.", "atk": 3},
 	"cape": {"name": "Banner cape", "slot": "body", "how": "This week's find. Somewhere at the meet."},
-	"bracket_cup": {"name": "The Six O'Clock Cup", "slot": "hand", "how": "Win the six o'clock bracket.", "hit": 1.6},
-	"fish": {"name": "A fish", "slot": "hand", "how": "Borrow the fisherman's rod.", "hit": 1.7},
+	"bracket_cup": {"name": "The Six O'Clock Cup", "slot": "hand", "how": "Win the six o'clock bracket.", "atk": 7},
+	"fish": {"name": "A fish", "slot": "hand", "how": "Borrow the fisherman's rod.", "atk": 5},
 	"sunnies": {"name": "Servo sunnies", "slot": "head", "how": "Lucky dip at the kebab van."},
-	"snag": {"name": "Sausage on a fork", "slot": "hand", "how": "Lucky dip at the kebab van.", "hit": 1.2},
-	"footy": {"name": "Somebody's football", "slot": "hand", "how": "It came over from the park.", "hit": 1.5},
-	"balloon": {"name": "A child's balloon", "slot": "hand", "how": "It drifts through, some nights.", "hit": 0.6},
+	"snag": {"name": "Sausage on a fork", "slot": "hand", "how": "Lucky dip at the kebab van.", "atk": 3},
+	"footy": {"name": "Somebody's football", "slot": "hand", "how": "It came over from the park.", "atk": 4},
+	"balloon": {"name": "A child's balloon", "slot": "hand", "how": "It drifts through, some nights.", "atk": 1},
 	"possum_hat": {"name": "Possum (asleep) on your head", "slot": "head", "how": "Be kind to the possum."},
-	"glow_stick": {"name": "Glow stick", "slot": "hand", "how": "Handed out when the lights go.", "hit": 1.1},
+	"glow_stick": {"name": "Glow stick", "slot": "hand", "how": "Handed out when the lights go.", "atk": 3},
+	"harmonica": {"name": "Dee's spare harmonica", "slot": "hand", "how": "Do the busker a favour.", "atk": 2},
+	"catch_ball": {"name": "A catch-ball (dented)", "slot": "hand", "how": "Old Con pulled it up in a net once. Do him a favour.", "atk": 4},
+	"gripling": {"name": "A Gripling, on your shoulder", "slot": "body", "how": "Catch the one that comes hopping through. You'll need something to catch it with."},
+	"golden_grip": {"name": "The Golden Grip", "slot": "hand", "how": "It is aboard the ship, if you dare go up the ramp.", "atk": 10},
+	"signed_band": {"name": "Headband signed by Big Don", "slot": "head", "how": "Meet a legend. Ask nicely."},
+	"giant_band": {"name": "The giant's wristband (fits your thigh)", "slot": "body", "how": "Earn a nod from Lasha."},
+	"kaiju_claw": {"name": "A claw the size of a door", "slot": "hand", "how": "Beat what comes out of the bay.", "atk": 9},
 	"medal": {"name": "Participation medal", "slot": "body", "how": "Lose three matches. It's the taking part."},
 }
 
@@ -79,6 +86,7 @@ var used := {}                 # leads already raised
 var said: Array = []           # [{by, about, tone, told}]: what one founder said of another
 var paid := {}                 # reputation rewards George has already handed over
 var joined: Array = []          # strangers you talked into the club; they come back
+var lions := 0                 # stone lions you have let out; they come with you
 var sets := 0                  # dumbbell sets, ever: slow real strength
 var points := 0                # ladder points
 var dares_done := 0
@@ -100,6 +108,7 @@ var cone_with := ""             # who is wearing your traffic cone
 var errands := {}              # founder id -> "open" | "ready" | "done"
 var buzz := 0.0                # seconds of energy drink left
 var fish := 0
+var saved := 0
 var bracket := "open"          # open | in | semi | wait | final | out | won | none
 var dark := 0.0                # seconds the lights are out: nobody can see what you do
 var ripples: Array = []         # what you changed tonight
@@ -197,9 +206,13 @@ func wear(item: String) -> void:
 	save()
 	changed.emit()
 
-func hit_power() -> float:
+## How hard what you are holding hits, 1 to 10. Bare hands are a 2.
+func attack() -> int:
 	var h: String = worn["hand"]
-	return ITEMS[h].get("hit", 1.0) if h != "" else 1.0
+	return int(ITEMS[h].get("atk", 2)) if h != "" else 2
+
+func hit_power() -> float:
+	return 0.55 + attack() * 0.22
 
 func strength() -> float:
 	return min(84.0, 62.0 + wins * 1.5) + (3.0 if not straps.is_empty() else 0.0) + min(6.0, sets * 0.2) + pump * 1.5
@@ -241,7 +254,7 @@ func save() -> void:
 			bonds[r.id] = r.mind.to_data()
 	var data := {"owned": owned, "worn": worn, "bonds": bonds, "beaten": beaten, "notes": notes, "visits": visits,
 		"wins": wins, "losses": losses, "heckles": heckles, "snacks_given": snacks_given, "moments": moments, "seen_ufo": seen_ufo,
-		"joined": joined, "sets": sets, "points": points, "dares_done": dares_done, "last_recap": last_recap, "muted": muted, "quality": quality, "quality_auto": quality_auto, "flags": flags, "player_name": player_name, "money": money, "leads": leads, "used": used, "said": said, "paid": paid, "ties": ties, "tips": tips, "straps_lifted": straps_lifted, "recruits": recruits, "dusted": dusted}
+		"joined": joined, "lions": lions, "sets": sets, "points": points, "dares_done": dares_done, "last_recap": last_recap, "muted": muted, "quality": quality, "quality_auto": quality_auto, "flags": flags, "player_name": player_name, "money": money, "leads": leads, "used": used, "said": said, "paid": paid, "ties": ties, "tips": tips, "straps_lifted": straps_lifted, "recruits": recruits, "dusted": dusted}
 	var f := FileAccess.open(SAVE, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(data))
@@ -272,6 +285,7 @@ func load_save() -> void:
 	flags = data.get("flags", {})
 	points = int(data.get("points", 0))
 	sets = int(data.get("sets", 0))
+	lions = int(data.get("lions", 0))
 	joined = data.get("joined", [])
 	dares_done = int(data.get("dares_done", 0))
 	last_recap = String(data.get("last_recap", ""))

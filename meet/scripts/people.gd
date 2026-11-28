@@ -165,6 +165,46 @@ const REMEMBER := {
 ## v: how it lands (-1..1). flag: remembered between visits. need: only offered once that flag is set.
 ## do: something that then happens in the world.
 const TALK := {
+	"s_busker": [
+		{"key": "songs", "ask": "Ask what she plays", "reply": "Anything with four chords. Which is everything. Don't tell the others.", "opts": [
+			{"say": "Play something for the club.", "reply": "For the arm people? I've got one. It's called 'Hand on the Pad'. It's a waltz.", "v": 0.4, "do": "busk"},
+			{"say": "Know any arm wrestling songs?", "reply": "I wrote three. Nobody asked me to. That's art.", "v": 0.3},
+			{"say": "Is this your actual job?", "reply": "Is standing at a table holding hands YOUR actual job?", "v": -0.3, "kind": "heckle"}]},
+		{"key": "capo", "ask": "\"You look like you've lost something.\"", "reply": "My capo. Little clamp thing. It pinged off into the seating an hour ago and I can't leave the hat unattended. Not round here.", "opts": [
+			{"say": "I'll find it.", "reply": "Would you? It's silver. It'll be up the steps somewhere. I'll make it worth your while.", "v": 0.3, "do": "errand"},
+			{"say": "Play without it.", "reply": "In E flat? What am I, a jazz musician?", "v": -0.1},
+			{"say": "I'll watch the hat. You go.", "reply": "...No offence. But no.", "v": 0.0}]},
+		{"key": "request", "ask": "Ask if she takes requests from the founders", "reply": "The funny one keeps shouting for the Wiggles. Go and ask him what he ACTUALLY wants and I'll play it. Properly.", "opts": [
+			{"say": "I'll ask Tommy.", "reply": "Bring me a real answer.", "v": 0.2, "lead": "busker_request"},
+			{"say": "Play the Wiggles. He means it.", "reply": "...He does, doesn't he.", "v": 0.2, "do": "busk"}]},
+	],
+	"s_fisher": [
+		{"key": "catch", "ask": "\"Catching anything?\"", "reply": "Three bream and a jandal. The jandal fought harder.", "opts": [
+			{"say": "What's the biggest you've had?", "reply": "A jewfish. Ninety-four. Long as this rail. Nobody believed me, so I stopped telling people. Until now.", "v": 0.4},
+			{"say": "Can I have a go?", "reply": "Rod's right there. Don't strike early. Everyone strikes early.", "v": 0.2},
+			{"say": "Fishing's just standing.", "reply": "And arm wrestling's just holding hands. We all have our lies.", "v": -0.3, "kind": "heckle"}]},
+		{"key": "thermos", "ask": "\"You alright? You keep patting your pockets.\"", "reply": "My thermos. Had it thirty years. I put it down when the gulls came and now it's walked.", "opts": [
+			{"say": "I'll look for it.", "reply": "Tartan. Dented. If it's by that van, tell him I want it washed.", "v": 0.4, "do": "errand"},
+			{"say": "It's only a thermos.", "reply": "It's the only thing that's stayed.", "v": -0.4},
+			{"say": "What's in it?", "reply": "Tea. Mostly.", "v": 0.2}]},
+		{"key": "bigone", "ask": "Ask about the one under the wharf", "reply": "I call him Kevin. Had him on in '09 and again in '17. He takes the bait, looks me in the eye, and spits the hook.", "opts": [
+			{"say": "What bait does Kevin like?", "reply": "Something greasy. Chips. He's got taste.", "v": 0.3, "flag": "kevin_bait"},
+			{"say": "It's the same fish? Since 2009?", "reply": "I'd know that eye anywhere.", "v": 0.25},
+			{"say": "Kevin isn't real.", "reply": "Neither's your technique, but I didn't say anything.", "v": -0.3}]},
+	],
+	"s_kebab": [
+		{"key": "menu", "ask": "Ask what's good", "reply": "Everything's good. The lamb's best. The falafel's for people who've given up.", "opts": [
+			{"say": "What does Kelvin order?", "reply": "Two lamb, one chicken, chips, and 'whatever's left'. Every time. He calls it 'the Sunday'.", "v": 0.35, "lead": "tally_tommy"},
+			{"say": "Got anything off the menu?", "reply": "For you? The Riser. Everything, twice, in one bread. Six dollars. I shouldn't.", "v": 0.3},
+			{"say": "Is the meat... meat?", "reply": "Next customer.", "v": -0.4, "kind": "heckle"}]},
+		{"key": "tongs", "ask": "\"Everything okay back there?\"", "reply": "My tongs. My GOOD tongs. Something came through here, small, fast, grey, and now I'm turning chicken with a fork like an animal.", "opts": [
+			{"say": "I'll find your tongs.", "reply": "Check the bins. Check the trees. It had hands. Little hands.", "v": 0.4, "do": "errand"},
+			{"say": "Small, grey, with hands? That's the possum.", "reply": "The POSSUM. I KNEW it. Three weeks of this.", "v": 0.3},
+			{"say": "Use the fork.", "reply": "You don't understand what tongs MEAN.", "v": -0.2}]},
+		{"key": "delivery", "ask": "Ask if he delivers", "reply": "To the tables? If someone carries it. I've got a lamb here with your big friend's name on it and no way to get it to him.", "opts": [
+			{"say": "I'll take it to Kelvin.", "reply": "Run. It's best in the first ninety seconds.", "v": 0.3, "lead": "kebab_kelvin"},
+			{"say": "He can walk.", "reply": "He can. He won't.", "v": 0.0}]},
+	],
 	"p_bike": [
 		{"key": "bike", "ask": "Ask about the bike", "reply": "Full carbon. Electronic shifting. It weighs less than my lunch and cost more than my car.", "opts": [
 			{"say": "Can I have a go?", "reply": "Absolutely not. Nobody touches it. I don't even let my wife look at it for long.", "v": -0.1},
@@ -218,12 +258,20 @@ const TALK := {
 			{"say": "Personal trainers aren't real athletes.", "reply": "I'm going to remember your face at your first hernia.", "v": -0.5, "kind": "heckle"}]},
 	],
 	"p_cousin": [
+		{"key": "flirt", "ask": "\"So. Come here often?\"", "reply": "To a car park full of men holding hands? First time. You'll have to do better than that.", "opts": [
+			{"say": "I only came over because you're the best-looking person at an arm wrestling meet.", "reply": "That's a very low bar. I've seen who's here. ...Go on.", "v": 0.2, "then": "flirt2"},
+			{"say": "I could beat everyone here. For you.", "reply": "Could you? Could you beat Kelvin? Because that I'd pay to see.", "v": 0.25, "then": "flirt2"},
+			{"say": "Are you Kelvin's cousin? You've got his appetite.", "reply": "Wow. Okay. Goodnight.", "v": -0.6, "kind": "heckle"}]},
 		{"key": "cousin", "ask": "Ask whose cousin she is", "reply": "Kelvin's. Well. Second cousin. Our mums play mahjong. I was told there would be food and nobody mentioned the arm thing.", "opts": [
 			{"say": "The food's by the lights. Go for the red ones.", "reply": "Finally, someone useful. Kelvin just pointed and kept eating.", "v": 0.45},
 			{"say": "Does Kelvin always eat like that?", "reply": "At my wedding he had three mains. He wasn't on the list for three mains.", "v": 0.35, "lead": "tally_tommy"},
 			{"say": "You should pull him. Family honour.", "reply": "Oh, I've been waiting twenty years for a reason to beat Kelvin at something.", "v": 0.3, "do": "keen"}]},
 	],
 	"p_rider": [
+		{"key": "handover", "ask": "\"Mate. Just give me the pad thai.\"", "reply": "I can't just GIVE you a customer's order. That's the one rule. That's the whole job.", "opts": [
+			{"say": "Unit 1408 doesn't exist. I checked. It's a storage cupboard.", "reply": "...It did feel like a cupboard. The door had a mop sign on it. Take it. TAKE it. I'm marking it delivered.", "v": 0.3, "do": "food"},
+			{"say": "I AM unit 1408.", "reply": "You're standing in a park.", "v": -0.1, "then": "handover2"},
+			{"say": "Five stars and a tip if you hand it over.", "reply": "Five stars? Typed out? With a comment? ...Deal. Say I was 'friendly and prompt'.", "v": 0.4, "do": "food", "cost": 3}]},
 		{"key": "order", "ask": "Ask who the pad thai is for", "reply": "'Unit 1408, Tower B.' There are four Tower Bs. I've been to three. The food's been cold since Thursday.", "opts": [
 			{"say": "Just eat it.", "reply": "...It's against policy. It's also against everything I stand for. ...It's pretty good cold.", "v": 0.4},
 			{"say": "Sell it to Kelvin.", "reply": "The big fella? Does he tip?", "v": 0.3, "do": "pay:5"},
@@ -582,3 +630,31 @@ const BENCH := {
 const CYCLIST := {"id": "p_bike", "likes": "dare", "name": "The cyclist", "role": "Forty k before dinner", "strength": 61, "pace": 1.6, "stops": 0.0,
 	"look": {"body": "Male_Ranger", "hair": "Hair_Buzzed", "tint": Color(0.95, 0.85, 0.1)}, "mind": {"warmth": 0.0, "grudge": 1.2},
 	"chat": ["Carbon frame. Eleven grand. Don't breathe on it.", "I've done forty k and I'm not even warm.", "Is that arm wrestling? I've got the legs for it. Is it legs?"]}
+
+## The people who are always at their posts round the edge of the meet.
+const STAFF := [
+	{"id": "s_busker", "name": "Dee the busker", "role": "Guitar, and opinions", "strength": 55, "at": Vector3(-7.5, 0, 26.6), "yaw": PI, "anim": "Idle_Talking",
+		"look": {"body": "Female_Ranger", "hair": "Hair_Long", "tint": Color(0.75, 0.4, 0.8)}, "mind": {"warmth": 0.3, "open": 1.3, "chatty": 0.8},
+		"chat": ["I've played this spot four years. You lot are my best audience and my worst tippers.", "Requests are two dollars. Wonderwall is ten.", "I wrote a song about the big one who eats. He doesn't know.", "The acoustics off those steps are unreal, you know.", "I used to be in a band. We were called Elbow Grease. Yes, really."]},
+	{"id": "s_fisher", "name": "Old Con the fisherman", "role": "Same spot since 1991", "strength": 70, "at": Vector3(15.0, 0, 28.3), "yaw": 0.0, "anim": "Idle",
+		"look": {"body": "Male_Ranger", "hood": true, "tint": Color(0.35, 0.45, 0.3)}, "mind": {"warmth": 0.1, "grudge": 1.1, "chatty": 0.4},
+		"chat": ["Bream. Mostly bream. Once a shopping trolley.", "You lot scare the fish with the shouting. They like it. Fish are nosy.", "Thirty years on this rail. I've seen that bridge get built.", "Don't eat anything out of here. I don't. I just like winning.", "There's a big one under the wharf. I've had him on twice."]},
+	{"id": "s_kebab", "name": "Sami at the kebab van", "role": "The lot? Garlic? Chilli?", "strength": 74, "at": Vector3(-15.6, 0, 25.9), "yaw": 0.5, "anim": "Idle_Talking",
+		"look": {"body": "Male_Peasant", "hair": "Hair_Buzzed", "beard": true, "tint": Color(0.95, 0.95, 0.95)}, "mind": {"warmth": 0.3, "open": 1.2, "chatty": 0.9},
+		"chat": ["Your big friend is my best customer and my biggest problem.", "Garlic AND chilli. Anyone who says one or the other is a coward.", "I park here because of you lot. Arm wrestlers eat like they're being paid.", "My cousin says I should franchise. My cousin has never cleaned a rotisserie.", "Chicken salt is a human right."]},
+]
+
+## Second and third steps of conversations that branch more than once.
+const MORE := {
+	"handover2": {"reply": "...Do you live in the park?", "opts": [
+		{"say": "It's a lifestyle.", "reply": "Respect. Honestly. Have the spring rolls. The pad thai stays.", "v": 0.2, "do": "food1"},
+		{"say": "No. I'm lying. I'm just hungry.", "reply": "FINALLY, some honesty. Take it. Nobody's ever just said that.", "v": 0.5, "do": "food"}]},
+	"flirt2": {"reply": "Alright. One question. Kelvin says the club needs 'eighty more idiots'. Are you one of the idiots?", "opts": [
+		{"say": "Proudly.", "reply": "Ha. Good. I like a person who knows what they are.", "v": 0.35, "then": "flirt3"},
+		{"say": "I'm more of a consultant.", "reply": "Oh no. No no no.", "v": -0.3},
+		{"say": "I'd be an idiot for the right person.", "reply": "...That's either very smooth or very sad. I'm going with smooth.", "v": 0.4, "then": "flirt3"}]},
+	"flirt3": {"reply": "Last one. Dinner. Where are you taking me?", "opts": [
+		{"say": "The kebab van. The Riser. Everything twice.", "reply": "The VAN. With the chicken salt. You get it. You actually get it.", "v": 0.6, "do": "kiss"},
+		{"say": "Somewhere with a tablecloth.", "reply": "Mm. Safe. Nice. Maybe.", "v": 0.15},
+		{"say": "Kelvin's mum's. I hear she does spring rolls.", "reply": "You want to meet my AUNTIE on a first date? ...Honestly? Bold. I respect it.", "v": 0.5, "do": "kiss"}]},
+}

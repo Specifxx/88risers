@@ -11,7 +11,11 @@ func _soak() -> void:
 	Meet.hud._begin()
 	Meet.muted = true
 	Engine.time_scale = 24.0
+	var tick := 0
 	while not Meet.hud._over.visible:
+		tick += 1
+		if tick % 8 == 0:
+			print("  MON %s nodes=%d objects=%d orphans=%d risers=%d interact=%d" % [Meet.time_text(), Performance.get_monitor(Performance.OBJECT_NODE_COUNT), Performance.get_monitor(Performance.OBJECT_COUNT), Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT), Meet.risers.size(), get_tree().get_nodes_in_group("interact").size()])
 		if Meet.menu.active():
 			Meet.menu._forced = false
 			Meet.menu.close()
@@ -549,8 +553,8 @@ func _run() -> void:
 	stand(Vector3(4, 0, 9), Vector3(0, 3, 16))
 	await wait(0.5)
 	await shot("11_ufo")
-	check(Meet.main.aliens().size() == 3, "three visitors get out")
-	for i in 80:
+	check(Meet.main.aliens().size() == 4, "four visitors get out")
+	for i in 220:
 		var al: Array = Meet.main.aliens()
 		if al.is_empty():
 			break
@@ -566,7 +570,39 @@ func _run() -> void:
 		if n.has_method("prompt") and n.prompt().begins_with("Pick up: Alien"):
 			n.interact()
 			got = true
-	check(got and Meet.owned.has("antennae"), "the visitors leave something behind to pick up")
+	check(got and Meet.owned.has("antennae"), "a beaten visitor drops something to pick up")
+	check(Meet.main._ufo_state == "open", "the ship stays, ramp down")
+	Meet.main.board_ship()
+	await wait(0.5)
+	await shot("11b_aboard")
+	for n in get_tree().get_nodes_in_group("interact"):
+		if n.has_method("prompt") and n.prompt().begins_with("Take the golden"):
+			n.interact()
+	await wait(0.3)
+	check(Meet.owned.has("golden_grip") and Meet.ITEMS["golden_grip"]["atk"] == 10, "aboard the ship is the golden gauntlet, attack 10")
+	Meet.main.leave_ship()
+	await wait(0.5)
+	check(Meet.main._ufo_state == "leave" and p.global_position.y < 5.0, "stepping off sends the ship away")
+	Meet.heat = 0.0
+	Meet.worn["hand"] = "golden_grip"
+	stand(Vector3(5.2, 0, 20.4), Vector3(5.2, 0, 22.5))
+	p._cooldown = 0.0
+	Meet.stamina = 100.0
+	p.slap()
+	await wait(0.6)
+	check(Meet.lions == 1 and Meet.main._pets.size() == 1, "an attack-10 item breaks a stone lion, and a living one comes out")
+	await wait(2.5)
+	stand(Vector3(4.0, 0, 16.0), Vector3(5.2, 0, 22.5))
+	await wait(1.0)
+	await shot("11c_lion")
+	Meet.worn["hand"] = ""
+	Meet.heat = 0.0
+	Meet.menu._forced = false
+	Meet.menu.close()
+	for r in Meet.risers:
+		if r.state in ["confront", "scrap"]:
+			r._vs_player = false
+			r.idle()
 	Meet.wear("antennae")
 	Meet.hud.toggle_bag()
 	await wait(0.3)
@@ -661,6 +697,12 @@ func _run() -> void:
 	for name in ["fiver", "phone", "footy", "blackout", "conga", "balloon", "double", "possum", "feast", "sprinkler", "pushups", "sneeze"]:
 		ev.call("_m_" + name)
 		await wait(0.15)
+	await wait(0.4)
+	Meet.worn["hand"] = "glow_stick"
+	await wait(0.3)
+	await shot("15o_blackout")
+	Meet.worn["hand"] = ""
+	check(Meet.main._env.ambient_light_energy < 0.1 and p._lamp.visible, "a power cut is properly dark, and a glow stick lights your way")
 	check(Meet.dark > 0.0 and Meet.main.watchers(p.global_position).is_empty(), "in a power cut nobody can see what you do")
 	check(ev._possum != null and Meet.double_points, "moments happen: a possum on the snacks, double points called")
 	Meet.dark = 0.01
@@ -812,6 +854,44 @@ func _run() -> void:
 	Meet.menu._forced = false
 	Meet.menu.close()
 
+	# Every written moment runs without tripping over itself.
+	var Mo = preload("res://scripts/moments.gd")
+	var ran := 0
+	Meet.money = 60
+	for m in Mo.LIST:
+		Meet.snacks = 3
+		ev._last_choice = -99.0
+		if ev.play(m):
+			ran += 1
+		await wait(0.12)
+		if Meet.menu.active():
+			var pick: Button = null
+			for b in Meet.menu._list.get_children():
+				if b is Button and pick == null:
+					pick = b
+			if pick:
+				pick.pressed.emit()
+			await wait(0.05)
+			Meet.menu._forced = false
+			Meet.menu.close()
+	await wait(8.0)
+	Meet.menu._forced = false
+	Meet.menu.close()
+	check(Mo.LIST.size() >= 54 and ran >= Mo.LIST.size() - 6, "%d of %d new moments played" % [ran, Mo.LIST.size()])
+	for r in Meet.risers.duplicate():
+		if r.id.begins_with("w_"):
+			Meet.risers.erase(r)
+			r.queue_free()
+	Meet.heat = 0.0
+	Meet.dark = 0.01
+	ev._fog = 0.1
+	Meet.money = 44
+	for r in Meet.risers:
+		if r.state in ["confront", "scrap"]:
+			r._vs_player = false
+			r.idle()
+	await wait(0.5)
+
 	# Kit put down, ripples, the boom box.
 	Meet.owned["boom_box"] = true
 	Meet.worn["hand"] = "boom_box"
@@ -832,6 +912,92 @@ func _run() -> void:
 	stand(Vector3(-8.5, 0, 26), Vector3(-8.5, 0, 40))
 	p.global_position = Meet.main.clear(Vector3(-8.5, 0, 28.6))
 	check(p.global_position.z > 28.5, "you can walk right up to the railing (z %.1f)" % p.global_position.z)
+	# The people at their posts.
+	var con: Node3D = Meet.riser("s_fisher")
+	check(con != null and con.post and Meet.riser("s_kebab") != null and Meet.riser("s_busker") != null, "the busker, the fisherman and the kebab man are people you can talk to")
+	stand(con.global_position + Vector3(0, 0, -1.6), con.global_position)
+	con.interact()
+	var th_topic: Dictionary = People2.TALK["s_fisher"].filter(func(t): return t["key"] == "thermos")[0]
+	Meet.menu._topic(th_topic)
+	Meet.menu._answer(th_topic["opts"][0])
+	check(Meet.errands.get("s_fisher", "") == "open", "Old Con's thermos is a hidden errand")
+	Meet.menu.close()
+	for n in get_tree().get_nodes_in_group("interact"):
+		if n.has_method("prompt") and n.prompt().contains("thermos"):
+			n.interact()
+	con.interact()
+	Meet.menu._errand_done()
+	check(Meet.owned.has("catch_ball"), "returning it earns the catch-ball")
+	Meet.menu.close()
+	ev._m_critter()
+	await wait(0.4)
+	stand(ev._critter.position + Vector3(0, 0, 2.5), ev._critter.position)
+	await wait(0.3)
+	await shot("15l_gripling")
+	ev._critter.interact()
+	for i in 3000:
+		if not Meet.strapgame.active():
+			break
+		if absf(Meet.strapgame.pos - Meet.strapgame.zone) < Meet.strapgame.width * 0.3:
+			Meet.strapgame.tap()
+		Meet.strapgame.tick(0.016)
+	check(Meet.owned.has("gripling"), "with the catch-ball, the Gripling can be caught")
+	Meet.owned["pool_noodle"] = true
+	ev._m_swimmer()
+	await wait(0.3)
+	ev._rescue("test", 0.5, true)
+	check(Meet.saved == 1, "someone in the water can be saved")
+	ev._bite = 0.05
+	await wait(0.6)
+	check(ev._bite > 20.0, "Old Con lands a fish now and then")
+	var cuz_def: Dictionary = People2.TALK["p_cousin"][0]
+	check(cuz_def["key"] == "flirt" and People2.MORE.has("flirt3"), "the cousin can be flirted with over three rounds")
+	Meet.menu._forced = false
+	Meet.menu.close()
+	Meet.heat = 0.0
+
+	# Legends, and the thing from the bay.
+	ev._m_legend_don()
+	ev._m_legend_lasha()
+	await wait(2.5)
+	stand(Vector3(0, 0, 15.5), Vector3(0, 0, 9.5))
+	await wait(0.5)
+	await shot("15m_legends")
+	check(ev._legends.size() == 2 and ev.legend_options(ev._legends[1]).size() == 4, "two visiting legends turn up, each with four things you can do")
+	ev.legend_options(ev._legends[1])[3][1].call()
+	await wait(0.4)
+	check(p._jump > 1.0, "the giant lifts you clean off the ground (%.1f m)" % p._jump)
+	await wait(2.0)
+	Meet.menu.close()
+	ev.start_kaiju()
+	var dared := false
+	for i in 140:
+		await wait(0.25)
+		if i == 30:
+			stand(Vector3(-6, 0, 16), Vector3(0, 8, 40))
+			await shot("15n_kaiju")
+		if ev._kaiju_state == "dare":
+			dared = true
+			break
+	check(dared, "the thing from the bay rises, sends a wave through, and offers its hand")
+	var odds: Array = ev.kaiju_odds()
+	check(odds[0] < 138.0 and not odds[1].is_empty(), "what you've gathered counts against it: strength %d with %s" % [odds[0], ", ".join(odds[1]).left(90)])
+	ev.kaiju_result(true)
+	await wait(1.0)
+	check(ev._kaiju_state == "sink", "beaten, it goes back into the bay")
+	Meet.menu._forced = false
+	Meet.menu.close()
+	for l in ev._legends:
+		if is_instance_valid(l):
+			Meet.risers.erase(l)
+			l.queue_free()
+	ev._legends.clear()
+	Meet.heat = 0.0
+	for r in Meet.risers:
+		if r.state in ["confront", "scrap"]:
+			r._vs_player = false
+			r.idle()
+
 	# Sitting down, weights, and looking at yourself.
 	p.sit(Vector3(9, 0.5, 20), PI)
 	ev._join = 0.1

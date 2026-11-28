@@ -48,6 +48,14 @@ var _gulls: Node3D
 var _gulls_t := 0.0
 var _gulls_off := false
 var _bucket: Array = []
+var _lions: Array = []           # the statues at the gate
+var _pets: Array = []            # lions that got out
+var _ramp: Node3D
+var _aboard := false
+var _ufo_wait := 0.0
+var _cabin: Node3D
+var _board_from := Vector3.ZERO
+var _alien_drops := 0
 var _ganging := false
 var evening: Node3D
 var _table_roots: Array = []
@@ -84,6 +92,8 @@ func _ready() -> void:
 		_events = [{"at": 75.0, "kind": "gulls"}, {"at": 330.0, "kind": "ufo"}, {"at": 600.0, "kind": "drone"}]
 	else:
 		var kinds := ["gulls", "drone", "gulls", "drone"]
+		if Meet.visits >= 3 and randf() < 0.3:
+			_events.append({"at": randf_range(520.0, 740.0), "kind": "kaiju"})
 		if randf() < 0.55:
 			kinds.insert(0, "ufo")
 		var first: String = kinds.pop_front() if kinds[0] == "ufo" else ""
@@ -119,6 +129,12 @@ func ground(p: Vector3) -> Vector3:
 
 ## Keep a walker out of the tables and inside the grounds.
 func clear(p: Vector3) -> Vector3:
+	if p.y > 200.0:
+		# Aboard the ship: a round room.
+		var flat := Vector2(p.x, p.z)
+		if flat.length() > 4.7:
+			flat = flat.normalized() * 4.7
+		return Vector3(flat.x, 300.0, flat.y)
 	for t in TABLES + [SNACKS, CHALK]:
 		var d := Vector2(p.x - t.x, p.z - t.z)
 		if d.length() < 1.15 and d.length() > 0.001:
@@ -170,7 +186,8 @@ func _place() -> void:
 	# Lawn, plaza, path, water.
 	var lawn := PlaneMesh.new()
 	lawn.size = Vector2(400, 400)
-	var lm := Build.mesh(self, lawn, Vector3.ZERO, Color.WHITE)
+	# The lawn stops at the sea wall; beyond the railing it is water.
+	var lm := Build.mesh(self, lawn, Vector3(0, 0, 29.3 - 200.0), Color.WHITE)
 	lm.material_override = Build.tmat("grass", Color(0.5, 0.6, 0.42), 0.12)
 	Build.tcyl(self, PLAZA, PLAZA, 0.06, Vector3(0, 0.03, 0), "paving", Color(0.74, 0.7, 0.66), 40, false, 0.28)
 	Build.tbox(self, Vector3(60, 0.05, 3.6), Vector3(0, 0.03, 27.2), "paving", Color(0.66, 0.63, 0.6), false, 0.28)
@@ -278,8 +295,14 @@ func _place() -> void:
 		_coin(Vector3(-9, 0, 20.6), 20)
 	# The way in from the water, the club's guardians, and its banners.
 	Asia.gate(self, Vector3(0, 0, 24.5), 0.0, 6.0)
-	Asia.lion(self, Vector3(-5.2, 0, 22.5), 0.2, 1.0)
-	Asia.lion(self, Vector3(5.2, 0, 22.5), -0.2, 1.0)
+	for sx in [-1.0, 1.0]:
+		var holder := Node3D.new()
+		add_child(holder)
+		holder.position = Vector3(sx * 5.2, 0, 22.5)
+		Asia.lion(holder, Vector3.ZERO, -sx * 0.2, 1.0)
+		_lions.append(holder)
+	for i in Meet.lions:
+		_free_lion(Vector3(randf_range(-2, 2), 0, 18.0))
 	for i in 6:
 		var a := -0.25 + i * (PI + 0.5) / 5.0
 		var at := Vector3(cos(a) * (PLAZA + 0.6), 0, sin(a) * (PLAZA + 0.6))
@@ -347,6 +370,7 @@ func _place() -> void:
 			for sz in [-0.16, 0.16]:
 				Build.cyl(db, 0.11, 0.11, 0.07, Vector3(sx, 0.12, sz), Color(0.12, 0.12, 0.14), 10).rotation.x = PI / 2.0
 		db.setup("Do a set with the dumbbells", _lift)
+	Build.tbox(self, Vector3(60, 1.6, 0.4), Vector3(0, -0.8, 29.6), "stone", Color(0.6, 0.6, 0.62), false, 0.5)
 	_skyline()
 	# Lanterns where people leave each other notes.
 	for i in NOTE_SPOTS.size():
@@ -900,6 +924,12 @@ func _skyline() -> void:
 func _people() -> void:
 	for d in People.FOUNDERS:
 		_add(d, true)
+	for d in People.STAFF:
+		var st: Node3D = RiserScript.new()
+		add_child(st)
+		st.setup(d, false, d["at"])
+		st.set_post(ground(d["at"]), d["yaw"])
+		Meet.risers.append(st)
 	# This week's visitor.
 	var g: Dictionary = People.GUESTS[Meet.week() % People.GUESTS.size()]
 	_add(g, false)
@@ -997,14 +1027,21 @@ func _process(dt: float) -> void:
 		for mark in [60, 70, 80, 90]:
 			if Meet.reputation() >= mark and not Meet.paid.has(str(mark)) and george and george.is_free() and george.mood_level() >= 0:
 				Meet.paid[str(mark)] = true
-				george.say_aloud("Well done, man. Get yourself a drink.", 5.0)
-				george.stare(4.0)
-				Meet.pay(10, "George presses a tenner into your hand. \"Well done, man.\"")
-				Meet.save()
+				george._convo = {}
+				george._partner = null
+				george.say_aloud("Oi, %s! Come here a sec." % Meet.you("you"), 4.0)
+				george._give = func():
+					george.say_aloud("Well done, man. Get yourself a drink.", 5.0)
+					lob(george.global_position + Vector3(0, 1.3, 0), Meet.player.global_position + Vector3(0, 1.2, 0), Color(0.95, 0.6, 0.3), func():
+						Meet.player.act("PickUp_Table", 0.8)
+						Meet.pay(10, "George presses a tenner into your hand.")
+						Meet.save())
+				george._go(Meet.player.global_position + (george.global_position - Meet.player.global_position).normalized() * 1.3, "give")
 				break
 	_run_drone(dt)
 	_run_gulls(dt)
 	_run_food_fight(dt)
+	_run_pets(dt)
 	for i in TABLES.size():
 		var on := false
 		for m in _matches:
@@ -1173,14 +1210,15 @@ func _run_ufo(dt: float) -> void:
 		_ufo.rotation.y += dt * 1.5
 		if _ufo.position.distance_to(Vector3(0, 4.5, 16)) < 0.2:
 			_ufo_state = "landed"
-			for i in 3:
+			for i in 4:
 				var al: Node3D = RiserScript.new()
 				add_child(al)
-				al.setup(People.ALIEN, false, Vector3(-2.5 + i * 2.5, 0, 15))
+				al.setup(People.ALIEN, false, Vector3(-3.6 + i * 2.4, 0, 15))
 				al.alien = true
+				al.composure = 150.0
 				_aliens.append(al)
 				Fx.burst(self, al.global_position + Vector3(0, 1, 0), Vector3.UP, false, 14)
-			Meet.say("Three small, cross-looking visitors have got out. They do not seem to be here for the arm wrestling.")
+			Meet.say("Four small, cross-looking visitors have got out. They do not seem to be here for the arm wrestling. They hit hard and they shoot.")
 			for r in Meet.risers:
 				drop_match(r)
 				r.aliens_arrive()
@@ -1191,13 +1229,26 @@ func _run_ufo(dt: float) -> void:
 			if al.state != "winded":
 				up += 1
 		if up == 0:
-			_ufo_state = "leave"
+			_ufo_state = "open"
+			_ufo_wait = 45.0
 			Meet.seen_ufo = true
-			Meet.say("That's the last of them. They are being dragged back up the ramp by something you can't see. Something fell out on the way.")
-			drop(["antennae", "raygun"], Vector3(1.5, 0, 14.0))
+			Meet.hud.banner("THE RAMP IS DOWN", "The ship is just sitting there. Nobody is guarding it.")
+			Meet.say("That's the last of them. The ship hasn't left. The ramp is down and there's a light on inside.")
 			for r in Meet.risers:
 				r.aliens_gone()
+			_ramp = Thing.new()
+			add_child(_ramp)
+			_ramp.position = Vector3(0, 0, 14.6)
+			Build.box(_ramp, Vector3(1.6, 0.08, 3.4), Vector3(0, 1.3, 0.2), Color(0.5, 0.55, 0.6), false, 0.3).rotation.x = -0.75
+			_ramp.setup("Go up the ramp into the ship", board_ship)
 			Meet.save()
+	elif _ufo_state == "open":
+		_ufo.rotation.y += dt * 0.3
+		if not _aboard:
+			_ufo_wait -= dt
+			if _ufo_wait <= 0.0:
+				Meet.say("The ramp folds up by itself. Whatever was in there is leaving with it.")
+				_lift_off()
 	elif _ufo_state == "leave":
 		_ufo.position += Vector3(0, dt * 16.0, dt * 6.0)
 		_ufo.rotation.y += dt * 4.0
@@ -1216,6 +1267,111 @@ func _run_ufo(dt: float) -> void:
 func invaded() -> bool:
 	return _ufo_state in ["descend", "landed"]
 
+func _lift_off() -> void:
+	if is_instance_valid(_ramp):
+		_ramp.queue_free()
+	Meet.player.target = null
+	_ufo_state = "leave"
+
+## A green bolt from a visitor.
+func bolt(from: Vector3, to: Vector3, landed: Callable) -> void:
+	var b := Build.sphere(self, 0.13, from, Color(0.5, 1.0, 0.6), 2.5)
+	var tw := create_tween()
+	tw.tween_property(b, "position", to, max(0.2, from.distance_to(to) / 16.0))
+	tw.tween_callback(func():
+		Fx.burst(self, b.position, Vector3.UP, false, 6)
+		b.queue_free()
+		landed.call())
+
+## One of them is down. They always drop something.
+func alien_down(al: Node) -> void:
+	_alien_drops += 1
+	var at: Vector3 = al.global_position + Vector3(0.6, 0, 0.4)
+	Meet.sfx("zap", -4.0, 0.6)
+	if _alien_drops == 1 and not (Meet.owned.has("antennae") and Meet.owned.has("raygun")):
+		drop(["antennae", "raygun"], at)
+	elif randf() < 0.5:
+		_coin(at, [5, 5, 20][randi() % 3])
+	else:
+		pickup("a glowing snack from another world", at, Color(0.4, 1.0, 0.6), func():
+			Meet.snacks = min(5, Meet.snacks + 2)
+			Meet.composure = min(100.0, Meet.composure + 25.0)
+			Meet.say("It tastes like lime and static. You feel much better. (+2 snacks, health up.)")
+			Meet.touch_state())
+
+## Inside the ship: one round room, a console, and something on a plinth.
+func board_ship() -> void:
+	if _aboard:
+		return
+	_aboard = true
+	_board_from = Meet.player.global_position
+	if _cabin == null:
+		_cabin = Node3D.new()
+		add_child(_cabin)
+		_cabin.position = Vector3(0, 300, 0)
+		var wall := Color(0.3, 0.36, 0.42)
+		Build.cyl(_cabin, 5.5, 5.5, 0.2, Vector3(0, -0.1, 0), Color(0.22, 0.26, 0.3), 20, true)
+		Build.cyl(_cabin, 5.5, 3.0, 0.2, Vector3(0, 3.6, 0), wall, 20)
+		for i in 20:
+			var a := TAU * i / 20.0
+			var p := Build.box(_cabin, Vector3(1.8, 3.6, 0.2), Vector3(cos(a) * 5.4, 1.8, sin(a) * 5.4), wall, true)
+			p.rotation.y = -a + PI / 2.0
+			Build.box(_cabin, Vector3(0.5, 0.12, 0.05), Vector3(cos(a) * 5.25, 1.6 + (i % 3) * 0.5, sin(a) * 5.25), [Color(0.3, 1.0, 0.5), Color(1.0, 0.3, 0.8), Color(0.4, 0.7, 1.0)][i % 3], false, 2.0).rotation.y = -a + PI / 2.0
+		Build.cyl(_cabin, 0.9, 1.1, 0.9, Vector3(0, 0.45, -3.4), Color(0.4, 0.45, 0.5), 10, true)
+		for i in 6:
+			Build.sphere(_cabin, 0.08, Vector3(-0.5 + i * 0.2, 0.95, -3.4), [Color(1, 0.2, 0.2), Color(0.2, 1, 0.3), Color(1, 0.9, 0.2)][i % 3], 2.0)
+		Build.cyl(_cabin, 0.4, 0.55, 1.0, Vector3(0, 0.5, 0), Color(0.15, 0.15, 0.2), 10, true)
+		var l := OmniLight3D.new()
+		l.light_color = Color(0.6, 1.0, 0.8)
+		l.light_energy = 2.2
+		l.omni_range = 12.0
+		l.position = Vector3(0, 3.0, 0)
+		_cabin.add_child(l)
+		for sx in [-1.0, 1.0]:
+			Build.box(_cabin, Vector3(0.7, 1.2, 0.5), Vector3(sx * 3.2, 0.6, 2.0), Color(0.3, 0.9, 0.5), false, 0.3)
+		var hatch := Thing.new()
+		_cabin.add_child(hatch)
+		hatch.position = Vector3(0, 0, 4.2)
+		Build.box(hatch, Vector3(1.6, 0.05, 1.2), Vector3(0, 0.03, 0), Color(0.9, 0.9, 0.4), false, 1.0)
+		hatch.setup("Climb back down the ramp", leave_ship)
+		if not Meet.owned.has("golden_grip"):
+			var th := Thing.new()
+			_cabin.add_child(th)
+			th.position = Vector3(0, 1.0, 0.75)
+			var m: Node3D = Wear.model("golden_grip")
+			th.add_child(m)
+			m.position = Vector3(0, 0.15, -0.75)
+			m.create_tween().set_loops().tween_property(m, "rotation:y", TAU, 4.0).from(0.0)
+			var gl := OmniLight3D.new()
+			gl.light_color = Color(1.0, 0.85, 0.3)
+			gl.light_energy = 3.0
+			gl.omni_range = 4.0
+			gl.position = Vector3(0, 0.6, -0.75)
+			th.add_child(gl)
+			th.setup("Take the golden gauntlet off the plinth", func():
+				th.remove_from_group("interact")
+				Meet.player.target = null
+				Meet.player.act("PickUp_Table", 1.0)
+				th.queue_free()
+				Meet.hud.banner("THE GOLDEN GRIP", "It fits. It hums. Something on the console starts beeping.")
+				Meet.sfx("win")
+				Meet.grant("golden_grip")
+				Meet.ripple("You took something from the ship that the visitors will want back."))
+	Meet.player.global_position = _cabin.position + Vector3(0, 0.1, 3.2)
+	Meet.player.rotation.y = 0.0
+	Meet.sfx("ufo", -6.0, 1.4)
+	Meet.hud.banner("ABOARD", "It's bigger on the inside. It smells of lime.")
+
+func leave_ship() -> void:
+	if not _aboard:
+		return
+	_aboard = false
+	Meet.player.global_position = ground(Vector3(0, 0, 11.5))
+	Meet.player.rotation.y = 0.0
+	Meet.say("The moment your foot leaves the ramp it snaps shut behind you.")
+	stir(Meet.player.global_position, ["You went IN?", "What's in there?", "Is that... gold?", "You absolute lunatic."], 20.0, 0.8, true)
+	_lift_off()
+
 func aliens() -> Array:
 	return _aliens.filter(func(a): return is_instance_valid(a) and a.state != "winded")
 
@@ -1223,6 +1379,15 @@ func aliens() -> Array:
 
 ## The light goes as the evening does: gold at five, dark blue by half past seven.
 func _dusk() -> void:
+	if Meet.dark > 0.0:
+		# A power cut: properly dark. Whatever glows is all there is to see by.
+		_sun.light_energy = 0.0
+		_env.ambient_light_energy = 0.03
+		_sky_mat.sky_top_color = Color(0.0, 0.0, 0.02)
+		_sky_mat.sky_horizon_color = Color(0.03, 0.02, 0.05)
+		_env.fog_light_color = Color(0.02, 0.02, 0.04)
+		return
+	_env.fog_light_color = Color(0.7, 0.45, 0.4)
 	var f: float = Meet.clock / NIGHT
 	_sun.rotation_degrees.x = lerp(-16.0, -2.0, f)
 	_sun.light_energy = lerp(0.95, 0.12, f)
@@ -1280,6 +1445,9 @@ func drop(items: Array, at: Vector3) -> void:
 		Meet.player.act("PickUp_Table", 0.8)
 		th.queue_free()
 		Meet.grant(item))
+
+func start_kaiju() -> void:
+	evening.start_kaiju()
 
 func start_drone() -> void:
 	if _drone != null and _drone_t >= 0.0:
@@ -1680,3 +1848,87 @@ func _tune(dt: float) -> void:
 		Meet.quality -= 1
 		_fps_wait = 20.0
 		apply_quality()
+
+# --- The lions ---------------------------------------------------------------------------------------
+
+## Something heavy enough hits a statue. Returns true if one was close enough to break.
+func smash(at: Vector3) -> bool:
+	for holder in _lions:
+		if holder.visible and holder.position.distance_to(at) < 2.6:
+			holder.visible = false
+			for k in 8:
+				Fx.burst(self, holder.position + Vector3(randf_range(-0.6, 0.6), 0.6 + k * 0.15, randf_range(-0.6, 0.6)), Vector3.UP, false, 14)
+			for k in 7:
+				var rub := Build.tbox(self, Vector3(randf_range(0.15, 0.4), randf_range(0.1, 0.3), randf_range(0.15, 0.4)), holder.position + Vector3(randf_range(-0.9, 0.9), 0.1, randf_range(-0.9, 0.9)), "stone", Color(0.7, 0.7, 0.72))
+				rub.rotation = Vector3(randf(), randf(), randf())
+			Meet.sfx("crash")
+			Meet.hud.shake()
+			Meet.hud.banner("THE LION CRACKS OPEN", "Something inside it stretches, yawns, and looks at you.")
+			Meet.lions += 1
+			Meet.add_heat(1.5, "smashing a guardian lion")
+			Meet.ripple("You broke a stone lion at the gate and something alive came out of it.")
+			_free_lion(holder.position)
+			stir(holder.position, ["THE LION!", "That's council property!", "...Is it MOVING?", "It's alive. The lion is alive.", "Harry is going to lose his mind."], 40.0, 0.9, true)
+			var harry: Node = Meet.riser("harry")
+			if harry:
+				harry.say_aloud("That lion has been there since BEFORE the club. ...Why is it purring?", 6.0)
+			Meet.save()
+			return true
+	return false
+
+func _free_lion(at: Vector3) -> void:
+	var pet := Node3D.new()
+	add_child(pet)
+	pet.position = ground(at)
+	Asia.lion(pet, Vector3.ZERO, 0.0, 0.32)
+	_pets.append({"node": pet, "goal": pet.position, "mood": "follow", "t": randf_range(3.0, 8.0), "slot": _pets.size()})
+
+## The lions that got out follow you about, and have a mind of their own while they do.
+func _run_pets(dt: float) -> void:
+	var p: Node3D = Meet.player
+	for pet in _pets:
+		var n: Node3D = pet["node"]
+		pet["t"] -= dt
+		if pet["t"] <= 0.0:
+			pet["t"] = randf_range(5.0, 11.0)
+			var roll := randf()
+			if roll < 0.45:
+				pet["mood"] = "follow"
+			elif roll < 0.6:
+				pet["mood"] = "sit"
+			elif roll < 0.8 and _gulls != null:
+				pet["mood"] = "chase"
+				pet["goal"] = SNACKS + Vector3(0, 0, 1.5)
+			else:
+				# Go and inspect somebody.
+				var near: Array = Meet.risers.filter(func(r): return not r.alien and r.global_position.distance_to(n.position) < 12.0 and r.state not in ["pull", "winded", "scrap"])
+				if not near.is_empty():
+					var who: Node = near[randi() % near.size()]
+					pet["mood"] = "visit"
+					pet["goal"] = who.global_position + Vector3(0.7, 0, 0.5)
+					pet["who"] = who
+				else:
+					pet["mood"] = "follow"
+		if pet["mood"] == "follow":
+			var side: float = -1.0 if int(pet["slot"]) % 2 == 0 else 1.0
+			pet["goal"] = p.global_position + p.global_transform.basis.z * 1.8 + p.global_transform.basis.x * side * (0.9 + int(pet["slot"]) / 2 * 0.8)
+		var to: Vector3 = pet["goal"] - n.position
+		to.y = 0
+		if to.length() > 0.5 and pet["mood"] != "sit":
+			var sp: float = 6.5 if to.length() > 6.0 else 3.0
+			n.position += to.normalized() * sp * dt
+			n.position.y = height(n.position.x, n.position.z) + absf(sin(_clock * 10.0 + int(pet["slot"]))) * 0.12
+			n.rotation.y = lerp_angle(n.rotation.y, atan2(to.x, to.z), 0.2)
+		else:
+			n.position.y = height(n.position.x, n.position.z)
+			n.rotation.y += sin(_clock * 0.9 + int(pet["slot"]) * 2.0) * dt * 0.8
+			if pet["mood"] == "visit" and pet.has("who") and is_instance_valid(pet["who"]):
+				var who2: Node = pet["who"]
+				pet.erase("who")
+				pet["mood"] = "sit"
+				who2.pet_visit()
+			elif pet["mood"] == "chase" and _gulls != null and not _gulls_off:
+				_gulls_off = true
+				Meet.sfx("bark", 0.0, 0.5)
+				Meet.say("One of your stone lions roars at the seagulls. The seagulls reconsider everything.")
+				drop(["golden_chip"], SNACKS + Vector3(-0.6, 0, 1.8))
