@@ -3,6 +3,24 @@ extends RefCounted
 
 const TOPIC_JOIN := "Becoming a Riser"
 
+## How each person looks: outfit, hair and colours. Placeholders until real designs exist.
+const LOOKS := {
+	"harry": {"body": "Male_Ranger", "hair": "Hair_SimpleParted", "tint": Color(1.0, 0.86, 0.5)},
+	"george": {"body": "Male_Peasant", "hair": "Hair_Buzzed", "tint": Color(0.9, 0.6, 0.55)},
+	"phillip": {"body": "Male_Ranger", "hair": "Hair_Buzzed", "cloth": "T_Ranger_3_BaseColor.jpg"},
+	"bhavya": {"body": "Male_Peasant", "hair": "Hair_SimpleParted", "cloth": "T_Peasant_2_BaseColor.jpg"},
+	"kelvin": {"body": "Male_Ranger", "hood": true, "tint": Color(0.7, 0.72, 0.8)},
+	"tommy": {"body": "Male_Peasant", "hair": "Hair_Buzzed", "tint": Color(0.62, 0.82, 1.0)},
+	"luie": {"body": "Male_Ranger", "hair": "Hair_SimpleParted", "tint": Color(0.4, 0.4, 0.46)},
+	"erick": {"body": "Male_Ranger", "hood": true, "cloth": "T_Ranger_3_BaseColor.jpg", "tint": Color(1.0, 0.9, 0.72)},
+	"mara": {"body": "Female_Peasant", "hair": "Hair_Long", "tint": Color(0.68, 0.84, 1.0)},
+	"ned": {"body": "Male_Peasant", "hair": "Hair_Buzzed"},
+	"ivo": {"body": "Male_Peasant", "hair": "Hair_Buzzed", "beard": true, "tint": Color(1.0, 0.6, 0.5)},
+	"pell": {"body": "Male_Peasant", "hair": "Hair_SimpleParted", "beard": true, "cloth": "T_Peasant_2_BaseColor.jpg", "tint": Color(0.8, 0.75, 0.95)},
+	"hesper": {"body": "Female_Peasant", "hair": "Hair_Buns", "cloth": "T_Peasant_2_BaseColor.jpg", "hair_tint": Color(0.8, 0.8, 0.8)},
+	"wren": {"body": "Female_Ranger", "hair": "Hair_Long", "hair_tint": Color(0.45, 0.25, 0.12)},
+}
+
 const FOUNDERS := [
 	{
 		"id": "harry", "name": "Harry Lu", "role": "Head Riser", "pos": Vector3(0, 0, -2), "color": Color(0.8, 0.6, 0.18),

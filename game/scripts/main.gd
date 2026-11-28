@@ -11,19 +11,23 @@ const DialogueScript = preload("res://scripts/dialogue.gd")
 const BattleScript = preload("res://scripts/battle.gd")
 const Thing = preload("res://scripts/thing.gd")
 
+const TerrainScript = preload("res://scripts/terrain.gd")
+
 const R := Game.RING_RADIUS
 const ROAD := [Vector3(30, 0, 0), Vector3(70, 0, 0), Vector3(120, 0, -18), Vector3(180, 0, 8), Vector3(228, 0, 20)]
 const VILLAGE := Vector3(230, 0, 20)
-const IRON := Color(0.17, 0.16, 0.17)
 const GOLD := Color(0.93, 0.72, 0.28)
 
+var terrain: Node3D
 var _register_label: Label3D
 
 func _ready() -> void:
 	Game.main = self
 	seed(88)
 	_sky()
-	_ground()
+	terrain = TerrainScript.new()
+	add_child(terrain)
+	terrain.setup(ROAD, VILLAGE, R)
 	_rhodes()
 	_road()
 	_tallow_ford()
@@ -40,100 +44,90 @@ func _on_changed() -> void:
 	if _register_label:
 		_register_label.text = "THE REGISTER\n%d / %d" % [Game.register_count(), Game.QUOTA]
 
-# --- Sky and ground ----------------------------------------------------------
+func height(x: float, z: float) -> float:
+	return terrain.height(x, z)
+
+## The same point, dropped onto the ground.
+func ground(p: Vector3) -> Vector3:
+	return Vector3(p.x, terrain.height(p.x, p.z), p.z)
+
+# --- Sky -------------------------------------------------------------------------
 
 func _sky() -> void:
 	var env := Environment.new()
 	var sky := Sky.new()
 	var sm := ProceduralSkyMaterial.new()
-	sm.sky_top_color = Color(0.13, 0.2, 0.4)
-	sm.sky_horizon_color = Color(0.86, 0.6, 0.4)
-	sm.sky_curve = 0.09
-	sm.sun_angle_max = 12.0
-	sm.ground_horizon_color = Color(0.4, 0.37, 0.33)
+	sm.sky_top_color = Color(0.16, 0.25, 0.46)
+	sm.sky_horizon_color = Color(0.86, 0.66, 0.48)
+	sm.sky_curve = 0.1
+	sm.ground_horizon_color = Color(0.5, 0.42, 0.36)
 	sm.ground_bottom_color = Color(0.12, 0.11, 0.1)
+	sm.sun_angle_max = 12.0
 	sky.sky_material = sm
 	env.sky = sky
 	env.background_mode = Environment.BG_SKY
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.56, 0.54, 0.56)
-	env.ambient_light_energy = 0.75
+	env.ambient_light_color = Color(0.6, 0.6, 0.68)
+	env.ambient_light_energy = 0.62
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.6, 0.5, 0.43)
-	env.fog_density = 0.006
-	env.fog_sky_affect = 0.15
+	env.fog_light_color = Color(0.62, 0.55, 0.5)
+	env.fog_density = 0.0045
+	env.fog_sky_affect = 0.12
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
 	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-24, -118, 0)
+	sun.rotation_degrees = Vector3(-28, -118, 0)
 	sun.light_color = Color(1.0, 0.9, 0.76)
-	sun.light_energy = 1.15
+	sun.light_energy = 1.05
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 90
+	sun.directional_shadow_max_distance = 80
 	add_child(sun)
-
-func _ground() -> void:
-	var pm := PlaneMesh.new()
-	pm.size = Vector2(1600, 1600)
-	Build.mesh(self, pm, Vector3(100, 0, 0), Color(0.2, 0.24, 0.17))
-	var sb := StaticBody3D.new()
-	var cs := CollisionShape3D.new()
-	cs.shape = WorldBoundaryShape3D.new()
-	sb.add_child(cs)
-	add_child(sb)
-	for i in 260:
-		var p := Vector3(randf_range(-160, 330), 0.012 + i * 0.00004, randf_range(-200, 220))
-		if Vector2(p.x, p.z).length() < R + 8.0:
-			continue
-		var g := Color(0.2, 0.24, 0.17).lerp(Color(0.3, 0.3, 0.16) if i % 3 == 0 else Color(0.13, 0.19, 0.15), randf_range(0.4, 1.0))
-		Build.cyl(self, 1.0, 1.0, 0.01, p, g, 9).scale = Vector3(randf_range(4, 13), 1, randf_range(4, 13))
-	# The safe ground inside the Ring is paler and worn.
-	Build.cyl(self, R, R, 0.04, Vector3(0, 0.02, 0), Color(0.45, 0.4, 0.3), 48)
-	Build.cyl(self, 9.0, 9.0, 0.04, Vector3(0, 0.05, -5), Color(0.53, 0.48, 0.38), 24)
 
 # --- Rhodes --------------------------------------------------------------------
 
 func _rhodes() -> void:
 	# The Ring: Wukhan's staff, bent into a circle. One gap, on the east side.
+	var iron := Color(0.32, 0.31, 0.33)
 	var n := 56
 	for i in n:
 		var a := TAU * i / n
 		if absf(wrapf(a, -PI, PI)) < 0.085:
 			continue
-		var seg := Build.box(self, Vector3(1.6, 7.0, TAU * R / n + 0.25), Vector3(cos(a) * R, 3.5, sin(a) * R), IRON, true)
+		var at := Vector3(cos(a) * R, 0, sin(a) * R)
+		var seg := Build.tbox(self, Vector3(1.8, 8.0, TAU * R / n + 0.3), at + Vector3(0, 3.5, 0), "iron", iron, true, 0.22)
 		seg.rotation.y = -a
-		var band := Build.box(self, Vector3(1.7, 0.35, TAU * R / n + 0.25), Vector3(cos(a) * R, 6.2, sin(a) * R), GOLD, false, 0.5)
+		var band := Build.box(self, Vector3(1.95, 0.4, TAU * R / n + 0.3), at + Vector3(0, 6.3, 0), GOLD, false, 0.5)
 		band.rotation.y = -a
-	for z in [-4.2, 4.2]:
-		Build.box(self, Vector3(2.4, 9.0, 1.6), Vector3(R, 4.5, z), IRON, true)
-		Build.sphere(self, 0.6, Vector3(R, 9.4, z), GOLD, 1.2)
+	for z in [-4.3, 4.3]:
+		Build.tbox(self, Vector3(2.6, 10.0, 1.8), Vector3(R, 4.5, z), "iron", iron, true, 0.22)
+		Build.sphere(self, 0.65, Vector3(R, 9.9, z), GOLD, 1.2)
 
 	# Wukhan, slumped where he fell, sitting with his back to the west of the Ring.
 	var w := Node3D.new()
 	add_child(w)
 	w.position = Vector3(-28, 0, 0)
-	var plate := Color(0.33, 0.29, 0.23)
-	var rust := Color(0.42, 0.24, 0.15)
+	var plate := Color(0.62, 0.56, 0.5)
+	var rust := Color(0.85, 0.75, 0.7)
 	for sz in [-2.7, 2.7]:
-		Build.box(w, Vector3(16, 2.6, 3.2), Vector3(9, 1.3, sz), plate, true)
-		Build.box(w, Vector3(2.2, 3.6, 3.2), Vector3(17.6, 1.8, sz), rust, true)
-		Build.box(w, Vector3(3.4, 3.0, 3.6), Vector3(8.5, 1.5, sz), rust)
-	Build.box(w, Vector3(5.5, 3.2, 9.4), Vector3(0, 1.6, 0), rust, true)
-	var torso := Build.box(w, Vector3(5.2, 9.5, 8.4), Vector3(-0.2, 7.4, 0), plate, true)
+		Build.tbox(w, Vector3(16, 2.6, 3.2), Vector3(9, 1.3, sz), "iron", plate, true, 0.18)
+		Build.tbox(w, Vector3(2.2, 3.6, 3.2), Vector3(17.6, 1.8, sz), "rust", rust, true, 0.18)
+		Build.tbox(w, Vector3(3.4, 3.0, 3.6), Vector3(8.5, 1.5, sz), "rust", rust, false, 0.18)
+	Build.tbox(w, Vector3(5.5, 3.2, 9.4), Vector3(0, 1.6, 0), "rust", rust, true, 0.18)
+	var torso := Build.tbox(w, Vector3(5.2, 9.5, 8.4), Vector3(-0.2, 7.4, 0), "iron", plate, true, 0.18)
 	torso.rotation.z = -0.14
-	Build.box(w, Vector3(0.5, 4.6, 1.3), Vector3(3.1, 7.4, 0), Color(0.08, 0.06, 0.05))
-	Build.box(w, Vector3(3.4, 2.6, 12.6), Vector3(0.6, 11.6, 0), rust)
-	Build.sphere(w, 2.7, Vector3(2.3, 14.0, 0), plate)
-	Build.box(w, Vector3(2.0, 1.6, 2.4), Vector3(4.5, 13.0, 0), rust)
+	Build.box(w, Vector3(0.5, 4.6, 1.3), Vector3(3.1, 7.4, 0), Color(0.05, 0.04, 0.04))
+	Build.tbox(w, Vector3(3.4, 2.6, 12.6), Vector3(0.6, 11.6, 0), "rust", rust, false, 0.18)
+	Build.tsphere(w, 2.7, Vector3(2.3, 14.0, 0), "iron", plate, 0.18)
+	Build.tbox(w, Vector3(2.0, 1.6, 2.4), Vector3(4.5, 13.0, 0), "rust", rust, false, 0.18)
 	Build.cyl(w, 2.8, 2.8, 0.55, Vector3(2.3, 15.2, 0), GOLD, 14)
 	Build.sphere(w, 0.42, Vector3(4.5, 14.5, -1.0), Color(1.0, 0.5, 0.12), 1.2)
 	Build.sphere(w, 0.42, Vector3(4.5, 14.5, 1.0), Color(0.07, 0.06, 0.06))
-	Build.box(w, Vector3(2.3, 8.4, 2.3), Vector3(1.2, 7.2, 6.6), plate)
-	Build.box(w, Vector3(8.5, 2.1, 2.4), Vector3(5.6, 1.05, 7.4), plate, true)
-	Build.box(w, Vector3(2.3, 8.4, 2.3), Vector3(1.2, 7.2, -6.6), plate)
-	Build.box(w, Vector3(2.4, 2.1, 10.0), Vector3(2.0, 1.05, -11.5), plate, true)
+	Build.tbox(w, Vector3(2.3, 8.4, 2.3), Vector3(1.2, 7.2, 6.6), "iron", plate, false, 0.18)
+	Build.tbox(w, Vector3(8.5, 2.1, 2.4), Vector3(5.6, 1.05, 7.4), "iron", plate, true, 0.18)
+	Build.tbox(w, Vector3(2.3, 8.4, 2.3), Vector3(1.2, 7.2, -6.6), "iron", plate, false, 0.18)
+	Build.tbox(w, Vector3(2.4, 2.1, 10.0), Vector3(2.0, 1.05, -11.5), "iron", plate, true, 0.18)
 	# The ember, behind the split in his chest.
 	Build.sphere(w, 0.9, Vector3(3.0, 7.4, 0), Color(1.0, 0.5, 0.14), 1.4)
 	var glow := OmniLight3D.new()
@@ -148,14 +142,18 @@ func _rhodes() -> void:
 	add_child(wt)
 	wt.position = Vector3(-21.5, 0.5, 0)
 
-	# The hall: an open roof over the Register.
+	# The hall: an open timber roof over the Register.
 	var hall := Vector3(0, 0, -6)
+	var timber := Color(0.55, 0.42, 0.32)
 	for dx in [-5.0, 5.0]:
 		for dz in [-4.0, 4.0]:
-			Build.cyl(self, 0.3, 0.36, 4.4, hall + Vector3(dx, 2.2, dz), Color(0.3, 0.2, 0.13), 8, true)
-	var roof := Build.cyl(self, 0.0, 9.2, 3.0, hall + Vector3(0, 5.9, 0), Color(0.42, 0.14, 0.1), 4)
+			Build.tcyl(self, 0.3, 0.36, 4.4, hall + Vector3(dx, 2.2, dz), "wood", timber, 8, true)
+	for dz in [-4.0, 4.0]:
+		Build.tbox(self, Vector3(11.0, 0.35, 0.35), hall + Vector3(0, 4.4, dz), "wood", timber)
+	var roof := Build.tcyl(self, 0.0, 9.2, 3.0, hall + Vector3(0, 5.9, 0), "thatch", Color(0.9, 0.8, 0.6), 4, false, 0.5)
 	roof.rotation.y = PI / 4.0
-	Build.box(self, Vector3(4.4, 2.8, 0.25), hall + Vector3(0, 1.9, -3.6), Color(0.13, 0.1, 0.08), true)
+	Build.tbox(self, Vector3(11.5, 0.12, 9.5), hall + Vector3(0, 0.06, 0), "paving", Color(0.8, 0.76, 0.7), false, 0.3)
+	Build.tbox(self, Vector3(4.4, 2.8, 0.25), hall + Vector3(0, 1.9, -3.6), "planks", Color(0.35, 0.28, 0.24), true)
 	Build.box(self, Vector3(4.7, 0.2, 0.3), hall + Vector3(0, 3.4, -3.6), GOLD, false, 0.4)
 	_register_label = Label3D.new()
 	_register_label.font_size = 64
@@ -169,15 +167,21 @@ func _rhodes() -> void:
 	add_child(rt)
 	rt.position = hall + Vector3(0, 0.6, -3.2)
 
-	# Houses round the inside of the Ring.
-	var wall := Color(0.6, 0.54, 0.44)
-	var tile := Color(0.4, 0.15, 0.11)
-	for h in [[-16, 22, 0.6], [-2, 30, 0.1], [16, 26, -0.5], [27, -14, 2.2], [14, -30, 2.9], [-8, -31, 3.3], [28, 22, -1.0]]:
-		Build.house(self, Vector3(h[0], 0, h[1]), Vector3(6, 3.4, 5), wall, tile, h[2])
-	# Tommy's stall and a fire.
-	Build.box(self, Vector3(3.2, 1.0, 1.2), Vector3(14, 0.5, -14), Color(0.35, 0.24, 0.14), true)
-	Build.box(self, Vector3(3.6, 0.1, 1.8), Vector3(14, 2.6, -14), Color(0.2, 0.42, 0.5))
-	Build.sphere(self, 0.4, Vector3(20, 0.3, 14), Color(1.0, 0.5, 0.1), 1.4)
+	# Houses round the inside of the Ring, doors facing the middle.
+	for h in [[-14, 26, 6, 8], [2, 31, 4, 6], [18, 26, 6, 8], [28, -16, 4, 6], [14, -30, 6, 8], [-8, -31, 4, 6], [29, 20, 4, 6]]:
+		var at := Vector3(h[0], 0, h[1])
+		Build.kit_house(self, at, atan2(-at.x, -at.z), h[2], h[3], true)
+	# Tommy's stall, a wagon, crates and a fire.
+	Build.tbox(self, Vector3(3.2, 1.0, 1.2), Vector3(14, 0.5, -14), "planks", Color(0.7, 0.6, 0.5), true)
+	for sx in [-1.5, 1.5]:
+		Build.tcyl(self, 0.07, 0.07, 2.6, Vector3(14 + sx, 1.3, -14.5), "wood", timber, 6)
+	Build.box(self, Vector3(3.6, 0.08, 1.8), Vector3(14, 2.6, -14), Color(0.2, 0.42, 0.5))
+	Build.model(self, "village/Prop_Crate", Vector3(16.4, 0, -13.6), 0.4)
+	Build.model(self, "village/Prop_Crate", Vector3(16.2, 0, -15.0), 1.1, 0.8)
+	Build.model(self, "village/Prop_Wagon", Vector3(24, 0, -6), 2.2)
+	for i in 6:
+		Build.tbox(self, Vector3(1.3, 0.16, 0.16), Vector3(20, 0.1 + i * 0.05, 14), "wood", timber).rotation.y = i * 1.05
+	Build.sphere(self, 0.35, Vector3(20, 0.4, 14), Color(1.0, 0.5, 0.1), 1.4)
 	var fire := OmniLight3D.new()
 	fire.light_color = Color(1.0, 0.6, 0.25)
 	fire.omni_range = 9.0
@@ -198,54 +202,55 @@ func _read_register() -> void:
 # --- The road ------------------------------------------------------------------
 
 func _road() -> void:
-	var dirt := Color(0.36, 0.3, 0.22)
-	for i in ROAD.size() - 1:
-		var a: Vector3 = ROAD[i]
-		var b: Vector3 = ROAD[i + 1]
-		var mid := (a + b) / 2.0
-		var seg := Build.box(self, Vector3(4.2, 0.06, a.distance_to(b) + 3.0), mid + Vector3(0, 0.03, 0), dirt)
-		seg.rotation.y = atan2(b.x - a.x, b.z - a.z)
-	# The pines the road bends round, and a broken cart.
-	for i in 26:
-		Build.tree(self, Vector3(118 + randf_range(-16, 16), 0, 8 + randf_range(-12, 14)), randf_range(1.0, 1.6), true)
-	Build.box(self, Vector3(2.4, 1.0, 1.4), Vector3(82, 0.6, -4.5), Color(0.3, 0.22, 0.14), true).rotation.z = 0.35
-	Build.cyl(self, 0.6, 0.6, 0.15, Vector3(83.5, 0.4, -5.6), Color(0.2, 0.15, 0.1), 10).rotation.x = 1.2
-	# Marker stones along the way.
-	for p in [Vector3(48, 0, 3.2), Vector3(98, 0, -6), Vector3(150, 0, -8), Vector3(204, 0, 17)]:
-		Build.box(self, Vector3(0.6, 1.3, 0.4), p + Vector3(0, 0.65, 0), Color(0.5, 0.5, 0.48), true)
+	# The track itself is worn into the ground by the terrain. Here: what stands along it.
+	Build.model(self, "village/Prop_Wagon", ground(Vector3(82, 0, -4.5)), 0.5).rotation.z = 0.5
+	Build.model(self, "village/Prop_Crate", ground(Vector3(84.5, 0, -5.4)), 0.8)
+	for p in [Vector3(48, 0, 3.4), Vector3(98, 0, -6.2), Vector3(150, 0, -8.5), Vector3(204, 0, 17.5)]:
+		Build.tbox(self, Vector3(0.6, 1.5, 0.4), ground(p) + Vector3(0, 0.6, 0), "rock", Color.WHITE, true).rotation.z = randf_range(-0.12, 0.12)
 
 # --- Tallow Ford -----------------------------------------------------------------
 
 func _tallow_ford() -> void:
-	var wall := Color(0.5, 0.47, 0.4)
-	var thatch := Color(0.5, 0.42, 0.22)
-	Build.cyl(self, 24, 24, 0.04, VILLAGE + Vector3(0, 0.02, 2), Color(0.34, 0.3, 0.22), 28)
-	for h in [[214, 30, 0.4], [222, 42, 0.0], [238, 40, -0.3], [250, 22, -1.4], [218, -2, 2.6], [248, 4, -2.2]]:
-		Build.house(self, Vector3(h[0], 0, h[1]), Vector3(5.5, 3.0, 4.6), wall, thatch, h[2])
+	for h in [[212, 32, 4, 6], [223, 44, 6, 8], [240, 42, 4, 6], [252, 24, 4, 6], [216, -3, 4, 6], [250, 4, 4, 6]]:
+		var at := Vector3(h[0], 0, h[1])
+		Build.kit_house(self, at, atan2(VILLAGE.x - at.x, VILLAGE.z + 2.0 - at.z), h[2], h[3])
 	# Pell's shop, with the strongbox round the back.
-	Build.house(self, Vector3(236, 0, 2), Vector3(7, 3.4, 5), Color(0.44, 0.4, 0.46), Color(0.25, 0.22, 0.3), 0.0)
-	Build.box(self, Vector3(1.1, 0.7, 0.7), Vector3(236, 0.35, -2.4), Color(0.3, 0.2, 0.1), true)
-	Build.box(self, Vector3(1.15, 0.12, 0.75), Vector3(236, 0.72, -2.4), GOLD)
+	Build.kit_house(self, Vector3(236, 0, 0), 0.0, 6, 8)
+	Build.model(self, "village/Prop_Crate", Vector3(240.6, 0, 3.4), 0.3)
+	Build.tbox(self, Vector3(1.1, 0.7, 0.7), Vector3(236, 0.35, -5.2), "planks", Color(0.5, 0.4, 0.3), true)
+	Build.box(self, Vector3(1.15, 0.12, 0.75), Vector3(236, 0.72, -5.2), GOLD)
 	var box := Thing.new()
 	box.setup("Steal from Pell's strongbox", _steal)
 	add_child(box)
-	box.position = Vector3(236, 0.0, -3.0)
+	box.position = Vector3(236, 0.0, -5.8)
 	# Well.
-	Build.cyl(self, 1.1, 1.1, 0.9, VILLAGE + Vector3(0, 0.45, 2), Color(0.45, 0.45, 0.43), 10, true)
+	Build.tcyl(self, 1.15, 1.15, 0.9, VILLAGE + Vector3(0, 0.45, 2), "stone", Color.WHITE, 12, true)
+	Build.cyl(self, 0.95, 0.95, 0.05, VILLAGE + Vector3(0, 0.75, 2), Color(0.05, 0.08, 0.1), 12)
+	for sx in [-1.0, 1.0]:
+		Build.tcyl(self, 0.08, 0.08, 2.4, VILLAGE + Vector3(sx, 1.2, 2), "wood", Color(0.5, 0.4, 0.3), 6)
+	Build.tbox(self, Vector3(2.4, 0.12, 0.12), VILLAGE + Vector3(0, 2.4, 2), "wood", Color(0.5, 0.4, 0.3))
 	# Ivo's pyre.
-	for i in 5:
-		Build.box(self, Vector3(2.6, 0.25, 0.3), Vector3(211, 0.2 + i * 0.26, 4), Color(0.25, 0.17, 0.1)).rotation.y = i * 0.6
-	Build.sphere(self, 0.35, Vector3(211, 1.6, 4), Color(1.0, 0.45, 0.1), 2.5)
-	# Fences on the Rhodes side.
-	for i in 9:
-		Build.box(self, Vector3(0.15, 1.1, 0.15), Vector3(204, 0.55, 2 + i * 4.0), Color(0.3, 0.22, 0.14))
-	Build.box(self, Vector3(0.1, 0.1, 32), Vector3(204, 0.9, 18), Color(0.3, 0.22, 0.14))
-	# The river, east of the village, and the old jetty to the south.
-	Build.box(self, Vector3(22, 0.05, 420), Vector3(282, 0.04, 20), Color(0.16, 0.26, 0.33))
-	Build.box(self, Vector3(12, 0.25, 2.2), Vector3(268, 0.5, 64), Color(0.3, 0.22, 0.14), true)
-	for x in [263.0, 268.0, 273.0]:
-		Build.cyl(self, 0.15, 0.15, 1.4, Vector3(x, 0.2, 65.2), Color(0.2, 0.15, 0.1), 6)
-	Build.label(self, "TALLOW FORD", 0, Color(0.9, 0.85, 0.7), 60).position = Vector3(206, 3.2, 19)
+	for i in 6:
+		Build.tbox(self, Vector3(2.6, 0.25, 0.3), Vector3(209, 0.2 + i * 0.24, 6), "wood", Color(0.4, 0.3, 0.25)).rotation.y = i * 0.6
+	Build.sphere(self, 0.35, Vector3(209, 1.8, 6), Color(1.0, 0.45, 0.1), 1.4)
+	var pyre := OmniLight3D.new()
+	pyre.light_color = Color(1.0, 0.55, 0.2)
+	pyre.omni_range = 8.0
+	add_child(pyre)
+	pyre.position = Vector3(209, 2.2, 6)
+	# A fence on the Rhodes side, with a gap for the road.
+	for i in 16:
+		var z := -14.0 + i * 2.06
+		if absf(z - 17.5) < 3.2:
+			continue
+		Build.model(self, "village/Prop_WoodenFence_Single", ground(Vector3(203, 0, z)), PI / 2.0)
+	# The old jetty, south along the river.
+	var j := ground(Vector3(266, 0, 64))
+	Build.tbox(self, Vector3(16, 0.22, 2.4), Vector3(271, max(j.y, -0.6) + 0.5, 64), "planks", Color(0.5, 0.42, 0.36), true)
+	for x in [265.0, 270.0, 275.0, 278.5]:
+		for dz in [-1.1, 1.1]:
+			Build.tcyl(self, 0.14, 0.14, 3.4, Vector3(x, -0.9, 64 + dz), "wood", Color(0.35, 0.28, 0.22), 6)
+	Build.label(self, "TALLOW FORD", 0, Color(0.9, 0.85, 0.7), 60).position = Vector3(203, 3.4, 17.5)
 
 func _steal() -> void:
 	if Game.flags.has("stolen"):
@@ -254,7 +259,7 @@ func _steal() -> void:
 	Game.flags["stolen"] = true
 	Game.coins += 30
 	Game.straps += 2
-	var seen := Game.witnesses(Vector3(236, 0, -3), null, 9.0)
+	var seen := Game.witnesses(Vector3(236, 0, -5.8), null, 9.0)
 	if seen.size() > 0:
 		Game.rep["tallow"] -= 35
 		Game.say("%s saw you with your hands in the strongbox. Thirty coin and two straps, and the whole village will know by dark." % seen[0].npc_name)
@@ -267,33 +272,90 @@ func _steal() -> void:
 	Game.note("You robbed Pell's strongbox at Tallow Ford.")
 	Game.touch()
 
-# --- Trees and rocks ---------------------------------------------------------
-
-func _near_road(p: Vector3, margin: float) -> bool:
-	for i in ROAD.size() - 1:
-		var a := Vector2(ROAD[i].x, ROAD[i].z)
-		var b := Vector2(ROAD[i + 1].x, ROAD[i + 1].z)
-		var q := Vector2(p.x, p.z)
-		var t: float = clamp((q - a).dot(b - a) / (b - a).length_squared(), 0.0, 1.0)
-		if q.distance_to(a + (b - a) * t) < margin:
-			return true
-	return false
+# --- Trees, rocks and grass ------------------------------------------------------
 
 func _wilds() -> void:
+	var pines := ["Pine_1", "Pine_2", "Pine_3", "Pine_4", "Pine_5"]
+	var leafy := ["CommonTree_1", "CommonTree_2", "CommonTree_3"]
+	var dead := ["DeadTree_1", "DeadTree_2", "DeadTree_3"]
+	var small := ["Fern_1", "Plant_1", "Rock_Medium_1", "Rock_Medium_2", "Rock_Medium_3", "Pebble_Round_1", "Mushroom_Common", "Flower_3_Group"]
+	var trunks := StaticBody3D.new()
+	add_child(trunks)
+	# The stand of pines the road bends round.
+	for i in 30:
+		_plant(pines[i % 5], Vector3(118 + randf_range(-18, 18), 0, 10 + randf_range(-12, 16)), randf_range(0.9, 1.5), trunks)
 	var placed := 0
 	var tries := 0
-	while placed < 230 and tries < 4000:
+	while placed < 330 and tries < 6000:
 		tries += 1
-		var p := Vector3(randf_range(-120, 300), 0, randf_range(-170, 190))
-		if Vector2(p.x, p.z).length() < R + 5.0:
+		var p := Vector3(randf_range(-150, 330), 0, randf_range(-190, 200))
+		if Vector2(p.x, p.z).length() < R + 6.0:
 			continue
-		if _near_road(p, 5.5) or p.distance_to(VILLAGE) < 30.0 or (p.x > 268 and p.x < 296):
+		if terrain.road_distance(p.x, p.z) < 6.0 or p.distance_to(VILLAGE) < 34.0 or absf(p.x - 284.0) < 16.0:
 			continue
-		if randf() < 0.22:
-			Build.sphere(self, randf_range(0.6, 1.6), p + Vector3(0, 0.2, 0), Color(0.4, 0.4, 0.38)).scale.y = 0.6
+		var roll := randf()
+		# Woodland thickens away from the road; near where the Pinned walk, the trees are dead.
+		var haunted := false
+		for e in Data.ROAD_PINNED:
+			if p.distance_to(e[1]) < 20.0:
+				haunted = true
+		if haunted and roll < 0.75:
+			_plant(dead[randi() % 3] if roll > 0.12 else "TwistedTree_%d" % (1 + randi() % 2), p, randf_range(0.8, 1.3), trunks)
+		elif roll < 0.42:
+			_plant(pines[randi() % 5], p, randf_range(0.8, 1.6), trunks)
+		elif roll < 0.62:
+			_plant(leafy[randi() % 3], p, randf_range(0.8, 1.4), trunks)
+		elif roll < 0.68:
+			_plant(dead[randi() % 3], p, randf_range(0.8, 1.2), trunks)
 		else:
-			Build.tree(self, p, randf_range(0.8, 1.7), randf() < 0.4)
+			_plant(small[randi() % small.size()], p, randf_range(0.8, 1.8), null)
 		placed += 1
+	_grass("Grass_Common_Tall", 1500)
+	_grass("Grass_Wispy_Tall", 900)
+	_grass("Grass_Common_Short", 1500)
+
+func _plant(model_name: String, p: Vector3, s: float, trunks: StaticBody3D) -> void:
+	var g := ground(p)
+	var m := Build.model(self, "nature/" + model_name, g - Vector3(0, 0.08, 0), randf() * TAU, s)
+	Build.foliage(m)
+	if trunks:
+		var cs := CollisionShape3D.new()
+		var sh := CylinderShape3D.new()
+		sh.radius = 0.35 * s
+		sh.height = 4.0
+		cs.shape = sh
+		trunks.add_child(cs)
+		cs.position = g + Vector3(0, 2.0, 0)
+
+## Grass as one batched draw per kind, scattered where the player actually walks.
+func _grass(model_name: String, count: int) -> void:
+	var src: Node = Build.scene("nature/" + model_name).instantiate()
+	Build.foliage(src)
+	var mi: MeshInstance3D = src.find_children("*", "MeshInstance3D", true, false)[0]
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = mi.mesh
+	mm.instance_count = count
+	var i := 0
+	var tries := 0
+	while i < count and tries < count * 20:
+		tries += 1
+		var p := Vector3(randf_range(-110, 300), 0, randf_range(-130, 140))
+		var rd: float = terrain.road_distance(p.x, p.z)
+		if rd < 3.6 or rd > 70.0 and Vector2(p.x, p.z).length() > R + 50.0 and p.distance_to(VILLAGE) > 75.0:
+			continue
+		if Vector2(p.x, p.z).length() < R + 2.0 or p.distance_to(VILLAGE) < 26.0 or absf(p.x - 284.0) < 10.0:
+			continue
+		var s := randf_range(0.45, 0.95)
+		var b := Basis(Vector3.UP, randf() * TAU).scaled(Vector3(s, s, s))
+		mm.set_instance_transform(i, Transform3D(b, ground(p)))
+		i += 1
+	mm.visible_instance_count = i
+	var node := MultiMeshInstance3D.new()
+	node.multimesh = mm
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(node)
+	src.free()
 
 # --- People and the Pinned -----------------------------------------------------
 
@@ -309,12 +371,13 @@ func _add_npc(d: Dictionary, founder: bool) -> void:
 	var n: Node3D = NpcScript.new()
 	add_child(n)
 	n.setup(d, founder)
+	n.position = ground(n.position)
 	Game.npcs.append(n)
 
 func _add_pinned(s: Dictionary, at: Vector3, delay: float) -> void:
 	var p: Node3D = PinnedScript.new()
 	add_child(p)
-	p.setup(s, at, delay)
+	p.setup(s, ground(at), delay)
 	Game.pinned.append(p)
 
 ## Someone the player killed comes back where they fell. Inside the Ring they stay down.

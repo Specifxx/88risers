@@ -4,6 +4,7 @@ extends Node3D
 
 const Build = preload("res://scripts/build.gd")
 const Data = preload("res://scripts/data.gd")
+const Character = preload("res://scripts/character.gd")
 
 var def: Dictionary
 var id := ""
@@ -21,6 +22,7 @@ var persuaded := 0
 var gifts := 0
 var memory: Array = []
 var _served := {}
+var _figure: Node3D
 
 func setup(d: Dictionary, founder: bool) -> void:
 	def = d
@@ -40,9 +42,9 @@ func setup(d: Dictionary, founder: bool) -> void:
 		capable = d["capable"]
 		disp = d["disp"]
 	position = d["pos"]
-	Build.person(self, d["color"])
-	Build.label(self, npc_name, 2.2)
-	Build.label(self, role, 1.95, Color(0.75, 0.72, 0.65), 26)
+	_figure = Character.make(self, Data.LOOKS.get(id, {}))
+	Build.label(self, npc_name, 2.22)
+	Build.label(self, role, 2.0, Color(0.75, 0.72, 0.65), 26)
 	add_to_group("interact")
 
 func prompt() -> String:
@@ -57,6 +59,7 @@ func _process(_dt: float) -> void:
 		if global_position.distance_to(p) < 9.0:
 			var to := p - global_position
 			rotation.y = lerp_angle(rotation.y, atan2(to.x, to.z), 0.08)
+		Character.play(_figure, "Idle_Talking" if Game.dialogue.npc == self and Game.dialogue.active() else "Idle")
 
 func eff_disp() -> int:
 	return disp + int(Game.rep[village])

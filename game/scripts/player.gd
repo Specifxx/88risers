@@ -81,9 +81,9 @@ func _find_target() -> void:
 			best_score = score
 	target = best
 
-func look_level() -> void:
-	_pitch = 0.0
-	cam.rotation.x = 0.0
+func look_level(pitch := 0.0) -> void:
+	_pitch = pitch
+	cam.rotation.x = pitch
 
 func heading() -> String:
 	var a := fposmod(rad_to_deg(-rotation.y), 360.0)

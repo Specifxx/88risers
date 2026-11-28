@@ -26,7 +26,8 @@ func _save(shot_name: String) -> void:
 	get_viewport().get_texture().get_image().save_png("%s/%s.png" % [_dir, shot_name])
 
 func _shot(shot_name: String, at: Vector3, yaw_deg: float, pitch_deg := 0.0) -> void:
-	Game.player.global_position = at
+	Game.player.global_position = Game.main.ground(at) + Vector3(0, 0.15, 0)
+	Game.player.velocity = Vector3.ZERO
 	Game.player.rotation.y = deg_to_rad(yaw_deg)
 	Game.player.cam.rotation.x = deg_to_rad(pitch_deg)
 	await _save(shot_name)
@@ -105,7 +106,7 @@ func _run() -> void:
 
 	await _shot("05_road", Vector3(60, 0.1, 0), -90, 2)
 	var carter := _pinned("Tobin")
-	Game.player.global_position = carter.global_position + Vector3(-6, 0, 0)
+	Game.player.global_position = Game.main.ground(carter.global_position + Vector3(-6, 0, 0)) + Vector3(0, 0.15, 0)
 	for f in 300:
 		await get_tree().physics_frame
 		if Game.battle.active():
@@ -139,8 +140,11 @@ func _run() -> void:
 	_check(Game.battle.result == "lost", "Saying the rite before the spirit is ready wastes the strap")
 	_press("Continue")
 
-	await _shot("08_village", Vector3(206, 0.1, 19), -92, 3)
-	await _shot("09_village_square", Vector3(232, 0.1, 30), 150, 0)
+	await _shot("08_village", Vector3(198, 0.1, 17), -92, 3)
+	await _shot("09_village_square", Vector3(238, 0.1, 32), 120, 0)
+	await _shot("09b_ned", Vector3(223.2, 0.1, 31.2), 157, 0)
+	await _shot("09c_jetty", Vector3(252, 0.1, 58), -115, -2)
+	await _shot("09d_hills", Vector3(150, 0.1, -6), -60, 2)
 
 	var wren := _npc("wren")
 	_check(wren.can_join(), "Wren will join once two Pinned have been raised")
@@ -172,7 +176,7 @@ func _run() -> void:
 	_check(Game.register_count() == 11, "Register stands at 11")
 
 	# Crime.
-	Game.player.global_position = Vector3(236, 0.1, -4)
+	Game.player.global_position = Vector3(236, 0.1, -6.5)
 	Game.main._steal()
 	_check(Game.flags.has("stolen"), "The strongbox can be robbed")
 	var before: int = Game.rep["tallow"]

@@ -35,7 +35,7 @@ func _ready() -> void:
 	m.set_anchors_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right"]:
 		m.add_theme_constant_override("margin_" + side, 50)
-	m.add_theme_constant_override("margin_top", 330)
+	m.add_theme_constant_override("margin_top", 405)
 	m.add_theme_constant_override("margin_bottom", 24)
 	_root.add_child(m)
 	var p := UI.panel(m)
@@ -46,7 +46,7 @@ func _ready() -> void:
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.add_theme_constant_override("separation", 6)
 	h.add_child(v)
-	_title = UI.text(v, "", 26, UI.GOLD)
+	_title = UI.text(v, "", 24, UI.GOLD)
 	_status = UI.text(v, "", 16, Color(0.8, 0.78, 0.7))
 	_log = UI.rich(v, 18)
 	var scroll := ScrollContainer.new()
@@ -91,8 +91,15 @@ func _begin(n: String, hp: int, atk: int) -> void:
 	result = ""
 	_log.clear()
 	var to: Vector3 = foe.global_position - Game.player.global_position
+	to.y = 0
+	if to.length() < 0.1:
+		to = Vector3(0, 0, -1)
 	Game.player.rotation.y = atan2(-to.x, -to.z)
-	Game.player.look_level()
+	Game.player.look_level(-0.3)
+	if foe_is_pinned:
+		foe.global_position = Game.main.ground(Game.player.global_position + to.normalized() * 3.4)
+		foe.rotation.y = atan2(-to.x, -to.z)
+		foe.face_off()
 	_root.visible = true
 	UI.open_modal()
 	_refresh()
