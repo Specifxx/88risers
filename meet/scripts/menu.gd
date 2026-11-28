@@ -148,7 +148,7 @@ func _header() -> void:
 	for k in [["trust", "Trust"], ["respect", "Respect"], ["fun", "Amused"], ["warmth", "Warmth"], ["irritation", "Irritated"], ["wary", "Wary"]]:
 		var v: float = ax.get(k[0], 0.0)
 		if absf(v) > 0.12:
-			read += "  %s %s" % [k[1], ("+" if v > 0 else "−").repeat(int(ceil(absf(v) * 3.0)))]
+			read += "  %s %s" % [k[1], ("+" if v > 0 else "-").repeat(int(ceil(absf(v) * 3.0)))]
 	var who_name: String = who.first_name.capitalize() if who.is_riser else "They"
 	_sub.text = "%s: %s.%s%s" % [who_name, who.attitude() if not ax.is_empty() else who.bond_text(), read, extra]
 	_sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -550,7 +550,7 @@ func _answer(o: Dictionary, show_say := true) -> void:
 	_text.append_text("\"%s\"\n" % o["reply"])
 	var outcome: String = r.react(v)
 	if outcome != "":
-		_text.append_text("[color=%s][i]↳ %s[/i][/color]\n" % ["#8fd9a8" if v > 0.0 else "#ff9a7a", outcome])
+		_text.append_text("[color=%s][i]» %s[/i][/color]\n" % ["#8fd9a8" if v > 0.0 else "#ff9a7a", outcome])
 		Meet.sfx("grip" if v > 0.0 else "miss", -10.0)
 	_effects(o)
 	match o.get("do", ""):
@@ -1069,7 +1069,7 @@ func ladder() -> void:
 	UI.clear(_list)
 	UI.text(_list, "Tonight's dares", 18, UI.GOLD)
 	for d in Meet.dares:
-		UI.text(_list, "%s  %s" % ["✔" if d["done"] else "•", d["text"]], 16, Color(0.6, 0.9, 0.7) if d["done"] else UI.PAPER)
+		UI.text(_list, "%s  %s" % ["[x]" if d["done"] else "[  ]", d["text"]], 16, Color(0.6, 0.9, 0.7) if d["done"] else UI.PAPER)
 	UI.button(_list, "Walk on", close, 18)
 
 # --- Notes at the lanterns ---------------------------------------------------------------
@@ -1085,7 +1085,7 @@ func notes(spot: int) -> void:
 	for n in People.SEEDED + Meet.notes:
 		if int(n["spot"]) == spot:
 			any = true
-			_text.append_text("•  %s\n" % (n["text"] if n.has("text") else "%s %s." % [n["a"], n["b"]]))
+			_text.append_text("-  %s\n" % (n["text"] if n.has("text") else "%s %s." % [n["a"], n["b"]]))
 	if not any:
 		_text.append_text("[i]Nobody has left anything here yet.[/i]\n")
 	_show()

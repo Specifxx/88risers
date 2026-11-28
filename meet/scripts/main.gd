@@ -1463,7 +1463,7 @@ func _summary() -> String:
 			sour += 1
 	var changed := ""
 	if not Meet.ripples.is_empty():
-		changed = "\n\nWhat you changed tonight:\n• " + "\n• ".join(Meet.ripples.slice(0, 7))
+		changed = "\n\nWhat you changed tonight:\n- " + "\n- ".join(Meet.ripples.slice(0, 7))
 	return "Harry calls it. Tables down, chalk swept, snacks gone." + changed + "\n\nTonight: %d pulls won, %d lost. %d of the founders count you a mate; %d would rather you hadn't come. Standing with the club: %s (%d).\n\nSee you next Sunday." % [
 		Meet.results.filter(func(t): return t.begins_with("You beat")).size(), Meet.results.filter(func(t): return t.ends_with("beat you")).size(),
 		mates, sour, Meet.standing(), Meet.reputation()]

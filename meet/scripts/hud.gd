@@ -15,7 +15,8 @@ var _bag_side: VBoxContainer
 var _bag_people: VBoxContainer
 var _over_title: Label
 var _name_box: LineEdit
-var _heat: TextureRect
+var _heat: HBoxContainer
+var _heat_pips: Pips
 const STICK := 85.0
 var _knob: Panel
 var _stick_label: Label
@@ -85,8 +86,16 @@ func _ready() -> void:
 	_stam = _meter(col, "Stamina", Color(0.3, 0.75, 0.4))
 	_stats = TextTex.new()
 	col.add_child(_stats)
-	_heat = TextTex.new()
+	_heat = HBoxContainer.new()
+	_heat.add_theme_constant_override("separation", 8)
 	col.add_child(_heat)
+	var heat_l := TextTex.new()
+	_heat.add_child(heat_l)
+	heat_l.show_text("Heat", 15, Color(1.0, 0.55, 0.3), 0, 0, 0)
+	_heat_pips = Pips.new()
+	_heat_pips.color = Color(1.0, 0.55, 0.3)
+	_heat_pips.px = 16.0
+	_heat.add_child(_heat_pips)
 	# Tonight's dares, under the panel.
 	_dares = VBoxContainer.new()
 	_dares.position = Vector2(18, 168)
@@ -168,7 +177,7 @@ func _refresh() -> void:
 	_bar.value = Meet.composure
 	_stats.show_text("$%d  ·  Snacks %d  ·  Chalk %d%s%s  ·  Won %d, lost %d" % [Meet.money, Meet.snacks, Meet.chalk, ("  ·  Hands chalked" if Meet.chalked else "") + ("  ·  CARRYING A TABLE" if Meet.carrying >= 0 else "") + ("  ·  WINDY" if Meet.wind > 0.0 else ""),
 		"  ·  Straps in pocket %d" % Meet.straps.size() if not Meet.straps.is_empty() else "", Meet.wins, Meet.losses], 15, UI.PAPER, 0, 0, 0)
-	_heat.show_text("Heat  %s%s" % ["★".repeat(Meet.stars()), "☆".repeat(5 - Meet.stars())] if Meet.stars() > 0 else "", 15, Color(1.0, 0.55, 0.3), 0, 0, 0)
+	_heat_pips.set_pips(Meet.stars(), 5)
 	_heat.visible = Meet.stars() > 0
 	var sig := str(Meet.dares.map(func(d): return [d["done"], d["have"], d.get("void", false)]))
 	if sig == _dares_sig:
@@ -182,9 +191,9 @@ func _refresh() -> void:
 		var l := TextTex.new()
 		_dares.add_child(l)
 		if d.get("void", false):
-			l.show_text("✗ %s  (can't be done now)" % d["text"], 14, Color(0.65, 0.6, 0.58))
+			l.show_text("[-] %s  (can't be done now)" % d["text"], 14, Color(0.65, 0.6, 0.58))
 			continue
-		l.show_text("%s %s%s" % ["✔" if d["done"] else "○", d["text"], " (%d/%d)" % [d["have"], d["need"]] if d["need"] > 1 and not d["done"] else ""], 14, Color(0.6, 0.9, 0.7) if d["done"] else Color(0.95, 0.92, 0.85))
+		l.show_text("%s %s%s" % ["[x]" if d["done"] else "[  ]", d["text"], " (%d/%d)" % [d["have"], d["need"]] if d["need"] > 1 and not d["done"] else ""], 14, Color(0.6, 0.9, 0.7) if d["done"] else Color(0.95, 0.92, 0.85))
 	# The kit is only rebuilt when you do something in it, never under your cursor.
 	if _bag and _bag.visible and _bag_dirty:
 		_bag_dirty = false
@@ -301,7 +310,7 @@ func sound_caption(text: String, seconds: float) -> void:
 		_snd.offset_left = 16
 		_snd.offset_top = -72
 		_snd.offset_bottom = -44
-	_snd.show_text("♪  You can hear: %s   (M mutes)" % text, 16, Color(0.8, 0.9, 1.0))
+	_snd.show_text("You can hear: %s   (M mutes)" % text, 16, Color(0.8, 0.9, 1.0))
 	_snd.modulate.a = 1.0
 	if _snd_tw:
 		_snd_tw.kill()
