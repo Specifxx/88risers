@@ -14,6 +14,7 @@ var spirit: Dictionary
 var home := Vector3.ZERO
 var state := "roam"  # roam | windup | fallen | down (sunk) | gone
 var known := false
+var passive := false     # waiting, not hunting: can be spoken to
 var hp := 10
 var max_hp := 10
 var _timer := 0.0
@@ -33,7 +34,7 @@ func setup(s: Dictionary, at: Vector3, delay := 0.0) -> void:
 	max_hp = int(s["hp"])
 	hp = max_hp
 	var tall := 1.0
-	var look := {"body": "Male_Peasant", "shade": Color(0.045, 0.045, 0.06)}
+	var look := {"body": s.get("body", "Male_Peasant"), "shade": s.get("shade", Color(0.045, 0.045, 0.06))}
 	if String(s["shape"]).contains("small"):
 		tall = 0.6
 	elif String(s["shape"]).contains("tall"):
@@ -67,7 +68,18 @@ func reveal() -> void:
 # --- Being hit --------------------------------------------------------------------
 
 func can_be_hit() -> bool:
-	return state in ["roam", "windup"]
+	return state in ["roam", "windup"] and not passive
+
+## Back on its feet and no longer hunting: something to speak to, not to fight.
+func stand_up() -> void:
+	state = "roam"
+	hp = max_hp
+	_body.visible = true
+	_label.visible = true
+	_label.text = display_name()
+	Character.play(_body, "Idle", true)
+	if not is_in_group("interact"):
+		add_to_group("interact")
 
 func knock(v: Vector3) -> void:
 	_knock += v
@@ -101,9 +113,12 @@ func _fall() -> void:
 		Game.say("It is down, but not gone. Begin the rite before the dark pulls it under (E).")
 
 func prompt() -> String:
-	return "Begin the rite over %s" % display_name()
+	return ("Speak to %s" if passive else "Begin the rite over %s") % display_name()
 
 func interact() -> void:
+	if passive or state == "fallen":
+		if Game.story.rite(self):
+			return
 	if state == "fallen":
 		Game.battle.start_rite(self)
 
@@ -117,7 +132,9 @@ func raise_up() -> void:
 	state = "gone"
 	_hide()
 	remove_from_group("hittable")
+	passive = false
 	Game.raised += 1
+	Game.story.on_raised(self)
 	Game.word("raised", 0.9, 1.0, "tallow", spirit["name"])
 	Game.word("raised", 0.6, 0.5, "rhodes", spirit["name"])
 	if spirit.has("leaves"):
@@ -146,6 +163,12 @@ func _process(dt: float) -> void:
 		return
 	if Game.modal:
 		return
+	if passive:
+		Character.play(_body, "Idle")
+		var face: Vector3 = Game.player.global_position - global_position
+		if face.length() < 7.0:
+			rotation.y = lerp_angle(rotation.y, atan2(face.x, face.z), 0.05)
+		return
 	if state == "fallen":
 		_timer -= dt
 		if _timer <= 0.0:
@@ -169,24 +192,27 @@ func _process(dt: float) -> void:
 		if _timer <= 0.0:
 			state = "roam"
 			_cooldown = 1.3
-			if d < STRIKE_RANGE + 0.6 and not safe:
+			if d < float(spirit.get("reach", STRIKE_RANGE)) + 0.6 and not safe:
 				Game.hurt_player(int(spirit["atk"]) + randi_range(-1, 1), global_position)
 		return
 	var speed := 1.1
 	var goal := _target
 	var hunting := d < SEE and not safe and _grace <= 0.0
+	var reach: float = spirit.get("reach", STRIKE_RANGE)
 	if hunting:
 		goal = p
-		speed = 3.5
+		speed = spirit.get("speed", 3.5)
 	elif Vector2(global_position.x - _target.x, global_position.z - _target.z).length() < 1.0:
 		_target = home + Vector3(randf_range(-9, 9), 0, randf_range(-9, 9))
 	var to := goal - global_position
 	to.y = 0
-	if hunting and d < STRIKE_RANGE:
+	if hunting and d < reach:
 		rotation.y = lerp_angle(rotation.y, atan2(to.x, to.z), 0.2)
 		if _cooldown <= 0.0:
+			# The tell: it flares before it strikes. Step out of reach, or get a block up.
 			state = "windup"
-			_timer = 0.55
+			_timer = spirit.get("windup", 0.6)
+			Fx.tint(_body, Color(1.0, 0.45, 0.1, 0.55), _timer)
 			Character.play(_body, "Punch_Cross", true)
 		else:
 			Character.play(_body, "Sword_Idle")

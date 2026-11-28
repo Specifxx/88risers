@@ -415,12 +415,7 @@ func greeting() -> String:
 func topics() -> Array:
 	if hostile():
 		return []
-	var out: Array = def["topics"].keys()
-	if not is_founder:
-		out.append(Data.TOPIC_JOIN)
-	if id == "harry" and Game.recruits.size() >= Game.SLICE_GOAL and not Game.flags.has("slice_done"):
-		out.append("I've brought three from Tallow Ford")
-	return out
+	return def["topics"].keys()
 
 func can_join() -> bool:
 	return willing >= 60 and capable >= 60 and eff_disp() >= 40
@@ -430,10 +425,6 @@ func topic_text(t: String) -> String:
 	if t == "The Register":
 		var n := Game.register_count()
 		return "%d names. Room for %d. Eight of them have been there since before you came.\n\nAnyone willing and able can fill a line. There are not many who are both." % [n, Game.QUOTA]
-	if t == "I've brought three from Tallow Ford":
-		Game.flags["slice_done"] = true
-		Game.hud.show_end()
-		return "Three, from one village, and you walked that road to get them. Then it can be done.\n\nThere are a great many villages. Rest. Then go further."
 	if t == "Your father":
 		Game.flags["knows_oswin"] = true
 		Game.note("Mara Quill's father Oswin drowned at the old jetty, south of Tallow Ford along the river. He walks there still. She can't go near him.")
@@ -498,13 +489,8 @@ func actions() -> Array:
 			var worth: int = int(Items.ITEMS[item]["value"] / 2.0)
 			if worth > 0 and not Game.equip.values().has(item):
 				out.append(["Sell %s (%d coin)" % [Items.ITEMS[item]["name"].to_lower(), worth], _sell.bind(item, worth)])
-	if not is_founder and not recruited:
-		if willing < willing_cap and willing < 60 and persuaded < 3:
-			out.append(["Make the case for the Risers", _persuade])
-		if willing >= 50 and capable < 60:
-			out.append(["Train together against the Pinned", _train])
-		if gifts < 2 and Game.chalk > 0:
-			out.append(["Give them chalk for their dead", _gift])
+	if not is_founder and not recruited and gifts < 2 and Game.chalk > 0:
+		out.append(["Give them chalk for their dead", _gift])
 	return out
 
 ## What they ask of the player in particular: friends pay less, the distrusted pay more,

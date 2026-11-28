@@ -11,8 +11,10 @@ emblem are generated from scratch or from the club crest in `public/crest.jpg`.
 
 - **Rhodes**, inside the Ring: a gate with stone guardian lions, the Register pavilion, tiled halls, club banners, lanterns, the wreck of Wukhan, and a tavern you can walk into.
 - **The east road**, with five Pinned on it. They come for you the moment you are outside the Ring and stop at its edge.
-- **Tallow Ford**, a village of six people. Three can be recruited, each for a different reason; three cannot.
-- **Fighting** is in real time. Left click (or F) swings whatever you are holding; whether it lands depends on your skill with that kind of weapon and how much wind you have left. Right click (or C) blocks. Armour and a shield take their share of what gets through.
+- **Tallow Ford**, a village of six people, and a chapter of four stories. Four of them might become Risers; each needs something, and what you do about it sticks. Oswin will not rise while his wife lies under the weir. Hesper will not let Ned go while her son haunts the east field. Pell wants the rite said over his father before Ivo burns him. Wren wants the thing that killed her partner finished, not given peace. You can keep promises, force things, walk away, or lie, and a lie can be found out.
+- **Places to find**, none of them marked: the weir downstream, the ash field over the footbridge where the burnt dead stand, and the camp of the last Pilgrimage in the hills, with their journal.
+- **An epilogue** when you report to Harry: what became of each person because of what you did, and what you chose to tell him about the last Pilgrimage.
+- **Fighting** is in real time. Left click (or F) swings whatever you are holding, and holding the click draws back for a heavier blow. The Pinned flare before they strike, so you can step out of reach or get a block up; whether it lands depends on your skill with that kind of weapon and how much wind you have left. Right click (or C) blocks. Armour and a shield take their share of what gets through.
 - **The rite.** A Pinned that is beaten down lies there for a short while. Begin the rite over it (E): throw chalk, bind it with a strap, find the true things to say before the strap gives, and say the words. Leave it and it sinks, and is back later.
 - **Things.** Weapons, armour, a shield, food and drink, chalk and straps are all items with weight and worth. Tab opens the pack: click to wield, wear, take off, eat or drink. Traders buy and sell. Crates and chests can be searched; if they belong to someone living, that is theft.
 - **What you wear shows.** Weapons, shield, hat, armour, bracers and boots are modelled and appear on the pilgrim, and guards carry theirs.
@@ -27,7 +29,7 @@ emblem are generated from scratch or from the club crest in `public/crest.jpg`.
 - **Freedom**: anyone can be struck and killed, founders included. The brave fight back, the rest run, and guards who see it come for you. The dead leave their belongings, and outside the Ring they come back as one of the Pinned. Those who see a crime remember it and tell others; coin can make amends, at a price.
 - There are no quest markers. Directions come from what people tell you, and the journal (J) keeps what you were told.
 
-The slice ends when you tell Harry you have brought three recruits. You can keep playing afterwards.
+The chapter ends when you report to Harry, with three recruits or with fewer if that is all the village will give. You can keep playing afterwards.
 
 ## Controls
 

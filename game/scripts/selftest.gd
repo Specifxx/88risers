@@ -54,6 +54,25 @@ func _press(label_start: String) -> bool:
 			return true
 	return false
 
+## Click the choice whose text starts with `label` in the open scene or conversation.
+func _choose(label: String) -> bool:
+	for b in Game.dialogue._list.get_children():
+		if b.is_queued_for_deletion():
+			continue
+		var t: String = String(b.text).trim_prefix("◆  ")
+		if t.begins_with(label):
+			b.pressed.emit()
+			return true
+	return false
+
+## Take one of the story's offers from a person, as if choosing it in conversation.
+func _offer(id: String, label: String) -> bool:
+	for a in Game.story.actions(_npc(id)):
+		if String(a[0]).begins_with(label):
+			a[1].call()
+			return true
+	return false
+
 ## Put a Pinned on the ground, begin the rite, and say only the true things.
 func _raise(p: Node) -> String:
 	p.take_hit(999, Game.player.global_position)
@@ -213,10 +232,7 @@ func _run() -> void:
 	print("    A jump clears %.2f m" % (top - y0))
 	_check(top - y0 > 0.8, "The pilgrim can jump")
 
-	_check(not _npc("wren").can_join(), "Wren does not trust a stranger")
 	_check(_raise(carter) == "raised", "Chalk, strap and rite raise the carter for good")
-	print("    Wren after one raised: disposition %d" % _npc("wren").eff_disp())
-	_check(not _npc("wren").can_join(), "One raised Pinned is not enough for Wren")
 	_check(carter.state == "gone", "A raised Pinned does not return")
 	_check(_raise(_pinned("Pip")) == "raised", "The child is raised")
 
@@ -232,10 +248,8 @@ func _run() -> void:
 	_check(Game.battle.result == "lost", "Saying the rite before the spirit is ready wastes the strap")
 	_press("Continue")
 
-	# The old porter leaves something behind.
-	_check(_raise(_pinned("A porter")) == "raised" and Game.count("old_sword") == 1, "Raising the old porter leaves a sword behind")
-	Game.toggle_equip("old_sword")
-	_check(Game.weapon()["name"] == "Pilgrim's old sword", "A found weapon can be wielded")
+	Game.add_item("sword")
+	Game.toggle_equip("sword")
 	Game.inventory.toggle()
 	await _save("07a_inventory")
 	Game.inventory.toggle()
@@ -247,35 +261,96 @@ func _run() -> void:
 	await _shot("09c_jetty", Vector3(252, 0.1, 58), -115, -2)
 	await _shot("09d_hills", Vector3(150, 0.1, -6), -60, 2)
 
-	var wren := _npc("wren")
-	print("    Wren after two raised: disposition %d, feeling %.2f" % [wren.eff_disp(), wren.mind.feeling()])
-	_check(wren.can_join(), "Wren will join once two Pinned have been raised")
-	wren.topic_text("Becoming a Riser")
-	_check(wren.recruited, "Wren is recruited")
-
-	var ned := _npc("ned")
-	ned.topic_text("Becoming a Riser")
-	_check(not ned.recruited, "Ned is willing but not yet capable")
-	for n in 3:
-		ned._train()
-	ned.topic_text("Becoming a Riser")
-	_check(ned.recruited, "Ned is recruited after training")
-
-	var mara := _npc("mara")
-	for n in 3:
-		mara._persuade()
-	mara.topic_text("Becoming a Riser")
-	_check(not mara.recruited, "Mara cannot be talked round while her father is pinned")
-	_check(_raise(_pinned("Oswin")) == "raised", "Oswin is raised at the jetty")
-	mara.topic_text("Becoming a Riser")
-	_check(mara.recruited, "Mara is recruited after her father rises")
-
-	var ivo := _npc("ivo")
-	for n in 3:
-		ivo._persuade()
-	ivo.topic_text("Becoming a Riser")
-	_check(not ivo.recruited and not _npc("pell").can_join() and not _npc("hesper").can_join(), "The other three villagers cannot be recruited")
-	_check(Game.register_count() == 11, "Register stands at 11")
+	# ---- The Tallow Ford chapter, played through one set of choices ----
+	var story: Node = Game.story
+	Game.chalk = 20
+	Game.straps = 20
+	# Mara will not leave while her father is pinned.
+	_check(_offer("mara", "Ask her to become"), "Mara can be asked")
+	Game.dialogue.close()
+	_check(not _npc("mara").recruited and story.has("mara_asked"), "She will not come while her father is on the jetty")
+	# Oswin refuses the rite, and says why.
+	var oswin := _pinned("Oswin")
+	oswin.take_hit(999, Game.player.global_position)
+	oswin.interact()
+	_check(Game.dialogue.active(), "The rite over Oswin becomes a scene with a choice")
+	Game.player.global_position = Game.main.ground(oswin.global_position + Vector3(-2.5, 0, 1.5)) + Vector3(0, 0.1, 0)
+	await _save("09e_oswin")
+	_choose("\"Where is the weir?\"")
+	Game.dialogue.close()
+	_check(story.has("oswin_promise") and oswin.passive and not oswin.can_be_hit(), "Promised, he stands and waits instead of fighting")
+	oswin.interact()
+	_check(Game.dialogue.active(), "He can be spoken to while he waits")
+	Game.dialogue.close()
+	# His wife, under the weir.
+	await _shot("09f_weir", Vector3(266, 0.1, 126), -120, -4)
+	_check(_raise(_pinned("Ysolt")) == "raised" and story.has("ysolt_raised"), "Ysolt is raised from the weir")
+	oswin.interact()
+	_check(story.has("oswin_willing") and oswin.state == "gone" and Game.count("pole") == 1, "Then Oswin goes gladly, and leaves his pole")
+	Game.dialogue.close()
+	_offer("mara", "Tell her about her father")
+	_choose("Welcome her")
+	_check(_npc("mara").recruited and story.has("mara_willing"), "Told the truth, Mara joins")
+	# Ned, Hesper and the east field.
+	_offer("ned", "Ask him to become")
+	Game.dialogue.close()
+	_offer("hesper", "She wants a word")
+	Game.dialogue.close()
+	_check(story.has("hesper_spoke") and not _npc("ned").recruited, "Hesper asks for her field back before Ned goes")
+	await _shot("09g_field", Vector3(244, 0.1, -10), -115, 0)
+	_check(_raise(_pinned("Hale")) == "raised" and story.has("hale_raised"), "Hale is raised from the east field")
+	_offer("hesper", "Tell her the east field")
+	Game.dialogue.close()
+	_check(Game.count("hat") >= 1, "Hesper gives her son's coat and hat")
+	_offer("ned", "\"The east field is free")
+	_choose("Welcome him")
+	_check(_npc("ned").recruited and story.has("ned_blessed"), "Ned goes with her blessing")
+	# Wren and the porter.
+	_offer("wren", "Ask her to become")
+	Game.dialogue.close()
+	var porter := _pinned("A porter")
+	porter.take_hit(999, Game.player.global_position)
+	porter.interact()
+	_choose("\"What happened to the Pilgrimage?\"")
+	_check(story.has("gornn_testimony"), "The porter tells what the last Pilgrimage was told")
+	_choose("\"They got home. All five")
+	Game.dialogue.close()
+	_check(story.has("porter_raised") and Game.count("old_sword") == 1, "Raised, it leaves the old sword")
+	_offer("wren", "Tell her about the tall one")
+	_check(_choose("\"It asked whether the others got home"), "Knowing its story opens a third thing to say to Wren")
+	_choose("Welcome her")
+	_check(_npc("wren").recruited and story.has("wren_truth"), "Wren joins knowing the truth")
+	# The pyre, the far bank, and Ivo.
+	_offer("pell", "He has something to ask")
+	Game.dialogue.close()
+	story.tam()
+	_choose("Leave him to the fire")
+	Game.dialogue.close()
+	_check(story.has("tam_burned"), "Tam can be left to the fire")
+	_check(Game.story.actions(_npc("ivo")).filter(func(a): return String(a[0]).begins_with("Tell him what stands")).is_empty(), "Ivo cannot be told about the far bank before it has been seen")
+	await _shot("09h_ash", Vector3(308, 0.1, 20), -90, 0)
+	Game.player.global_position = Game.main.ground(Vector3(322, 0, 20)) + Vector3(0, 0.1, 0)
+	for f in 5:
+		await get_tree().process_frame
+	_check(story.has("ash_seen"), "Crossing the footbridge shows what burning does")
+	_offer("ivo", "Tell him what stands")
+	_choose("\"It was the best anyone here could do")
+	_choose("Welcome him")
+	_check(_npc("ivo").recruited and story.has("ivo_taught"), "Told gently, Ivo asks to be taught")
+	# The camp.
+	await _shot("09i_camp", Vector3(140, 0.1, -104), -130, -2)
+	story.journal()
+	Game.dialogue.close()
+	_check(story.has("camp_journal"), "The pilgrims' journal can be read")
+	_check(Game.register_count() == 12, "Register stands at 12")
+	var tale: String = story.epilogue()
+	_check(tale.contains("ferry pole lies along the planks") and tale.contains("harvest money") and tale.contains("lamp at the high ford") and tale.contains("flour bag") and tale.contains("smoke came down"), "The epilogue tells what these choices led to")
+	# A different choice reads differently.
+	Game.flags.erase("ned_blessed")
+	Game.flags["ned_taken"] = true
+	_check(story.epilogue().contains("Nobody cut the east field"), "A different choice gives a different epilogue")
+	Game.flags.erase("ned_taken")
+	Game.flags["ned_blessed"] = true
 
 	# Minds: the same act lands differently on different people, and word spreads.
 	var MindScript = load("res://scripts/mind.gd")
@@ -309,7 +384,7 @@ func _run() -> void:
 		if n.has_method("empty") and n.title == "the carter's crate":
 			crate = n
 	crate.interact()
-	_check(Game.count("coat") == 1 and crate.empty(), "An unowned crate can be searched without offence")
+	_check(Game.count("coat") >= 1 and crate.empty(), "An unowned crate can be searched without offence")
 
 	# Crime.
 	Game.player.global_position = Vector3(236, 0.1, -6.5)
@@ -325,7 +400,7 @@ func _run() -> void:
 	pell.take_hit(999, Game.player.global_position)
 	_check(not pell.alive, "A villager can be killed")
 	_check(Game.standing("tallow") < before - 0.2, "Those who saw it turn against the player")
-	_check(Game.pinned.size() == 7, "The victim will come back as one of the Pinned")
+	_check(Game.pinned.size() == 13, "The victim will come back as one of the Pinned")
 	var sack: Node = null
 	for n in get_tree().get_nodes_in_group("interact"):
 		if n.has_method("empty") and String(n.title).begins_with("Pell"):
@@ -393,13 +468,14 @@ func _run() -> void:
 	# Amends.
 	var grieved: Node = null
 	for n in Game.villagers("tallow"):
-		if n.hostile() and grieved == null:
+		if n.mind.remembers("violence") and (grieved == null or n.mind.feeling() < grieved.mind.feeling()):
 			grieved = n
 	Game.coins = 100
 	grieved.aggro = false
+	var sore: float = grieved.mind.feeling()
 	grieved._amends(60)
-	print("    After amends %s feels %.2f" % [grieved.npc_name, grieved.mind.feeling()])
-	_check(not grieved.hostile(), "Paying amends lets someone speak to the player again")
+	print("    Amends moved %s from %.2f to %.2f" % [grieved.npc_name, sore, grieved.mind.feeling()])
+	_check(grieved.mind.feeling() > sore and not grieved.hostile(), "Paying amends lets someone speak to the player again")
 	var seen_it := 0
 	var hostile_now := 0
 	for n in Game.villagers("tallow"):
@@ -433,10 +509,16 @@ func _run() -> void:
 	_check(Game.battle.result == "wrestled" and Game.coins != 20, "A match is pulled to three pins and coin changes hands")
 	_press("Continue")
 
-	_check(harry.topics().has("I've brought three from Tallow Ford"), "Harry can be told about the three recruits")
-	harry.topic_text("I've brought three from Tallow Ford")
+	_check(_offer("harry", "\"I've brought three"), "Harry can be told")
+	_choose("Tell him what the last Pilgrimage was told")
+	_choose("\"Nobody yet. But people should know.\"")
 	await _shot("10_end", Game.RHODES_SPAWN, 25)
-	_check(Game.flags.has("slice_done"), "The slice can be completed")
+	_check(Game.flags.has("slice_done") and Game.flags.has("will_tell"), "The chapter ends with the epilogue, and what was said to Harry is remembered")
+	# A lie holds only until it is found out.
+	var before_n: int = Game.recruits.size()
+	Game.flags["mara_lied"] = true
+	story._mara_finds_out()
+	_check(Game.recruits.size() == before_n - 1 and story.has("mara_gone"), "A lie about Oswin costs Mara when she finds out")
 
 	print("SELFTEST %s (%d failed)" % ["OK" if _fails == 0 else "FAILED", _fails])
 	get_tree().quit(1 if _fails > 0 else 0)

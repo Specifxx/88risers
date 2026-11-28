@@ -16,6 +16,7 @@ const Asia = preload("res://scripts/asia.gd")
 const LootScript = preload("res://scripts/loot.gd")
 const InventoryScript = preload("res://scripts/inventory.gd")
 const PropScript = preload("res://scripts/prop.gd")
+const StoryScript = preload("res://scripts/story.gd")
 
 const R := Game.RING_RADIUS
 const ROAD := [Vector3(30, 0, 0), Vector3(70, 0, 0), Vector3(120, 0, -18), Vector3(180, 0, 8), Vector3(228, 0, 20)]
@@ -28,6 +29,9 @@ var _sun: DirectionalLight3D
 var _env: Environment
 var _sky_mat: ProceduralSkyMaterial
 var _cloud_mat: ShaderMaterial
+var _pyre_fire: MeshInstance3D
+var _pyre_body: MeshInstance3D
+var _pyre_light: OmniLight3D
 
 func _ready() -> void:
 	Game.main = self
@@ -36,12 +40,15 @@ func _ready() -> void:
 	terrain = TerrainScript.new()
 	add_child(terrain)
 	terrain.setup(ROAD, VILLAGE, R)
+	Game.story = StoryScript.new()
+	add_child(Game.story)
 	_rhodes()
 	_road()
 	_tallow_ford()
 	_wilds()
 	_people()
 	_containers()
+	_places()
 	_player_and_ui()
 	Game.changed.connect(_on_changed)
 	_on_changed()
@@ -372,8 +379,18 @@ func _tallow_ford() -> void:
 	# Ivo's pyre.
 	for i in 6:
 		Build.tbox(self, Vector3(2.6, 0.25, 0.3), Vector3(209, 0.2 + i * 0.24, 6), "wood", Color(0.4, 0.3, 0.25)).rotation.y = i * 0.6
-	Build.sphere(self, 0.35, Vector3(209, 1.8, 6), Color(1.0, 0.45, 0.1), 1.4)
+	_pyre_fire = Build.sphere(self, 0.35, Vector3(209, 1.8, 6), Color(1.0, 0.45, 0.1), 1.4)
+	_pyre_fire.visible = false
+	_pyre_body = Build.tbox(self, Vector3(1.9, 0.32, 0.55), Vector3(209, 1.85, 6), "paper", Color(0.95, 0.93, 0.88))
+	for bx in [-0.6, 0.6]:
+		Build.tbox(_pyre_body, Vector3(0.05, 0.34, 0.57), Vector3(bx, 0, 0), "darkwood")
+	var tam := Thing.new()
+	tam.setup("Tam Pell, wrapped for burning", Game.story.tam)
+	add_child(tam)
+	tam.position = Vector3(209.9, 0.4, 7.3)
 	var pyre := OmniLight3D.new()
+	_pyre_light = pyre
+	pyre.visible = false
 	pyre.light_color = Color(1.0, 0.55, 0.2)
 	pyre.omni_range = 8.0
 	add_child(pyre)
@@ -628,7 +645,9 @@ func _people() -> void:
 	for d in Data.VILLAGERS:
 		_add_npc(d, false)
 	for e in Data.ROAD_PINNED:
-		_add_pinned(Data.SPIRITS[e[0]], e[1], 0.0)
+		var sp: Dictionary = Data.SPIRITS[e[0]].duplicate()
+		sp["id"] = e[0]
+		_add_pinned(sp, e[1], 0.0)
 
 func _add_npc(d: Dictionary, founder: bool) -> void:
 	var n: Node3D = NpcScript.new()
@@ -649,6 +668,64 @@ func drop_loot(title: String, items: Dictionary, coin: int, at: Vector3, owned_b
 	l.setup(title, items, coin, owned_by, village, sack, lifetime)
 	l.global_position = ground(at) if sack else at
 	return l
+
+func pyre_out() -> void:
+	_pyre_body.visible = false
+
+func pyre_lit() -> void:
+	_pyre_body.visible = false
+	_pyre_fire.visible = true
+	_pyre_fire.scale = Vector3(2.4, 3.2, 2.4)
+	_pyre_light.visible = true
+	_pyre_light.light_energy = 3.0
+
+## Places off the road that reward going to look.
+func _places() -> void:
+	# The east field: barley nobody dares cut.
+	for i in 70:
+		var bp := Vector3(258 + randf_range(-11, 11), 0, -18 + randf_range(-9, 9))
+		var blade := Build.model(self, "nature/Grass_Wispy_Tall", ground(bp), randf() * TAU, randf_range(1.3, 1.9))
+		Build.foliage(blade)
+	# The weir: old cut stones across the river, and a drowned shrine.
+	for i in 11:
+		var wx := 268.0 + i * 3.1
+		Build.tbox(self, Vector3(randf_range(1.6, 2.6), randf_range(1.2, 2.4), randf_range(1.4, 2.2)), Vector3(wx, -1.4 + randf_range(0, 0.5), 138 + randf_range(-0.8, 0.8)), "stone", Color(0.6, 0.66, 0.62), true, 0.5).rotation.y = randf_range(-0.2, 0.2)
+	for sx in [-1.0, 1.0]:
+		Build.tcyl(self, 0.4, 0.45, 4.5, ground(Vector3(274 + sx * 2.2, 0, 128)) + Vector3(0, 1.6, 0), "stone", Color(0.6, 0.66, 0.62), 8, true).rotation.z = sx * 0.2
+	Asia.roof(self, 5.0, 3.0, ground(Vector3(274, 0, 128)) + Vector3(0, 3.4, 0), 1.2, 0.8, Color(0.7, 0.8, 0.75)).rotation.z = 0.12
+	Asia.stone_lantern(self, ground(Vector3(270, 0, 124)), false)
+	# The ash field, over the footbridge, where the smoke comes down.
+	var grey := StandardMaterial3D.new()
+	grey.albedo_color = Color(0.36, 0.35, 0.35)
+	grey.roughness = 1.0
+	for i in 60:
+		var ap := Vector3(326 + randf_range(-17, 17), 0, 20 + randf_range(-15, 15))
+		var disc := Build.cyl(self, 1.0, 1.0, 0.02, ground(ap) + Vector3(0, 0.06 + i * 0.0006, 0), Color.WHITE, 8)
+		disc.material_override = grey
+		disc.scale = Vector3(randf_range(2.5, 5.5), 1, randf_range(2.5, 5.5))
+		if i % 4 == 0:
+			Build.tcyl(self, 0.06, 0.1, randf_range(1.0, 2.2), ground(ap) + Vector3(0, 0.7, 0), "darkwood", Color(0.2, 0.2, 0.2), 5).rotation.z = randf_range(-0.3, 0.3)
+	for dp in [Vector3(314, 0, 8), Vector3(338, 0, 30), Vector3(332, 0, 6)]:
+		Build.foliage(Build.model(self, "nature/DeadTree_%d" % (1 + randi() % 3), ground(dp), randf() * TAU, 1.2))
+	# The camp of the last Pilgrimage, in the hills north of the road.
+	var camp := ground(Vector3(150, 0, -112))
+	for t in [Vector3(-4, 0, -2), Vector3(3.5, 0, -3), Vector3(0.5, 0, 4)]:
+		var tent := Build.tcyl(self, 0.0, 2.2, 2.2, ground(camp + t) + Vector3(0, 1.0, 0), "cloth", Color(0.45, 0.42, 0.4), 4, true)
+		tent.rotation.y = randf() * TAU
+		tent.scale = Vector3(1.0, 1.0 - randf() * 0.35, 1.3)
+	for i in 8:
+		Build.tsphere(self, 0.22, ground(camp + Vector3(cos(i * 0.785) * 0.9, 0, sin(i * 0.785) * 0.9)) + Vector3(0, 0.1, 0), "rock")
+	var fallen := Asia.quad(self, Vector2(1.0, 2.5), camp + Vector3(2.2, 0.12, 1.5), 0.4, "ui/banner.png", true, 0.0, true)
+	fallen.rotation.x = -PI / 2.0
+	for dt in [Vector3(-7, 0, 3), Vector3(7, 0, 2)]:
+		Build.foliage(Build.model(self, "nature/DeadTree_1", ground(camp + dt), randf() * TAU, 1.6))
+	drop_loot("a pilgrim's chest", {"shield": 1, "poultice": 2, "wine": 1, "strap": 2}, 30, ground(camp + Vector3(-3.4, 0, -0.4)), "", "", false, -1.0)
+	var book := Thing.new()
+	book.setup("Read the pilgrims' journal", Game.story.journal)
+	add_child(book)
+	book.position = ground(camp + Vector3(1.0, 0, -1.2))
+	Build.tbox(self, Vector3(0.4, 0.08, 0.3), ground(camp + Vector3(1.0, 0, -1.2)) + Vector3(0, 0.3, 0), "darkwood")
+	Build.tbox(self, Vector3(0.7, 0.26, 0.5), ground(camp + Vector3(1.0, 0, -1.2)) + Vector3(0, 0.13, 0), "rock")
 
 func _prop(kind: String, at: Vector3) -> void:
 	var p: RigidBody3D = PropScript.new()
