@@ -3,22 +3,70 @@ extends RefCounted
 
 const TOPIC_JOIN := "Becoming a Riser"
 
-## How each person looks: outfit, hair and colours. Placeholders until real designs exist.
+## How each person looks. The six founders with cards on 88risers.com follow those cards:
+## hair, beard, build and what they wear. Tommy and Luie have no card yet.
+const BLACK := Color(0.2, 0.2, 0.22)
 const LOOKS := {
-	"harry": {"body": "Male_Ranger", "hair": "Hair_SimpleParted", "tint": Color(1.0, 0.86, 0.5)},
-	"george": {"body": "Male_Peasant", "hair": "Hair_Buzzed", "tint": Color(0.9, 0.6, 0.55)},
-	"phillip": {"body": "Male_Ranger", "hair": "Hair_Buzzed", "cloth": "T_Ranger_3_BaseColor.jpg"},
-	"bhavya": {"body": "Male_Peasant", "hair": "Hair_SimpleParted", "cloth": "T_Peasant_2_BaseColor.jpg"},
-	"kelvin": {"body": "Male_Ranger", "hood": true, "tint": Color(0.7, 0.72, 0.8)},
-	"tommy": {"body": "Male_Peasant", "hair": "Hair_Buzzed", "tint": Color(0.62, 0.82, 1.0)},
-	"luie": {"body": "Male_Ranger", "hair": "Hair_SimpleParted", "tint": Color(0.4, 0.4, 0.46)},
-	"erick": {"body": "Male_Ranger", "hood": true, "cloth": "T_Ranger_3_BaseColor.jpg", "tint": Color(1.0, 0.9, 0.72)},
+	"harry": {"body": "Male_Peasant", "hair": "Hair_SimpleParted", "tint": Color(0.95, 0.95, 0.98), "cloth": "T_Peasant_2_BaseColor.jpg", "build": 0.95, "portrait": "harry"},
+	"george": {"body": "Male_Peasant", "hair": "Hair_SimpleParted", "tint": BLACK, "portrait": "george"},
+	"phillip": {"body": "Male_Peasant", "hair": "Hair_SimpleParted", "tint": Color(1.0, 0.22, 0.2), "build": 1.1, "portrait": "phillip"},
+	"bhavya": {"body": "Male_Peasant", "hair": "Hair_Long", "beard": true, "tint": Color(0.42, 0.42, 0.45), "portrait": "bhavya"},
+	"kelvin": {"body": "Male_Peasant", "hair": "Hair_SimpleParted", "tint": BLACK, "build": 1.2, "portrait": "kelvin"},
+	"tommy": {"body": "Male_Peasant", "hair": "Hair_Buzzed", "tint": BLACK},
+	"luie": {"body": "Male_Peasant", "hair": "Hair_SimpleParted", "tint": BLACK},
+	"erick": {"body": "Male_Peasant", "hair": "Hair_Buzzed", "tint": BLACK, "portrait": "erick"},
 	"mara": {"body": "Female_Peasant", "hair": "Hair_Long", "tint": Color(0.68, 0.84, 1.0)},
 	"ned": {"body": "Male_Peasant", "hair": "Hair_Buzzed"},
 	"ivo": {"body": "Male_Peasant", "hair": "Hair_Buzzed", "beard": true, "tint": Color(1.0, 0.6, 0.5)},
 	"pell": {"body": "Male_Peasant", "hair": "Hair_SimpleParted", "beard": true, "cloth": "T_Peasant_2_BaseColor.jpg", "tint": Color(0.8, 0.75, 0.95)},
 	"hesper": {"body": "Female_Peasant", "hair": "Hair_Buns", "cloth": "T_Peasant_2_BaseColor.jpg", "hair_tint": Color(0.8, 0.8, 0.8)},
 	"wren": {"body": "Female_Ranger", "hair": "Hair_Long", "hair_tint": Color(0.45, 0.25, 0.12)},
+}
+
+## Temperament, the fixed part of each mind: how readily good and bad experiences change
+## them, where they start with a stranger, and how much they talk.
+const MINDS := {
+	"harry": {"open": 1.0, "grudge": 1.0, "warmth": 0.2, "chatty": 0.5},
+	"george": {"open": 1.0, "grudge": 0.8, "warmth": 0.2, "chatty": 0.7},
+	"phillip": {"open": 0.7, "grudge": 1.3, "warmth": 0.0, "chatty": 0.3},
+	"bhavya": {"open": 1.3, "grudge": 0.6, "warmth": 0.4, "chatty": 0.6},
+	"kelvin": {"open": 0.8, "grudge": 1.2, "warmth": 0.0, "chatty": 0.3},
+	"tommy": {"open": 1.1, "grudge": 0.9, "warmth": 0.3, "chatty": 0.9},
+	"luie": {"open": 0.8, "grudge": 1.0, "warmth": 0.0, "chatty": 0.3},
+	"erick": {"open": 1.0, "grudge": 0.9, "warmth": 0.2, "chatty": 0.6},
+	"mara": {"open": 0.9, "grudge": 1.1, "warmth": 0.0, "chatty": 0.4},
+	"ned": {"open": 1.4, "grudge": 0.5, "warmth": 0.4, "chatty": 0.9},
+	"ivo": {"open": 0.35, "grudge": 1.6, "warmth": -0.4, "chatty": 0.6},
+	"pell": {"open": 0.7, "grudge": 1.5, "warmth": -0.1, "chatty": 0.8},
+	"hesper": {"open": 0.9, "grudge": 0.8, "warmth": 0.1, "chatty": 1.0},
+	"wren": {"open": 1.25, "grudge": 1.1, "warmth": -0.1, "chatty": 0.4},
+}
+
+## Where people drift to when they are not at their post.
+const SPOTS := {
+	"rhodes": [Vector3(21.5, 0, 12.5), Vector3(18.5, 0, 15.5), Vector3(2, 0, 2.5), Vector3(-3, 0, 3), Vector3(12, 0, -10.5), Vector3(31, 0, 1.5), Vector3(-16, 0, 6)],
+	"tallow": [Vector3(231.6, 0, 23.4), Vector3(228.3, 0, 21.2), Vector3(212, 0, 8.5), Vector3(236, 0, 7.5), Vector3(207, 0, 17.5), Vector3(226, 0, 31)],
+}
+
+## Things people say aloud as you pass, by how they feel about you.
+const BARKS := {
+	"trusting": ["Pilgrim! Good to see you.", "Walk safe out there.", "If you need anything, ask."],
+	"friendly": ["Morning, pilgrim.", "Still in one piece, I see.", "Back again?"],
+	"reserved": ["Pilgrim.", "...", "Hm."],
+	"used to you": ["You again.", "Pilgrim.", "Still here, then."],
+	"wary": ["I'm watching you.", "Keep walking.", "Mind yourself."],
+	"hostile": ["Stay away from me.", "We know what you did.", "Get out."],
+}
+
+## What they pass on to each other, and what you overhear.
+const GOSSIP := {
+	"raised": "They say the road's quieter. The pilgrim raised one for good.",
+	"raised_kin": "Oswin's gone from the jetty. Risen, Mara says.",
+	"theft": "Pell's strongbox was emptied. The pilgrim was seen at it.",
+	"violence": "%s is dead. It was the pilgrim.",
+	"gift": "The pilgrim's been handing out chalk.",
+	"trained": "Ned's been out past the fence with the pilgrim. Standing his ground, too.",
+	"helped": "The pilgrim did right by one of ours.",
 }
 
 const FOUNDERS := [

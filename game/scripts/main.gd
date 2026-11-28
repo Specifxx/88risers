@@ -40,6 +40,10 @@ func _ready() -> void:
 		var t: Node = load("res://scripts/selftest.gd").new()
 		add_child(t)
 
+func _process(dt: float) -> void:
+	if not Game.modal:
+		Game.hour = fposmod(Game.hour + dt * 24.0 / 720.0, 24.0)
+
 func _on_changed() -> void:
 	if _register_label:
 		_register_label.text = "THE REGISTER\n%d / %d" % [Game.register_count(), Game.QUOTA]
@@ -259,16 +263,15 @@ func _steal() -> void:
 	Game.flags["stolen"] = true
 	Game.coins += 30
 	Game.straps += 2
-	var seen := Game.witnesses(Vector3(236, 0, -5.8), null, 9.0)
+	var seen := Game.deed("theft", -0.9, 2.5, Vector3(236, 0, -5.8), "tallow", "strongbox", 11.0)
 	if seen.size() > 0:
-		Game.rep["tallow"] -= 35
-		Game.say("%s saw you with your hands in the strongbox. Thirty coin and two straps, and the whole village will know by dark." % seen[0].npc_name)
+		Game.say("%s saw you with your hands in the strongbox. Thirty coin and two straps, and they will tell the others." % seen[0].npc_name)
 	else:
-		Game.say("Thirty coin and two straps. Nobody saw.")
-		Game.flags["unseen_theft"] = true
+		Game.say("Thirty coin and two straps. Nobody saw. Pell will find it empty, and wonder.")
 	for n in Game.npcs:
-		if n.id == "pell":
-			n.disp -= 40
+		if n.id == "pell" and n.alive and not seen.has(n):
+			# He did not see who, so he suspects the stranger without being sure.
+			n.mind.experience("theft", -0.5, 1.2, false, "")
 	Game.note("You robbed Pell's strongbox at Tallow Ford.")
 	Game.touch()
 

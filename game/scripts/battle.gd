@@ -268,8 +268,7 @@ func _oswin_raised() -> void:
 		if n.id == "mara" and n.alive:
 			n.willing = 90
 			n.willing_cap = 100
-			n.disp += 30
-			n.remember("raised_father")
+			n.mind.experience("raised_kin", 1.0, 4.0, true, "Oswin")
 	Game.note("Oswin Quill has risen. Mara should be told.")
 
 func _finish(r: String) -> void:

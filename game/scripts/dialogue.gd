@@ -9,6 +9,9 @@ var _name: Label
 var _sub: Label
 var _text: RichTextLabel
 var _list: VBoxContainer
+var _portrait: TextureRect
+var _mind: Label
+var _neurons: HBoxContainer
 
 func _ready() -> void:
 	layer = 15
@@ -27,12 +30,29 @@ func _ready() -> void:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 22)
 	p.add_child(h)
+	_portrait = TextureRect.new()
+	_portrait.custom_minimum_size = Vector2(250, 0)
+	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	h.add_child(_portrait)
 	var left := VBoxContainer.new()
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left.size_flags_stretch_ratio = 1.5
 	h.add_child(left)
 	_name = UI.text(left, "", 28, UI.GOLD)
 	_sub = UI.text(left, "", 16, Color(0.7, 0.68, 0.6))
+	var mind_row := HBoxContainer.new()
+	mind_row.add_theme_constant_override("separation", 10)
+	left.add_child(mind_row)
+	_neurons = HBoxContainer.new()
+	_neurons.add_theme_constant_override("separation", 3)
+	mind_row.add_child(_neurons)
+	for i in 10:
+		var dot := ColorRect.new()
+		dot.custom_minimum_size = Vector2(12, 12)
+		_neurons.add_child(dot)
+	_mind = UI.text(mind_row, "", 15, Color(0.75, 0.72, 0.62))
+	_mind.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_text = UI.rich(left, 20)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -50,6 +70,10 @@ func active() -> bool:
 func open(n: Node) -> void:
 	npc = n
 	_name.text = n.npc_name
+	var pic: String = n.portrait()
+	_portrait.visible = pic != ""
+	if pic != "":
+		_portrait.texture = load("res://assets/portraits/%s.jpg" % pic)
 	_text.clear()
 	_text.append_text(n.greeting() + "\n")
 	_root.visible = true
@@ -67,8 +91,20 @@ func _unhandled_input(ev: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		close()
 
+## Their mind, as much as you can read of it: how they seem towards you, how well they
+## know you, and the units of their network firing as they think about you.
+func _show_mind() -> void:
+	var m = npc.mind
+	m.feeling()
+	for i in _neurons.get_child_count():
+		var a: float = m.activity[i]
+		(_neurons.get_child(i) as ColorRect).color = Color(0.25, 0.22, 0.2).lerp(Color(0.95, 0.75, 0.3) if a > 0.0 else Color(0.45, 0.6, 0.95), absf(a))
+	var known := "a stranger to them" if m.familiarity < 0.2 else ("knows you a little" if m.familiarity < 0.6 else "knows you well")
+	_mind.text = "Seems %s  ·  %s  ·  remembers %d thing%s about you" % [m.state_word(), known, m.memories.size(), "" if m.memories.size() == 1 else "s"]
+
 func _rebuild() -> void:
 	_sub.text = npc.role
+	_show_mind()
 	UI.clear(_list)
 	for t in npc.topics():
 		UI.button(_list, t, _ask.bind(t), 17)

@@ -62,7 +62,8 @@ func raise_up() -> void:
 	state = "gone"
 	_show_down()
 	Game.raised += 1
-	Game.rep["tallow"] += 10
+	Game.word("raised", 0.9, 1.0, "tallow", spirit["name"])
+	Game.word("raised", 0.6, 0.5, "rhodes", spirit["name"])
 
 func face_off() -> void:
 	Character.play(_body, "Sword_Idle")

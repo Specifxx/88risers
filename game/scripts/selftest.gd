@@ -125,7 +125,10 @@ func _run() -> void:
 	await get_tree().create_timer(0.4).timeout
 	_check(carter.state == "roam", "...and it gets back up")
 
+	_check(not _npc("wren").can_join(), "Wren does not trust a stranger")
 	_check(_raise(carter) == "raised", "Chalk, strap and rite raise the carter for good")
+	print("    Wren after one raised: disposition %d" % _npc("wren").eff_disp())
+	_check(not _npc("wren").can_join(), "One raised Pinned is not enough for Wren")
 	_check(carter.state == "gone", "A raised Pinned does not return")
 	_check(_raise(_pinned("Pip")) == "raised", "The child is raised")
 
@@ -147,6 +150,7 @@ func _run() -> void:
 	await _shot("09d_hills", Vector3(150, 0.1, -6), -60, 2)
 
 	var wren := _npc("wren")
+	print("    Wren after two raised: disposition %d, feeling %.2f" % [wren.eff_disp(), wren.mind.feeling()])
 	_check(wren.can_join(), "Wren will join once two Pinned have been raised")
 	wren.topic_text("Becoming a Riser")
 	_check(wren.recruited, "Wren is recruited")
@@ -175,17 +179,57 @@ func _run() -> void:
 	_check(not ivo.recruited and not _npc("pell").can_join() and not _npc("hesper").can_join(), "The other three villagers cannot be recruited")
 	_check(Game.register_count() == 11, "Register stands at 11")
 
+	# Minds: the same act lands differently on different people, and word spreads.
+	var MindScript = load("res://scripts/mind.gd")
+	var Data = load("res://scripts/data.gd")
+	var guarded = MindScript.new()
+	guarded.setup("a", Data.MINDS["ivo"])
+	var easy = MindScript.new()
+	easy.setup("a", Data.MINDS["ned"])
+	var g0: float = guarded.feeling()
+	var e0: float = easy.feeling()
+	guarded.experience("gift", 0.7, 1.0)
+	easy.experience("gift", 0.7, 1.0)
+	print("    The same gift moves guarded Ivo by %.2f and open Ned by %.2f" % [guarded.feeling() - g0, easy.feeling() - e0])
+	_check(easy.feeling() - e0 > (guarded.feeling() - g0) * 1.3, "The same gift warms an open person more than a guarded one")
+	guarded.experience("theft", -0.9, 2.5)
+	easy.experience("theft", -0.9, 2.5)
+	print("    After also being robbed: Ivo %.2f, Ned %.2f" % [guarded.feeling(), easy.feeling()])
+	_check(guarded.feeling() < easy.feeling(), "A wrong sinks deeper into someone who holds grudges")
+	_check(easy.expects("trade") > easy.expects("theft"), "They expect different things from you in different situations")
+
 	# Crime.
 	Game.player.global_position = Vector3(236, 0.1, -6.5)
 	Game.main._steal()
 	_check(Game.flags.has("stolen"), "The strongbox can be robbed")
-	var before: int = Game.rep["tallow"]
+	var before: float = Game.standing("tallow")
 	Game.battle.start_npc(_npc("pell"))
 	_beat_down()
 	_press("Continue")
 	_check(not _npc("pell").alive, "A villager can be killed")
-	_check(Game.rep["tallow"] < before, "Witnesses turn the village against the player")
+	_check(Game.standing("tallow") < before - 0.2, "Those who saw it turn against the player")
 	_check(Game.pinned.size() == 7, "The victim will come back as one of the Pinned")
+	var seen_it := 0
+	var hostile_now := 0
+	for n in Game.villagers("tallow"):
+		if n.mind.remembers("violence"):
+			seen_it += 1
+		if n.hostile():
+			hostile_now += 1
+	print("    %d villagers know about the killing; %d are now hostile" % [seen_it, hostile_now])
+	_check(hostile_now >= 1, "People who saw the killing refuse to speak to the player")
+	# Word of mouth: someone who knows tells someone who does not.
+	var teller: Node = null
+	var hearer: Node = null
+	for n in Game.villagers("tallow"):
+		if n.mind.remembers("violence") and teller == null:
+			teller = n
+	for n in Game.villagers("rhodes"):
+		if hearer == null:
+			hearer = n
+	var h_before: float = hearer.mind.feeling()
+	_check(hearer.mind.hear(teller.mind.gossip()), "News can be passed from one person to another")
+	_check(hearer.mind.feeling() < h_before, "Hearing of a killing lowers their opinion without having seen it")
 
 	_check(harry.topics().has("I've brought three from Tallow Ford"), "Harry can be told about the three recruits")
 	harry.topic_text("I've brought three from Tallow Ford")

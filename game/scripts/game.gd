@@ -20,7 +20,8 @@ var raised := 0
 var recruits: Array = []
 var founders_alive := 8
 var journal: Array = []
-var rep := {"rhodes": 20, "tallow": 0}
+## Hour of the day, 0-24. A full day takes about twelve minutes.
+var hour := 9.0
 var flags := {}
 var modal := true
 
@@ -78,6 +79,41 @@ func eat() -> bool:
 	hp = min(max_hp, hp + 12)
 	touch()
 	return true
+
+func villagers(village: String) -> Array:
+	var out: Array = []
+	for n in npcs:
+		if n.alive and n.village == village:
+			out.append(n)
+	return out
+
+## Average feeling towards the player in a village (-1..1).
+func standing(village: String) -> float:
+	var v := villagers(village)
+	if v.is_empty():
+		return 0.0
+	var t := 0.0
+	for n in v:
+		t += n.mind.feeling()
+	return t / v.size()
+
+## Something the player did. Those close enough saw it; the rest of the village
+## only learns of it if somebody tells them.
+func deed(kind: String, valence: float, weight: float, at: Vector3, village: String, about: String, radius := 22.0) -> Array:
+	var seen: Array = []
+	for n in villagers(village):
+		if n.global_position.distance_to(at) < radius:
+			n.mind.experience(kind, valence, weight, true, about)
+			seen.append(n)
+	return seen
+
+## News that reaches a whole village by word of mouth, such as a quiet road.
+func word(kind: String, valence: float, weight: float, village: String, about: String) -> void:
+	for n in villagers(village):
+		n.mind.experience(kind, valence, weight, false, about)
+
+func is_night() -> bool:
+	return hour < 5.5 or hour > 20.5
 
 ## Anyone alive and near enough to see what the player just did.
 func witnesses(at: Vector3, except: Node = null, radius := 22.0) -> Array:
