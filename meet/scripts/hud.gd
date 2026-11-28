@@ -598,6 +598,7 @@ func _build_bag() -> void:
 	var sc := ScrollContainer.new()
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.scroll_deadzone = 12
 	mid.add_child(sc)
 	_bag_list = VBoxContainer.new()
 	_bag_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -678,6 +679,9 @@ func _tile(parent: Node, id: String) -> void:
 	b.add_theme_color_override("font_color", UI.GOLD if on else (UI.PAPER if have else Color(0.5, 0.48, 0.44)))
 	b.add_theme_color_override("font_disabled_color", Color(0.5, 0.48, 0.44))
 	b.disabled = not have
+	# Let a finger that starts on a tile still drag the list: a tile that swallows the touch
+	# is why scrolling only worked from the gaps.
+	b.mouse_filter = Control.MOUSE_FILTER_PASS
 	b.pressed.connect(func():
 		_bag_dirty = true
 		Meet.wear(id))

@@ -47,6 +47,7 @@ static func button(parent: Node, t: String, cb: Callable, size := 18) -> Button:
 	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	b.add_theme_font_size_override("font_size", size)
 	b.focus_mode = Control.FOCUS_NONE
+	b.mouse_filter = Control.MOUSE_FILTER_PASS   # so a list of these can still be dragged by touch
 	var n := StyleBoxFlat.new()
 	n.bg_color = Color(0.16, 0.13, 0.11)
 	n.set_corner_radius_all(4)

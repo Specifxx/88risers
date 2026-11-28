@@ -62,6 +62,7 @@ func _ready() -> void:
 	_sub.custom_minimum_size = Vector2(260, 0)
 	_text = UI.rich(left, 20)
 	var scroll := ScrollContainer.new()
+	scroll.scroll_deadzone = 12
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	h.add_child(scroll)
