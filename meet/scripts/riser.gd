@@ -2171,7 +2171,7 @@ func cone_on() -> String:
 	coned = true
 	Meet.cone_with = id
 	Wear.hold(_figure, Wear.model("cone"), "Head", "Cone")
-	Meet.dare("cone")
+	Meet.dare("cone", id)
 	Meet.main.stir(global_position, ["HA!", "Leave it on!", "Suits you.", "Somebody get a photo."], 10.0, 0.7, false)
 	Meet.sfx("laugh", -6.0)
 	var lvl := mood_level()
