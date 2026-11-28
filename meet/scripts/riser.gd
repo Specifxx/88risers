@@ -1696,6 +1696,10 @@ func confront(kind := "beef", text := "") -> void:
 	if passer:
 		bolt(1.6)
 		return
+	if Meet.main.invaded():
+		# Not while there are aliens on the plaza. It keeps.
+		say_aloud("We are NOT done. After this.", 3.0)
+		return
 	Meet.main.drop_match(self)
 	confront_kind = kind
 	confront_text = text

@@ -41,6 +41,56 @@ func _run() -> void:
 	var p: Node3D = Meet.player
 	await wait(2.0)
 	await shot("01_arrive")
+	# Phone controls: a thumb on the left moves the stick; a drag on the right turns the view.
+	var first := InputEventScreenTouch.new()
+	first.index = 5
+	first.pressed = true
+	first.position = Vector2(640, 60)
+	Input.parse_input_event(first)
+	await wait(0.2)
+	first = InputEventScreenTouch.new()
+	first.index = 5
+	first.pressed = false
+	first.position = Vector2(640, 60)
+	Input.parse_input_event(first)
+	await wait(0.2)
+	var tch0 := InputEventScreenTouch.new()
+	tch0.index = 0
+	tch0.pressed = true
+	tch0.position = Vector2(260, 480)
+	Input.parse_input_event(tch0)
+	await wait(0.2)
+	check(Meet.touch, "the first touch switches to phone controls")
+	var drg0 := InputEventScreenDrag.new()
+	drg0.index = 0
+	drg0.position = Vector2(260, 400)
+	drg0.relative = Vector2(0, -80)
+	Input.parse_input_event(drg0)
+	var tch1 := InputEventScreenTouch.new()
+	tch1.index = 1
+	tch1.pressed = true
+	tch1.position = Vector2(760, 300)
+	Input.parse_input_event(tch1)
+	var yaw0: float = p.rotation.y
+	var drg1 := InputEventScreenDrag.new()
+	drg1.index = 1
+	drg1.position = Vector2(700, 300)
+	drg1.relative = Vector2(-60, 0)
+	Input.parse_input_event(drg1)
+	await wait(0.5)
+	check(Meet.stick.y < -0.8 and p.rotation.y != yaw0, "left thumb pushes forward (%.2f), right drag turns the view" % Meet.stick.y)
+	stand(Meet.main.NOTE_SPOTS[2] + Vector3(0, 0, 1.5), Meet.main.NOTE_SPOTS[2])
+	await wait(0.4)
+	await shot("01b_phone")
+	for tt in [tch0, tch1]:
+		var up := InputEventScreenTouch.new()
+		up.index = tt.index
+		up.pressed = false
+		up.position = tt.position
+		Input.parse_input_event(up)
+	await wait(0.2)
+	Meet.touch = false
+	Meet.stick = Vector2.ZERO
 	stand(Vector3(0, 0, 9.5), Vector3(0, 0, 0))
 	await wait(14.0)
 	await shot("02_plaza")
@@ -453,6 +503,13 @@ func _run() -> void:
 	if warner:
 		warner.idle()
 
+	for r in Meet.risers:
+		if r.state in ["confront", "scrap"]:
+			r._vs_player = false
+			r.idle()
+	Meet.menu._forced = false
+	Meet.menu.close()
+	Meet.heat = 0.0
 	# Visitors.
 	Meet.main.start_ufo()
 	await wait(7.0)

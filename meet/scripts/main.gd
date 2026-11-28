@@ -1162,6 +1162,10 @@ func _run_ufo(dt: float) -> void:
 			_ufo.queue_free()
 			_ufo_state = "gone"
 
+## True while the visitors are on the ground.
+func invaded() -> bool:
+	return _ufo_state in ["descend", "landed"]
+
 func aliens() -> Array:
 	return _aliens.filter(func(a): return is_instance_valid(a) and a.state != "winded")
 
@@ -1354,6 +1358,8 @@ func defend(victim: Node, kind: String) -> void:
 
 ## Somebody with standing comes over to tell the player off. Once is a warning. Twice is the gate.
 func warn(text: String, not_this_one: Node = null) -> void:
+	if invaded():
+		return
 	if Meet.warned:
 		Meet.hud.night_over("You were warned once already tonight.\n\nHarry doesn't raise his voice. He just points at the gate. \"Out. We'll talk about whether you come back.\"")
 		return

@@ -15,6 +15,14 @@ var _bag_people: VBoxContainer
 var _over_title: Label
 var _name_box: LineEdit
 var _heat: Label
+const STICK := 85.0
+var _knob: Panel
+var _stick_label: Label
+var _pads: Array = []
+var _use_pad: Button
+var _use_text: Button
+var _hint: Label
+var _hint_t := 9.0
 var _dares: VBoxContainer
 var _prompt: Label
 var _log: VBoxContainer
@@ -26,7 +34,7 @@ var _over: Control
 var _over_text: Label
 var _root: Control
 var _touch_ui: Control
-var _stick_base: Control
+var _stick_base: Panel
 var _stick_id := -1
 var _look_id := -1
 var _stick_origin := Vector2.ZERO
@@ -142,9 +150,22 @@ func _process(dt: float) -> void:
 	if Meet.player == null:
 		return
 	var t: Node = Meet.player.target if is_instance_valid(Meet.player.target) else null
-	var key := "Tap USE" if Meet.touch else "[E]"
-	_prompt.text = "%s  %s" % [key, t.prompt()] if t != null and not Meet.modal else ""
-	_touch_ui.visible = Meet.touch and not Meet.modal
+	_prompt.text = "[E]  %s" % t.prompt() if t != null and not Meet.modal and not Meet.touch else ""
+	_touch_ui.visible = Meet.touch and not Meet.modal and not _title.visible
+	if Meet.touch:
+		# The big button and the pill above the stick say exactly what a tap will do.
+		_use_text.visible = t != null
+		if t != null:
+			_use_text.text = t.prompt()
+		_use_pad.modulate.a = 1.0 if t != null else 0.35
+		if _touch_ui.visible and _hint_t > 0.0:
+			_hint_t -= dt
+			_hint.modulate.a = clamp(_hint_t, 0.0, 1.0)
+		_hint.visible = _hint_t > 0.0
+		if get_viewport().get_visible_rect().size.y > get_viewport().get_visible_rect().size.x:
+			_hint.visible = true
+			_hint.modulate.a = 1.0
+			_hint.text = "Turn your phone sideways to play."
 	_bar.value = Meet.composure
 	_stam.value = Meet.stamina
 	_clock.text = "%s  ·  Rhodes Amphitheatre  ·  ends 7:30" % Meet.time_text()
@@ -176,60 +197,155 @@ func _toast(t: String) -> void:
 
 # --- Touch ---------------------------------------------------------------------------
 
+func _round(size: float, fill: Color, edge: Color) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = fill
+	sb.border_color = edge
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(int(size / 2.0))
+	return sb
+
+func _pad(parent: Control, label: String, size: float, at: Vector2, cb: Callable, fill := Color(0.08, 0.07, 0.07, 0.6)) -> Button:
+	var b := Button.new()
+	b.text = label
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(size, size)
+	b.size = Vector2(size, size)
+	b.add_theme_font_size_override("font_size", int(size * 0.2))
+	b.add_theme_color_override("font_color", UI.PAPER)
+	b.add_theme_stylebox_override("normal", _round(size, fill, Color(UI.GOLD, 0.7)))
+	b.add_theme_stylebox_override("hover", _round(size, fill, Color(UI.GOLD, 0.7)))
+	b.add_theme_stylebox_override("pressed", _round(size, Color(0.5, 0.38, 0.15, 0.85), UI.GOLD))
+	# Anchored to the bottom-right corner; `at` is the centre, measured back from that corner.
+	b.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	b.offset_left = -at.x - size / 2.0
+	b.offset_right = -at.x + size / 2.0
+	b.offset_top = -at.y - size / 2.0
+	b.offset_bottom = -at.y + size / 2.0
+	b.button_down.connect(cb)
+	parent.add_child(b)
+	_pads.append(b)
+	return b
+
+## Phone controls: a thumbstick that appears under your left thumb, a big context button
+## that says what it will do, and everything else in reach of the right thumb.
 func _build_touch() -> void:
 	_touch_ui = Control.new()
 	_touch_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_touch_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_touch_ui)
-	_stick_base = UI.panel(_touch_ui, Color(1, 1, 1, 0.1))
-	_stick_base.custom_minimum_size = Vector2(150, 150)
-	_stick_base.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	_stick_base.offset_left = 40
-	_stick_base.offset_top = -200
-	_stick_base.offset_right = 190
-	_stick_base.offset_bottom = -50
+	# The stick: a ring and a knob. It rests bottom-left and jumps to wherever the thumb lands.
+	_stick_base = Panel.new()
+	_stick_base.size = Vector2(STICK * 2.0, STICK * 2.0)
 	_stick_base.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var grid := GridContainer.new()
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 10)
-	grid.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	grid.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	grid.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	grid.offset_right = -30
-	grid.offset_bottom = -40
-	_touch_ui.add_child(grid)
-	for b in [["USE", func(): Meet.player.use()], ["PUNCH", func(): Meet.player.slap()], ["CHALK", func(): Meet.player.throw_chalk()], ["ITEM", func(): Meet.player.use_item()], ["VIEW", func(): Meet.player.toggle_view()], ["JUMP", func(): Meet.player.jump()], ["BAG", toggle_bag], ["PHOTO", photo]]:
-		var btn := UI.button(grid, b[0], b[1], 20)
-		btn.custom_minimum_size = Vector2(110, 70)
-		btn.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_stick_base.add_theme_stylebox_override("panel", _round(STICK * 2.0, Color(1, 1, 1, 0.07), Color(1, 1, 1, 0.45)))
+	_touch_ui.add_child(_stick_base)
+	_knob = Panel.new()
+	_knob.size = Vector2(70, 70)
+	_knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_knob.add_theme_stylebox_override("panel", _round(70, Color(1, 1, 1, 0.35), Color(1, 1, 1, 0.8)))
+	_touch_ui.add_child(_knob)
+	_stick_label = UI.text(_touch_ui, "MOVE", 16, Color(1, 1, 1, 0.75))
+	_stick_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_shadow(_stick_label)
+	# Right thumb. The big one does whatever the prompt says.
+	_use_pad = _pad(_touch_ui, "USE", 132, Vector2(110, 120), func(): Meet.player.use(), Color(0.3, 0.22, 0.08, 0.7))
+	_pad(_touch_ui, "PUNCH", 104, Vector2(250, 86), func(): Meet.player.slap())
+	_pad(_touch_ui, "JUMP", 92, Vector2(124, 292), func(): Meet.player.jump())
+	_pad(_touch_ui, "CHALK", 84, Vector2(232, 214), func(): Meet.player.throw_chalk())
+	_pad(_touch_ui, "ITEM", 84, Vector2(366, 150), func(): Meet.player.use_item())
+	# Less-used things, small, up the right-hand edge.
+	var k := 0
+	for b in [["BAG", toggle_bag], ["EAT", Meet.eat], ["VIEW", func(): Meet.player.toggle_view()], ["PHOTO", photo], ["SOUND", func(): Meet.audio.set_muted(not Meet.muted)]]:
+		var p := _pad(_touch_ui, b[0], 58, Vector2(52, 0), b[1])
+		p.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		p.offset_left = -70
+		p.offset_right = -12
+		p.offset_top = 146 + k * 62
+		p.offset_bottom = 204 + k * 62
+		k += 1
+	# What the big button will do, said in words, and tappable itself.
+	_use_text = Button.new()
+	_use_text.focus_mode = Control.FOCUS_NONE
+	_use_text.add_theme_font_size_override("font_size", 24)
+	_use_text.add_theme_color_override("font_color", UI.GOLD)
+	var pill := _round(52, Color(0.05, 0.04, 0.04, 0.8), Color(UI.GOLD, 0.8))
+	pill.set_content_margin_all(12)
+	for st in ["normal", "hover", "pressed"]:
+		_use_text.add_theme_stylebox_override(st, pill)
+	_use_text.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	_use_text.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_use_text.offset_top = -150
+	_use_text.offset_bottom = -96
+	_use_text.button_down.connect(func(): Meet.player.use())
+	_touch_ui.add_child(_use_text)
+	_pads.append(_use_text)
+	# Shown for the first few seconds.
+	_hint = UI.text(_touch_ui, "Left thumb: move  (push all the way to run)\nDrag anywhere on the right: look around\nThe big button does what it says", 20, Color(1, 1, 1, 0.95))
+	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_hint.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_hint.offset_left = -330
+	_hint.offset_right = 330
+	_shadow(_hint)
+	_rest_stick()
 
-## Left half of the screen moves you; dragging anywhere else turns the camera.
+func _rest_stick() -> void:
+	var w := get_viewport().get_visible_rect().size
+	_stick_origin = Vector2(150, w.y - 150)
+	_place_stick(Vector2.ZERO)
+
+func _place_stick(v: Vector2) -> void:
+	_stick_base.position = _stick_origin - Vector2(STICK, STICK)
+	_knob.position = _stick_origin + v * STICK - Vector2(35, 35)
+	_stick_label.position = _stick_origin + Vector2(-24, -STICK - 28)
+	_stick_label.text = "RUN" if v.length() > 0.9 else ("MOVE" if _stick_id < 0 else "")
+	_stick_base.modulate.a = 1.0 if _stick_id >= 0 else 0.55
+	_knob.modulate.a = 1.0 if _stick_id >= 0 else 0.55
+
+func _on_pad(p: Vector2) -> bool:
+	for b in _pads:
+		if b.is_visible_in_tree() and b.get_global_rect().grow(8).has_point(p):
+			return true
+	return false
+
+## The left side of the screen is the stick, wherever the thumb comes down. Anywhere else
+## that is not a button turns the camera.
 func _input(ev: InputEvent) -> void:
 	if not Meet.touch or Meet.modal:
-		_stick_id = -1
-		_look_id = -1
-		Meet.stick = Vector2.ZERO
+		if _stick_id >= 0 or _look_id >= 0:
+			_stick_id = -1
+			_look_id = -1
+			Meet.stick = Vector2.ZERO
+			_rest_stick()
 		return
 	if ev is InputEventScreenTouch:
 		if ev.pressed:
 			var w := get_viewport().get_visible_rect().size
-			if ev.position.x < w.x * 0.4 and ev.position.y > w.y * 0.35 and _stick_id < 0:
+			if _on_pad(ev.position):
+				return
+			if ev.position.x < w.x * 0.45 and ev.position.y > 150 and _stick_id < 0:
 				_stick_id = ev.index
-				_stick_origin = ev.position
-			elif ev.position.x >= w.x * 0.4 and ev.position.x < w.x - 390 and _look_id < 0:
+				_stick_origin = Vector2(clamp(ev.position.x, STICK + 10, w.x * 0.45), clamp(ev.position.y, 150 + STICK, w.y - STICK - 10))
+				_hint_t = min(_hint_t, 1.5)
+				_place_stick(Vector2.ZERO)
+			elif _look_id < 0:
 				_look_id = ev.index
 		else:
 			if ev.index == _stick_id:
 				_stick_id = -1
 				Meet.stick = Vector2.ZERO
+				_rest_stick()
 			if ev.index == _look_id:
 				_look_id = -1
 	elif ev is InputEventScreenDrag:
 		if ev.index == _stick_id:
-			Meet.stick = ((ev.position - _stick_origin) / 70.0).limit_length(1.0)
+			var v: Vector2 = ((ev.position - _stick_origin) / STICK).limit_length(1.0)
+			# A small dead zone so a resting thumb doesn't creep.
+			Meet.stick = v if v.length() > 0.15 else Vector2.ZERO
+			_place_stick(v)
 		elif ev.index == _look_id:
-			Meet.player.look += ev.relative * 0.6
+			Meet.player.look += Vector2(ev.relative.x * 0.75, ev.relative.y * 0.45)
 
 # --- Bag -----------------------------------------------------------------------------
 

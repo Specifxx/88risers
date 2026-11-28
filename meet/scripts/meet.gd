@@ -133,6 +133,13 @@ func _ready() -> void:
 		wipe()
 	load_save()
 
+## The first finger on the glass switches the game to touch controls, whatever the browser claimed.
+func _input(ev: InputEvent) -> void:
+	if not touch and ev is InputEventScreenTouch:
+		touch = true
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		changed.emit()
+
 func _action(action: String, keys: Array) -> void:
 	if not InputMap.has_action(action):
 		InputMap.add_action(action)
