@@ -9,6 +9,7 @@ const Mind = preload("res://scripts/mind.gd")
 const People = preload("res://scripts/people.gd")
 const Fx = preload("res://scripts/fx.gd")
 const Wear = preload("res://scripts/wear.gd")
+const Pose = preload("res://scripts/pose.gd")
 
 const WALK := 1.5
 
@@ -37,6 +38,22 @@ var done_topics := {}
 var _convo := {}
 var _pitched := 0
 var _insulted := 0
+var _name_label: Label3D
+var _level := 0
+var _mood_check := 0.0
+var _apologised := false
+var _backed := false
+var _away := 0.0
+var _stare := 0.0
+var stake := 0                  # dollars riding on the next pull with the player
+var pull_angry := false
+var wallet := 0
+var wallet_taken := 0
+var _goaded := 0
+var confront_kind := ""          # beef | warn
+var confront_text := ""
+var settle := false              # the pull in progress settles a grievance
+var _chase := 0.0
 var calling := 0.0              # seconds left on an open challenge to the player
 var composure := 100.0
 
@@ -96,10 +113,13 @@ func setup(d: Dictionary, riser: bool, at: Vector3) -> void:
 		for sx in [-1.0, 1.0]:
 			Build.cyl(self, 0.01, 0.015, 0.3, Vector3(sx * 0.08, 1.42, 0), Color(0.3, 0.9, 0.4), 4)
 			Build.sphere(self, 0.04, Vector3(sx * 0.08, 1.58, 0), Color(1.0, 0.4, 0.9), 1.5)
-	Build.label(self, riser_name, 2.2 if d["id"] != "alien" else 1.75, Color(1, 0.95, 0.8) if riser else Color(0.8, 0.8, 0.82), 34 if riser else 26)
+	_name_label = Build.label(self, riser_name, 2.2 if d["id"] != "alien" else 1.75, Color(1, 0.95, 0.8) if riser else Color(0.8, 0.8, 0.82), 34 if riser else 26)
 	_bark = Build.label(self, "", 2.5 if d["id"] != "alien" else 2.0, Color(1.0, 0.9, 0.6), 30)
 	_bark.visible = false
 	_timer = randf_range(1.0, 6.0)
+	wallet = 10 + randi() % 4 * 5 if riser else 0
+	_level = mood_level()
+	_show_mood()
 	add_to_group("hittable")
 	if d["id"] != "alien":
 		add_to_group("interact")
@@ -120,7 +140,9 @@ func _dog() -> void:
 	var dog := Node3D.new()
 	add_child(dog)
 	dog.position = Vector3(0.75, 0, 0.5)
-	var c := Color(0.72, 0.52, 0.3)
+	var c: Color = def.get("dog_color", Color(0.72, 0.52, 0.3))
+	var dog_name: String = def.get("dog_name", "Biscuit")
+	dog.scale = Vector3.ONE * float(def.get("dog_size", 1.0))
 	Build.box(dog, Vector3(0.2, 0.2, 0.5), Vector3(0, 0.32, 0), c)
 	Build.box(dog, Vector3(0.18, 0.18, 0.2), Vector3(0, 0.48, 0.3), c)
 	Build.box(dog, Vector3(0.08, 0.07, 0.1), Vector3(0, 0.44, 0.43), c * 0.6)
@@ -133,16 +155,24 @@ func _dog() -> void:
 	var pat: Node3D = load("res://scripts/thing.gd").new()
 	dog.add_child(pat)
 	pat.position = Vector3(0.3, 0, 0.3)
-	pat.setup("Pat Biscuit", func():
-		Meet.say("Biscuit leans on your leg. Biscuit approves of you.")
+	pat.setup("Pet %s" % dog_name, func():
+		Meet.player.act("Fixing_Kneeling", 1.2)
+		Meet.composure = min(100.0, Meet.composure + 10.0)
+		say_aloud(["She likes you.", "He doesn't do that for everyone.", "You've made a friend."][randi() % 3], 3.5)
+		Meet.say("%s leans into your hand. %s approves of you. You feel better about everything." % [dog_name, dog_name])
 		if not _fed:
 			_fed = true
 			mind.experience("helped", 0.5, 1.0))
 
 func prompt() -> String:
+	if state == "scrap" and _vs_player:
+		return "Put your hands up: \"Alright, alright. I'm sorry.\""
 	return "Talk to %s" % riser_name
 
 func interact() -> void:
+	if state == "scrap" and _vs_player:
+		back_down()
+		return
 	if state in ["scrap", "winded", "flee"]:
 		return
 	if state == "search" and not _told:
@@ -222,10 +252,22 @@ func _process(dt: float) -> void:
 		_alien(dt)
 		return
 	calling = max(0.0, calling - dt)
+	_mood_check -= dt
+	if _mood_check <= 0.0 and (is_riser or guest):
+		_mood_check = 0.5
+		_mood_changed()
 	if is_riser or guest:
 		for k in needs:
 			needs[k] = min(1.5, needs[k] + float(life.get(k, 0.5)) * float(tonight.get(k, 1.0)) * dt / 45.0)
+	# Something has their whole attention: they stand and look straight at you.
+	if _stare > 0.0 and state not in ["pull", "to_table", "prep", "scrap", "winded", "flee", "search"]:
+		_stare -= dt
+		_look(Meet.player.global_position, 0.25)
+		Character.play(_figure, "Idle")
+		return
 	_notice()
+	if state != "pull" and Pose.posed(_figure):
+		Pose.stop(_figure)
 	match state:
 		"idle":
 			Character.play(_figure, "Idle")
@@ -248,7 +290,8 @@ func _process(dt: float) -> void:
 				_next_leg()
 		"pull":
 			_look(_face_at, 0.2)
-			Character.play(_figure, "Idle")
+			if not Pose.posed(_figure):
+				Character.play(_figure, "Idle")
 		"huddle":
 			_huddle(dt)
 		"quirk":
@@ -263,6 +306,21 @@ func _process(dt: float) -> void:
 				idle()
 		"search":
 			_search(dt)
+		"confront":
+			# Walking you down for a word. It happens when they reach you.
+			_chase += dt
+			_goal = Meet.player.global_position
+			if global_position.distance_to(_goal) > 2.0:
+				_walk(dt, 1.8)
+				if _chase > 22.0:
+					say_aloud("Yeah. Run. I'll remember.", 3.5)
+					mind.experience("heckle", -0.15, 0.6)
+					idle()
+			else:
+				_look(_goal, 0.3)
+				Character.play(_figure, "Idle_Talking")
+				if not Meet.modal:
+					Meet.menu.confrontation(self)
 		"pass":
 			_pass(dt)
 		"snack":
@@ -493,6 +551,9 @@ func _arrive() -> void:
 		"pull":
 			state = "pull"
 		"bag":
+			if wallet_taken > 0:
+				_wallet_missed()
+				return
 			if has_strap():
 				state = "prep"
 				_qanim = "Fixing_Kneeling"
@@ -607,7 +668,10 @@ func _notice() -> void:
 		_look(p, 1.0)
 	elif randf() < 0.55:
 		var lines: Array = People.BARKS[bond()]
-		say_aloud(lines[randi() % lines.size()])
+		var line: String = lines[randi() % lines.size()]
+		if Meet.player_name != "" and randf() < 0.5:
+			line = {"close": "%s! Over here!", "mates": "Hey, %s.", "known": "Evening, %s.", "irritated": "Not now, %s.", "gone": "Stay away from me, %s."}[bond()] % Meet.player_name
+		say_aloud(line)
 		_look(p, 1.0)
 
 # --- Being bothered ----------------------------------------------------------------------
@@ -686,6 +750,10 @@ func take_hit(dmg: int, from: Vector3) -> void:
 		_go_down()
 
 func _go_down() -> void:
+	if not alien:
+		for r in Meet.risers:
+			if r != self and not r.alien and r.global_position.distance_to(global_position) < 24.0:
+				r.saw_beating(self)
 	state = "winded"
 	_timer = 9.0 if not alien else 9999.0
 	_vs_player = false
@@ -699,6 +767,16 @@ func _scrap(dt: float) -> void:
 	if not _vs_player and (not is_instance_valid(_foe) or _foe.state == "winded"):
 		idle()
 		return
+	# Give them room for a few seconds and the heat goes out of it.
+	if _vs_player:
+		_away = _away + dt if (target - global_position).length() > 9.0 else 0.0
+		if _away > 4.0:
+			_away = 0.0
+			_vs_player = false
+			say_aloud(["Yeah. Walk away.", "That's what I thought.", "Keep walking."][randi() % 3], 3.5)
+			Meet.say("%s lets you go. Giving people space works." % riser_name)
+			idle()
+			return
 	var to := target - global_position
 	to.y = 0
 	_strike = max(0.0, _strike - dt)
@@ -862,7 +940,7 @@ func caught_with_strap() -> void:
 	Meet.say("%s takes the strap back off you. That did not go unnoticed." % riser_name)
 	Meet.touch_state()
 	if mind.feeling() < -0.45:
-		square_up()
+		confront()
 	elif state == "search":
 		idle()
 
@@ -924,7 +1002,7 @@ func dusted(by: Node) -> void:
 		_:
 			mind.experience("chalk", -0.4, 1.0)
 			if mind.feeling() < -0.45 and state != "scrap":
-				square_up()
+				confront()
 
 # --- Passing by ---------------------------------------------------------------------------
 
@@ -1047,7 +1125,7 @@ func _huddle(dt: float) -> void:
 	if i >= lines.size():
 		_end_huddle()
 		return
-	who[lines[i][0]].say_aloud(lines[i][1], 3.0)
+	who[lines[i][0]].say_aloud(String(lines[i][1]).replace("The new one", Meet.you("The new one").capitalize()), 3.0)
 	if i == 0:
 		for m in who:
 			for o in who:
@@ -1098,7 +1176,7 @@ func insult(key: String) -> String:
 		var line: String = People.SORE_REPLY[key][randi() % 2]
 		Meet.menu.close()
 		say_aloud(line, 4.0)
-		square_up()
+		confront()
 		return ""
 	mind.experience("heckle", -0.3, 0.8, true, riser_name)
 	if passer:
@@ -1110,7 +1188,7 @@ func insult(key: String) -> String:
 		return ["Excuse me?", "I'm just walking here.", "Do I know you?"][randi() % 3]
 	if _insulted >= 3 or mind.feeling() < -0.45:
 		Meet.menu.close()
-		square_up()
+		confront()
 		return ""
 	return People.SHRUG[key][randi() % 2]
 
@@ -1139,6 +1217,23 @@ func join_meet() -> void:
 	_timer = 3.0
 
 func after_pull(player_won: bool) -> void:
+	pull_angry = false
+	if settle:
+		settle = false
+		for m in mind.memories:
+			if m["valence"] < 0.0:
+				m["weight"] *= 0.35
+		mind.experience("match", 0.4, 1.5, true, "settling it")
+		say_aloud("Fine. You earned that. We're square." if player_won else "That's that, then. We're square.", 4.5)
+		Meet.say("Settled at the table. %s lets it go." % riser_name)
+	if stake > 0:
+		if player_won:
+			Meet.pay(stake, "%s pays up." % first_name)
+			say_aloud(["Take it. Don't spend it all on snacks.", "Fair's fair.", "Double or nothing next time."][randi() % 3], 4.0)
+		else:
+			Meet.pay(-stake, "You pay %s." % first_name)
+			say_aloud(["Pleasure doing business.", "That's dinner sorted.", "Any time."][randi() % 3], 4.0)
+		stake = 0
 	if not bet:
 		return
 	bet = false
@@ -1192,3 +1287,268 @@ func stand_up_for(victim: Node, kind: String, closeness: float) -> void:
 		_face_at = Meet.player.global_position
 		var to: Vector3 = (victim.global_position - Meet.player.global_position).normalized()
 		_go(victim.global_position + to.rotated(Vector3.UP, 0.9) * 1.1, "gawk")
+
+# --- How they feel about you, said out loud -------------------------------------------------
+
+## -3 hates, -2 dislikes, -1 annoyed, 0 neutral, 1 likes, 2 close.
+func mood_level() -> int:
+	var f: float = mind.feeling()
+	if f < -0.65:
+		return -3
+	if f < -0.4:
+		return -2
+	if f < -0.15:
+		return -1
+	if f > 0.6:
+		return 2
+	if f > 0.3:
+		return 1
+	return 0
+
+func mood_word() -> String:
+	return {-3: "hates you", -2: "dislikes you", -1: "annoyed with you", 0: "", 1: "likes you", 2: "close mate"}[mood_level()]
+
+func _show_mood() -> void:
+	if _name_label == null:
+		return
+	var w := mood_word()
+	_name_label.text = riser_name if w == "" else "%s\n(%s)" % [riser_name, w]
+	_name_label.modulate = {-3: Color(1.0, 0.25, 0.2), -2: Color(1.0, 0.45, 0.25), -1: Color(1.0, 0.7, 0.35), 0: Color(1, 0.95, 0.8) if is_riser else Color(0.8, 0.8, 0.82), 1: Color(0.7, 1.0, 0.7), 2: Color(0.5, 1.0, 0.6)}[mood_level()]
+
+func _mood_changed() -> void:
+	var now := mood_level()
+	if now == _level:
+		return
+	var was := _level
+	_level = now
+	_show_mood()
+	if Meet.modal and Meet.menu.who != self:
+		return
+	if now < was:
+		match now:
+			-1: Meet.say("%s is getting annoyed with you." % riser_name)
+			-2: Meet.say("%s dislikes you now." % riser_name)
+			-3: Meet.say("%s hates you. That will take real work to undo." % riser_name)
+		if now < 0 and not Meet.told_peace:
+			Meet.told_peace = true
+			Meet.say("To make it right: talk to them and apologise, bring a snack as a peace offering, or just give them space.")
+	else:
+		match now:
+			0: Meet.say("%s has cooled down." % riser_name) if was < 0 else null
+			-1: Meet.say("%s still isn't happy, but it's better than it was." % riser_name)
+			-2: Meet.say("%s no longer hates you. Only dislikes." % riser_name)
+			1: Meet.say("%s has warmed to you." % riser_name)
+			2: Meet.say("%s counts you a close mate." % riser_name)
+
+# --- Making it right ---------------------------------------------------------------------------
+
+## Say sorry. Words work on an annoyance; anything worse wants a peace offering as well.
+func apologise(with_snack: bool) -> String:
+	var lvl := mood_level()
+	if _apologised and not with_snack:
+		return "You already said sorry. Show me."
+	_apologised = true
+	var ease := func(k: float):
+		for m in mind.memories:
+			if m["valence"] < 0.0:
+				m["weight"] *= k
+	if with_snack:
+		if lvl <= -3:
+			ease.call(0.4)
+			mind.experience("helped", 0.5, 2.5, true, "the apology")
+			return "...Fine. You're on probation. One more and we're done."
+		mind.forgive()
+		if Meet.flags.has(id):
+			Meet.flags[id].erase("sore")
+		return ["Alright. We're good. Don't make it weird.", "Apology accepted. Snack accepted more.", "Okay. Clean slate."][randi() % 3]
+	match lvl:
+		-1:
+			ease.call(0.35)
+			mind.experience("helped", 0.45, 1.5, true, "the apology")
+			return ["Alright. Forget it.", "Yeah, okay. It's fine.", "Thanks for saying it."][randi() % 3]
+		-2:
+			ease.call(0.7)
+			mind.experience("helped", 0.25, 1.0, true, "the apology")
+			return "Words are cheap. But okay. It's a start."
+		_:
+			return "Save it. I don't want to hear it."
+
+## Hands up in the middle of a scrap.
+func back_down() -> void:
+	if _backed:
+		say_aloud("Too late for sorry.", 2.5)
+		return
+	_backed = true
+	_vs_player = false
+	for m in mind.memories:
+		if m["valence"] < 0.0:
+			m["weight"] *= 0.7
+	mind.experience("helped", 0.25, 0.8, true, "backing down")
+	say_aloud(["...Don't do it again.", "Fine. FINE. Walk it off.", "That's the only one you get."][randi() % 3], 4.0)
+	Meet.say("You put your hands up. %s lets it go, this once." % riser_name)
+	Meet.main.stir(global_position, ["Good. Leave it.", "That's better.", "Shake hands, you two."], 10.0, 0.4, false)
+	idle()
+
+# --- Being watched ---------------------------------------------------------------------------
+
+## Stop and look at the player for a while.
+func stare(seconds: float, line := "") -> void:
+	_stare = max(_stare, seconds)
+	if line != "":
+		say_aloud(line, min(seconds, 4.0))
+
+## They watched the player put someone on the floor.
+func saw_beating(victim: Node) -> void:
+	if passer:
+		say_aloud("I'm calling someone.", 3.0)
+		bolt(2.0)
+		return
+	if state == "winded":
+		return
+	var close: float = Meet.tie(id, victim.id) if is_riser and victim.is_riser else 0.1
+	mind.experience("violence", -0.55 - 0.35 * max(close, 0.0), 2.2 + close, true, victim.riser_name)
+	_mood_check = 0.0
+	stare(6.0, ["What is WRONG with you?", "That's one of ours.", "Get out.", "Are you serious?", "Somebody get Harry.", "..."][randi() % 6])
+
+# --- Talking someone into a pull they don't want ------------------------------------------------
+
+## Why they would say no right now, or "" if they would pull.
+func reluctance() -> String:
+	if tonight.get("id", "") == "sore":
+		return "Elbow's gone. Ask me next week."
+	if mood_level() <= -2:
+		return "Not with you. Not tonight."
+	if mood_level() == -1:
+		return "I'm not in the mood for you right now."
+	return ""
+
+## kind: goad | money | nice. Returns [worked, what they said].
+func talk_into(kind: String) -> Array:
+	_goaded += 1
+	var proud: bool = mind.grudge >= 1.0 or strength >= 80.0
+	match kind:
+		"goad":
+			mind.experience("heckle", -0.25, 0.8, true, riser_name)
+			if proud or _goaded >= 3:
+				pull_angry = true
+				if tonight.get("id", "") == "sore":
+					strength -= 8.0
+				return [true, ["Scared? SCARED? Sit down.", "Right. Hand on the pad. Now.", "You'll regret asking."][randi() % 3]]
+			return [false, ["That doesn't work on me.", "Nice try.", "I'm not twelve."][randi() % 3]]
+		"money":
+			if Meet.money < 10:
+				return [false, "With what? You're skint."]
+			stake = 10
+			return [true, ["Ten dollars? ...Fine. Easy money.", "Now you're talking.", "Go on, then. Cash on the table."][randi() % 3]]
+		_:
+			if not proud and mood_level() >= -1:
+				mind.experience("talk", 0.15, 0.4)
+				return [true, ["...One. Then you leave me be.", "Alright. Since you asked properly.", "Go on. Quick one."][randi() % 3]]
+			return [false, ["No.", "Asking nicely doesn't change it.", "Still no."][randi() % 3]]
+
+# --- Their wallet ------------------------------------------------------------------------------
+
+func _wallet_missed() -> void:
+	var taken := wallet_taken
+	wallet_taken = 0
+	Meet.main.drop_match(self)
+	var witness := false
+	for r in Meet.risers:
+		if r.saw_theft.has(id + "$"):
+			witness = true
+	if witness:
+		Meet.pay(-min(taken, Meet.money))
+		mind.experience("theft", -0.85, 2.5, true, "my wallet")
+		say_aloud("My wallet's light, and I know EXACTLY who was in my bag.", 5.0)
+		Meet.say("%s marches over and takes the money back out of your pocket." % riser_name)
+		Meet.main.stir(global_position, ["From his WALLET?", "That's low.", "Not cool. Not cool at all."], 14.0, 0.7, false)
+		square_up()
+	else:
+		mind.experience("theft", -0.3, 0.9, false, "my wallet")
+		say_aloud("Hang on. I had a twenty in here.", 4.0)
+		Meet.main.stir(global_position, ["Not me.", "Check your pockets.", "There's a thief at the meet?"], 10.0, 0.5, false)
+		idle()
+
+# --- Having it out ------------------------------------------------------------------------------
+
+## They have had enough: they come over and make you talk about it.
+func confront(kind := "beef", text := "") -> void:
+	if alien or state in ["winded", "scrap", "confront"]:
+		return
+	if passer:
+		bolt(1.6)
+		return
+	Meet.main.drop_match(self)
+	confront_kind = kind
+	confront_text = text
+	_chase = 0.0
+	_stare = 0.0
+	state = "confront"
+	say_aloud(["Oi. You. A word.", "Hey. We need to talk.", "Come here. Now."][randi() % 3], 3.0)
+
+# --- Being handed the clipboard -------------------------------------------------------------------
+
+const _WORDS := {
+	"insult": ["stupid", "idiot", "weak", "loser", "ugly", "suck", "trash", "hate", "dumb", "fat", "useless", "clown", "rubbish", "pathetic", "smell", "stink"],
+	"praise": ["strong", "best", "great", "legend", "respect", "champion", "champ", "goat", "amazing", "hero", "thank", "awesome", "beast", "king"],
+	"sorry": ["sorry", "apolog", "my bad", "forgive"],
+	"pull": ["pull", "table", "challenge", "1v1", "rematch", "arm wrestle", "armwrestle", "versus", " vs"],
+	"love": ["love", "date", "cute", "number", "marry", "kiss", "handsome", "dinner"],
+	"sign": ["sign", "join", "member", "petition", "88", "name here", "register", "roster"],
+	"money": ["$", "dollar", "money", "pay", "owe", "cash", "bucks", "iou"],
+	"snack": ["snack", "food", "hungry", "eat", "chips", "pizza"],
+}
+
+## They read whatever you wrote on the clipboard and take it how it reads.
+func read_clipboard(text: String) -> String:
+	var t := text.to_lower().strip_edges()
+	if t == "":
+		return "It's blank. You've handed me a blank clipboard."
+	var found: Array = []
+	for k in _WORDS:
+		for w in _WORDS[k]:
+			if t.contains(w):
+				found.append(k)
+				break
+	var other := ""
+	for r in Meet.risers:
+		if r.is_riser and r != self and t.contains(r.first_name.to_lower()):
+			other = r.id
+	var quote := "\"%s.\" " % text.strip_edges().left(60)
+	if other != "" and found.has("insult"):
+		Meet.said.append({"by": id, "about": other, "tone": "bad"})
+		Meet.bump(id, other, -0.05)
+		mind.experience("talk", 0.15, 0.5)
+		return quote + "Ha! About %s? I'm not signing that. ...I'm not NOT signing it." % Meet.riser(other).first_name
+	if other != "" and found.has("praise"):
+		Meet.bump(id, other, 0.08)
+		return quote + "That's nice. You should show %s that. I'll initial it." % Meet.riser(other).first_name
+	if found.has("insult"):
+		mind.experience("heckle", -0.5, 1.4, true, riser_name)
+		if mind.feeling() < -0.4:
+			Meet.menu.close()
+			confront()
+			return ""
+		return quote + "You wrote that down. You took the time to write that down."
+	if found.has("sorry"):
+		return quote + apologise(false)
+	if found.has("pull"):
+		calling = 30.0
+		wants_pull = true
+		return quote + "A written challenge. Formal. I accept. Find me at the table."
+	if found.has("love"):
+		mind.experience("talk", 0.1 if mind.warmth > 0.2 else -0.15, 0.6)
+		return quote + ("...I'm flattered. I'm keeping this." if mind.warmth > 0.2 else "I'm going to pretend I didn't read that.")
+	if found.has("money"):
+		return quote + ("I don't owe you anything. Do I? ...Do I?" if Meet.money > 20 else "If this is an invoice, send it to George.")
+	if found.has("snack"):
+		mind.experience("talk", 0.15, 0.4)
+		return quote + "A snack order form. Finally, some organisation. Put me down for two red."
+	if found.has("praise"):
+		mind.experience("talk", 0.35, 0.9)
+		return quote + ["Well. That's going on my fridge.", "You wrote that about me? Cheers.", "I'll take it. In writing, too."][randi() % 3]
+	if found.has("sign"):
+		mind.experience("talk", 0.2, 0.5)
+		return quote + "Where do I sign? There. That's my good signature, too."
+	mind.experience("talk", 0.05, 0.3)
+	return quote + ["...Okay? What do you want me to do with this?", "I've read it twice. I still don't know.", "Is this a quiz?", "Noted. I think."][randi() % 4]

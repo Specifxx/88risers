@@ -32,6 +32,7 @@ var player: CharacterBody3D
 var hud: CanvasLayer
 var menu: CanvasLayer
 var table: CanvasLayer
+var strapgame: CanvasLayer
 var risers: Array = []
 var stick := Vector2.ZERO      # touch joystick
 var touch := false
@@ -54,6 +55,12 @@ var recruits := 0
 var dusted := 0
 var flags := {}                # riser id -> {flag: true}: things said that are not forgotten
 var ties := {}                 # "a|b" -> how two founders get on with each other (-1..1)
+var player_name := ""           # what you told them to call you
+var money := 10                # dollars in your pocket
+var leads := {}                # things you have been told and can raise with someone else
+var used := {}                 # leads already raised
+var said: Array = []           # [{by, about, tone, told}]: what one founder said of another
+var paid := {}                 # reputation rewards George has already handed over
 var tips := 0                  # coaching picked up; widens the gold zone a little
 
 # Tonight only.
@@ -64,6 +71,8 @@ var results: Array = []        # ["Harry beat Tommy", ...]
 var stamina := 100.0
 var clock := 0.0               # seconds into the night; 900 is half past seven
 var chalk := 0                 # handfuls to throw
+var told_peace := false
+var warned := false            # told once tonight: do it again and you are out
 var chalked := false           # hands chalked for the next pull
 var straps: Array = []         # ids of the people whose straps are in your pocket
 
@@ -138,6 +147,7 @@ func new_night() -> void:
 	results = []
 	chalk = 0
 	chalked = false
+	warned = false
 	straps = []
 	modal = true
 
@@ -149,7 +159,7 @@ func save() -> void:
 			bonds[r.id] = r.mind.to_data()
 	var data := {"owned": owned, "worn": worn, "bonds": bonds, "beaten": beaten, "notes": notes, "visits": visits,
 		"wins": wins, "losses": losses, "heckles": heckles, "snacks_given": snacks_given, "moments": moments, "seen_ufo": seen_ufo,
-		"flags": flags, "ties": ties, "tips": tips, "straps_lifted": straps_lifted, "recruits": recruits, "dusted": dusted}
+		"flags": flags, "player_name": player_name, "money": money, "leads": leads, "used": used, "said": said, "paid": paid, "ties": ties, "tips": tips, "straps_lifted": straps_lifted, "recruits": recruits, "dusted": dusted}
 	var f := FileAccess.open(SAVE, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(data))
@@ -180,6 +190,12 @@ func load_save() -> void:
 	flags = data.get("flags", {})
 	tips = int(data.get("tips", 0))
 	ties = data.get("ties", {})
+	money = int(data.get("money", 10))
+	player_name = String(data.get("player_name", ""))
+	leads = data.get("leads", {})
+	used = data.get("used", {})
+	said = data.get("said", [])
+	paid = data.get("paid", {})
 	straps_lifted = int(data.get("straps_lifted", 0))
 	recruits = int(data.get("recruits", 0))
 	dusted = int(data.get("dusted", 0))
@@ -262,3 +278,13 @@ func tie_word(v: float) -> String:
 	if v < -0.05:
 		return "cool with"
 	return ""
+
+func pay(amount: int, why := "") -> void:
+	money = max(0, money + amount)
+	if why != "":
+		say("%s%s$%d. You have $%d." % [why, " +" if amount >= 0 else " -", absi(amount), money])
+	changed.emit()
+
+## What people call you: your name if you gave one.
+func you(fallback := "the new one") -> String:
+	return player_name if player_name != "" else fallback
