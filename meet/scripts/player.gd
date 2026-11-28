@@ -226,6 +226,15 @@ func jump() -> void:
 func act(anim: String, seconds: float) -> void:
 	_hold = seconds
 	Character.play(_figure, anim, true)
+	# This gesture lifts the left hand, so whatever is being shown off goes into it for the moment.
+	if anim == "Interact":
+		var sk: Skeleton3D = _figure.find_child("Skeleton3D", true, false)
+		var held: BoneAttachment3D = sk.get_node_or_null("Worn_hand") if sk else null
+		if held != null and sk.find_bone("hand_l") >= 0:
+			held.bone_name = "hand_l"
+			get_tree().create_timer(seconds + 0.2).timeout.connect(func():
+				if is_instance_valid(held):
+					held.bone_name = "hand_r")
 
 ## A slap, a shove, a swing of whatever you're holding. Nobody gets hurt. People do get cross.
 func slap() -> void:
