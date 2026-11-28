@@ -12,6 +12,7 @@ const BattleScript = preload("res://scripts/battle.gd")
 const Thing = preload("res://scripts/thing.gd")
 
 const TerrainScript = preload("res://scripts/terrain.gd")
+const Asia = preload("res://scripts/asia.gd")
 
 const R := Game.RING_RADIUS
 const ROAD := [Vector3(30, 0, 0), Vector3(70, 0, 0), Vector3(120, 0, -18), Vector3(180, 0, 8), Vector3(228, 0, 20)]
@@ -20,6 +21,9 @@ const GOLD := Color(0.93, 0.72, 0.28)
 
 var terrain: Node3D
 var _register_label: Label3D
+var _sun: DirectionalLight3D
+var _env: Environment
+var _sky_mat: ProceduralSkyMaterial
 
 func _ready() -> void:
 	Game.main = self
@@ -40,6 +44,26 @@ func _ready() -> void:
 		var t: Node = load("res://scripts/selftest.gd").new()
 		add_child(t)
 
+func _process(dt: float) -> void:
+	if not Game.modal:
+		Game.hour = fposmod(Game.hour + dt * 24.0 / 720.0, 24.0)
+	_light_for_hour()
+
+## The sun crosses from east to west; nights are blue and lit by lanterns.
+func _light_for_hour() -> void:
+	var day: float = clamp(sin((Game.hour - 6.0) / 12.0 * PI), -0.25, 1.0)
+	var up: float = max(day, 0.0)
+	var low: float = 1.0 - smoothstep(0.0, 0.45, up)    # 1 near sunrise and sunset
+	_sun.rotation_degrees = Vector3(-8.0 - up * 50.0, -90.0 - (Game.hour - 12.0) * 13.0, 0)
+	_sun.light_energy = 0.12 + up * 1.05
+	_sun.light_color = Color(1.0, 0.93, 0.82).lerp(Color(1.0, 0.62, 0.36), low)
+	var night: float = 1.0 - smoothstep(-0.1, 0.25, day)
+	_env.ambient_light_color = Color(0.62, 0.6, 0.66).lerp(Color(0.2, 0.25, 0.42), night)
+	_env.ambient_light_energy = lerp(0.62, 0.42, night)
+	_env.fog_light_color = Color(0.66, 0.6, 0.56).lerp(Color(0.95, 0.6, 0.42), low * (1.0 - night)).lerp(Color(0.1, 0.13, 0.22), night)
+	_sky_mat.sky_top_color = Color(0.2, 0.34, 0.6).lerp(Color(0.03, 0.05, 0.12), night)
+	_sky_mat.sky_horizon_color = Color(0.74, 0.78, 0.84).lerp(Color(0.95, 0.6, 0.38), low).lerp(Color(0.1, 0.13, 0.22), night)
+
 func _on_changed() -> void:
 	if _register_label:
 		_register_label.text = "THE REGISTER\n%d / %d" % [Game.register_count(), Game.QUOTA]
@@ -57,9 +81,8 @@ func _sky() -> void:
 	var env := Environment.new()
 	var sky := Sky.new()
 	var sm := ProceduralSkyMaterial.new()
-	sm.sky_top_color = Color(0.16, 0.25, 0.46)
-	sm.sky_horizon_color = Color(0.86, 0.66, 0.48)
-	sm.sky_curve = 0.1
+	_sky_mat = sm
+	sm.sky_curve = 0.12
 	sm.ground_horizon_color = Color(0.5, 0.42, 0.36)
 	sm.ground_bottom_color = Color(0.12, 0.11, 0.1)
 	sm.sun_angle_max = 12.0
@@ -70,20 +93,50 @@ func _sky() -> void:
 	env.ambient_light_color = Color(0.6, 0.6, 0.68)
 	env.ambient_light_energy = 0.62
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.62, 0.55, 0.5)
-	env.fog_density = 0.0045
-	env.fog_sky_affect = 0.12
+	_env = env
+	env.fog_density = 0.0052
+	env.fog_sky_affect = 0.1
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
 	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-28, -118, 0)
-	sun.light_color = Color(1.0, 0.9, 0.76)
-	sun.light_energy = 1.05
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 80
 	add_child(sun)
+	_sun = sun
+	_light_for_hour()
+	_mountains()
+
+## Far peaks on every side, hazed by distance, so the island sits in a larger world.
+func _mountains() -> void:
+	var mats: Array = []
+	for c in [Color(0.56, 0.64, 0.75), Color(0.44, 0.53, 0.63), Color(0.33, 0.42, 0.47)]:
+		var m := StandardMaterial3D.new()
+		m.albedo_color = c
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.disable_fog = true
+		mats.append(m)
+	for band in 3:
+		var count: int = [16, 18, 20][band]
+		for i in count:
+			var a := TAU * i / count + randf_range(-0.12, 0.12)
+			var r: float = [980.0, 760.0, 560.0][band] + randf_range(-50, 50)
+			var h: float = [460.0, 300.0, 170.0][band] * randf_range(0.6, 1.15)
+			var cm := CylinderMesh.new()
+			cm.top_radius = randf_range(2, 14)
+			cm.bottom_radius = h * randf_range(0.7, 1.1)
+			cm.height = h
+			cm.radial_segments = 9
+			cm.rings = 1
+			var mi := MeshInstance3D.new()
+			mi.mesh = cm
+			mi.material_override = mats[band]
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(mi)
+			mi.position = Vector3(100 + cos(a) * r, h / 2.0 - 40.0, sin(a) * r)
+			mi.rotation.y = randf() * TAU
+			mi.scale = Vector3(randf_range(0.9, 1.7), 1.0, randf_range(0.8, 1.3))
 
 # --- Rhodes --------------------------------------------------------------------
 
@@ -103,6 +156,17 @@ func _rhodes() -> void:
 	for z in [-4.3, 4.3]:
 		Build.tbox(self, Vector3(2.6, 10.0, 1.8), Vector3(R, 4.5, z), "iron", iron, true, 0.22)
 		Build.sphere(self, 0.65, Vector3(R, 9.9, z), GOLD, 1.2)
+	# The east gate, its guardians, and the paved way to the hall.
+	Asia.gate(self, Vector3(R - 3.5, 0, 0), PI / 2.0, 6.4)
+	Asia.lion(self, Vector3(R - 7.0, 0, -5.2), -PI / 2.0 + 0.25, 1.15)
+	Asia.lion(self, Vector3(R - 7.0, 0, 5.2), -PI / 2.0 - 0.25, 1.15)
+	Build.tbox(self, Vector3(R - 6.0, 0.06, 4.6), Vector3((R + 6.0) / 2.0, 0.03, 0), "paving", Color(0.72, 0.7, 0.66), false, 0.3)
+	Build.tbox(self, Vector3(4.0, 0.06, 24.0), Vector3(15.0, 0.03, -12.0), "paving", Color(0.72, 0.7, 0.66), false, 0.3)
+	for x in [12.0, 22.0, 32.0]:
+		Asia.banner(self, Vector3(x, 0, -3.4), PI / 2.0, 5.2)
+		Asia.banner(self, Vector3(x, 0, 3.4), -PI / 2.0, 5.2)
+	for at in [Vector3(8, 0, 3.2), Vector3(8, 0, -3.2), Vector3(27, 0, 3.2), Vector3(-7, 0, 4.5), Vector3(17.5, 0, -18)]:
+		Asia.stone_lantern(self, at, at.x == 8.0 and at.z > 0.0)
 
 	# Wukhan, slumped where he fell, sitting with his back to the west of the Ring.
 	var w := Node3D.new()
@@ -142,35 +206,41 @@ func _rhodes() -> void:
 	add_child(wt)
 	wt.position = Vector3(-21.5, 0.5, 0)
 
-	# The hall: an open timber roof over the Register.
+	# The Register pavilion: red posts under a tiled roof, open on all sides.
 	var hall := Vector3(0, 0, -6)
 	var timber := Color(0.55, 0.42, 0.32)
-	for dx in [-5.0, 5.0]:
+	Build.tbox(self, Vector3(12.5, 0.3, 10.5), hall + Vector3(0, 0.15, 0), "stone", Asia.STONE, true, 0.5)
+	Build.tbox(self, Vector3(3.0, 0.15, 1.0), hall + Vector3(0, 0.07, 5.7), "stone", Asia.STONE, true, 0.5)
+	for dx in [-5.0, 0.0, 5.0]:
 		for dz in [-4.0, 4.0]:
-			Build.tcyl(self, 0.3, 0.36, 4.4, hall + Vector3(dx, 2.2, dz), "wood", timber, 8, true)
-	for dz in [-4.0, 4.0]:
-		Build.tbox(self, Vector3(11.0, 0.35, 0.35), hall + Vector3(0, 4.4, dz), "wood", timber)
-	var roof := Build.tcyl(self, 0.0, 9.2, 3.0, hall + Vector3(0, 5.9, 0), "thatch", Color(0.9, 0.8, 0.6), 4, false, 0.5)
-	roof.rotation.y = PI / 4.0
-	Build.tbox(self, Vector3(11.5, 0.12, 9.5), hall + Vector3(0, 0.06, 0), "paving", Color(0.8, 0.76, 0.7), false, 0.3)
-	Build.tbox(self, Vector3(4.4, 2.8, 0.25), hall + Vector3(0, 1.9, -3.6), "planks", Color(0.35, 0.28, 0.24), true)
-	Build.box(self, Vector3(4.7, 0.2, 0.3), hall + Vector3(0, 3.4, -3.6), GOLD, false, 0.4)
+			if dx == 0.0 and dz > 0.0:
+				continue
+			Build.tcyl(self, 0.24, 0.27, 4.4, hall + Vector3(dx, 2.5, dz), "lacquer", Color.WHITE, 10, true, 0.6)
+	Build.tbox(self, Vector3(11.0, 0.4, 9.0), hall + Vector3(0, 4.5, 0), "lacquer", Color.WHITE, false, 0.6)
+	Asia.roof(self, 11.0, 9.0, hall + Vector3(0, 4.7, 0), 3.0, 1.8)
+	for sx in [-1.0, 1.0]:
+		Asia.paper_lantern(self, hall + Vector3(sx * 4.2, 3.7, 4.6), sx > 0.0, 1.2)
+		Asia.lion(self, hall + Vector3(sx * 7.6, 0, 6.0), 0.0, 0.85)
+	Build.tbox(self, Vector3(4.4, 2.8, 0.25), hall + Vector3(0, 2.2, -3.6), "darkwood", Color.WHITE, true)
+	Build.box(self, Vector3(4.7, 0.2, 0.3), hall + Vector3(0, 3.7, -3.6), GOLD, false, 0.4)
+	Asia.quad(self, Vector2(1.5, 1.5), hall + Vector3(0, 5.6, 4.62), 0.0, "ui/emblem.png", true, 0.25)
 	_register_label = Label3D.new()
 	_register_label.font_size = 64
 	_register_label.pixel_size = 0.008
 	_register_label.modulate = GOLD
 	_register_label.outline_size = 6
 	add_child(_register_label)
-	_register_label.position = hall + Vector3(0, 2.0, -3.45)
+	_register_label.position = hall + Vector3(0, 2.3, -3.45)
 	var rt := Thing.new()
 	rt.setup("Read the Register", _read_register)
 	add_child(rt)
-	rt.position = hall + Vector3(0, 0.6, -3.2)
+	rt.position = hall + Vector3(0, 0.9, -3.2)
 
-	# Houses round the inside of the Ring, doors facing the middle.
-	for h in [[-14, 26, 6, 8], [2, 31, 4, 6], [18, 26, 6, 8], [28, -16, 4, 6], [14, -30, 6, 8], [-8, -31, 4, 6], [29, 20, 4, 6]]:
+	# Halls round the inside of the Ring, doors facing the middle.
+	for h in [[-14, 26, 7, 5], [3, 32, 6, 4.5], [19, 27, 7, 5], [-8, -32, 6, 4.5], [30, 20, 5.5, 4.5]]:
 		var at := Vector3(h[0], 0, h[1])
-		Build.kit_house(self, at, atan2(-at.x, -at.z), h[2], h[3], true)
+		Asia.house(self, at, atan2(-at.x, -at.z), h[2], h[3], "red")
+	_tavern(Vector3(24, 0, -24))
 	# Tommy's stall, a wagon, crates and a fire.
 	Build.tbox(self, Vector3(3.2, 1.0, 1.2), Vector3(14, 0.5, -14), "planks", Color(0.7, 0.6, 0.5), true)
 	for sx in [-1.5, 1.5]:
@@ -178,7 +248,7 @@ func _rhodes() -> void:
 	Build.box(self, Vector3(3.6, 0.08, 1.8), Vector3(14, 2.6, -14), Color(0.2, 0.42, 0.5))
 	Build.model(self, "village/Prop_Crate", Vector3(16.4, 0, -13.6), 0.4)
 	Build.model(self, "village/Prop_Crate", Vector3(16.2, 0, -15.0), 1.1, 0.8)
-	Build.model(self, "village/Prop_Wagon", Vector3(24, 0, -6), 2.2)
+	Build.model(self, "village/Prop_Wagon", Vector3(31, 0, -9), 2.2)
 	for i in 6:
 		Build.tbox(self, Vector3(1.3, 0.16, 0.16), Vector3(20, 0.1 + i * 0.05, 14), "wood", timber).rotation.y = i * 1.05
 	Build.sphere(self, 0.35, Vector3(20, 0.4, 14), Color(1.0, 0.5, 0.1), 1.4)
@@ -211,18 +281,18 @@ func _road() -> void:
 # --- Tallow Ford -----------------------------------------------------------------
 
 func _tallow_ford() -> void:
-	for h in [[212, 32, 4, 6], [223, 44, 6, 8], [240, 42, 4, 6], [252, 24, 4, 6], [216, -3, 4, 6], [250, 4, 4, 6]]:
+	for h in [[211, 33, 6, 4.5], [223, 45, 7, 5], [241, 43, 6, 4.5], [253, 24, 6, 4.5], [215, -4, 6, 4.5], [251, 3, 5.5, 4.5]]:
 		var at := Vector3(h[0], 0, h[1])
-		Build.kit_house(self, at, atan2(VILLAGE.x - at.x, VILLAGE.z + 2.0 - at.z), h[2], h[3])
+		Asia.house(self, at, atan2(VILLAGE.x - at.x, VILLAGE.z + 2.0 - at.z), h[2], h[3], "plain", h[0] % 2 == 1)
 	# Pell's shop, with the strongbox round the back.
-	Build.kit_house(self, Vector3(236, 0, 0), 0.0, 6, 8)
+	Asia.house(self, Vector3(236, 0, 0), 0.0, 8, 5.5, "plain")
 	Build.model(self, "village/Prop_Crate", Vector3(240.6, 0, 3.4), 0.3)
-	Build.tbox(self, Vector3(1.1, 0.7, 0.7), Vector3(236, 0.35, -5.2), "planks", Color(0.5, 0.4, 0.3), true)
-	Build.box(self, Vector3(1.15, 0.12, 0.75), Vector3(236, 0.72, -5.2), GOLD)
+	Build.tbox(self, Vector3(1.1, 0.7, 0.7), Vector3(236, 0.35, -5.4), "lacquer", Color.WHITE, true)
+	Build.box(self, Vector3(1.15, 0.12, 0.75), Vector3(236, 0.72, -5.4), GOLD)
 	var box := Thing.new()
 	box.setup("Steal from Pell's strongbox", _steal)
 	add_child(box)
-	box.position = Vector3(236, 0.0, -5.8)
+	box.position = Vector3(236, 0.0, -6.0)
 	# Well.
 	Build.tcyl(self, 1.15, 1.15, 0.9, VILLAGE + Vector3(0, 0.45, 2), "stone", Color.WHITE, 12, true)
 	Build.cyl(self, 0.95, 0.95, 0.05, VILLAGE + Vector3(0, 0.75, 2), Color(0.05, 0.08, 0.1), 12)
@@ -250,7 +320,17 @@ func _tallow_ford() -> void:
 	for x in [265.0, 270.0, 275.0, 278.5]:
 		for dz in [-1.1, 1.1]:
 			Build.tcyl(self, 0.14, 0.14, 3.4, Vector3(x, -0.9, 64 + dz), "wood", Color(0.35, 0.28, 0.22), 6)
-	Build.label(self, "TALLOW FORD", 0, Color(0.9, 0.85, 0.7), 60).position = Vector3(203, 3.4, 17.5)
+	Asia.gate(self, Vector3(203, 0, 17.5), PI / 2.0, 5.6, false)
+	Build.label(self, "TALLOW FORD", 0, Color(0.9, 0.85, 0.7), 44).position = Vector3(202.6, 4.3, 17.5)
+	Asia.stone_lantern(self, Vector3(226.5, 0, 26.5), true)
+	Asia.stone_lantern(self, Vector3(239, 0, 8.5), false)
+	# The footbridge east over the river, and bamboo along the bank.
+	Asia.bridge(self, Vector3(266, 0.05, 20), Vector3(304, 0.3, 20), 3.2, 2.4)
+	for i in 16:
+		var bz := -70.0 + i * 13.0 + randf_range(-3, 3)
+		if absf(bz - 20.0) < 9.0 or absf(bz - 64.0) < 7.0:
+			continue
+		Asia.bamboo(self, ground(Vector3(268.0 + randf_range(-3, 3) + sin(bz * 0.02) * 6.0, 0, bz)), 5 + randi() % 4)
 
 func _steal() -> void:
 	if Game.flags.has("stolen"):
@@ -259,16 +339,15 @@ func _steal() -> void:
 	Game.flags["stolen"] = true
 	Game.coins += 30
 	Game.straps += 2
-	var seen := Game.witnesses(Vector3(236, 0, -5.8), null, 9.0)
+	var seen := Game.deed("theft", -0.9, 2.5, Vector3(236, 0, -6.0), "tallow", "strongbox", 11.0)
 	if seen.size() > 0:
-		Game.rep["tallow"] -= 35
-		Game.say("%s saw you with your hands in the strongbox. Thirty coin and two straps, and the whole village will know by dark." % seen[0].npc_name)
+		Game.say("%s saw you with your hands in the strongbox. Thirty coin and two straps, and they will tell the others." % seen[0].npc_name)
 	else:
-		Game.say("Thirty coin and two straps. Nobody saw.")
-		Game.flags["unseen_theft"] = true
+		Game.say("Thirty coin and two straps. Nobody saw. Pell will find it empty, and wonder.")
 	for n in Game.npcs:
-		if n.id == "pell":
-			n.disp -= 40
+		if n.id == "pell" and n.alive and not seen.has(n):
+			# He did not see who, so he suspects the stranger without being sure.
+			n.mind.experience("theft", -0.5, 1.2, false, "")
 	Game.note("You robbed Pell's strongbox at Tallow Ford.")
 	Game.touch()
 
@@ -310,6 +389,8 @@ func _wilds() -> void:
 		else:
 			_plant(small[randi() % small.size()], p, randf_range(0.8, 1.8), null)
 		placed += 1
+	for p in [Vector3(244, 0, 31), Vector3(218, 0, 22), Vector3(229, 0, 52), Vector3(258, 0, 12), Vector3(-10, 0, 14), Vector3(10, 0, 18), Vector3(33, 0, -8), Vector3(8, 0, -22)]:
+		_cherry(p, randf_range(0.8, 1.1))
 	_grass("Grass_Common_Tall", 1500)
 	_grass("Grass_Wispy_Tall", 900)
 	_grass("Grass_Common_Short", 1500)
@@ -326,6 +407,70 @@ func _plant(model_name: String, p: Vector3, s: float, trunks: StaticBody3D) -> v
 		cs.shape = sh
 		trunks.add_child(cs)
 		cs.position = g + Vector3(0, 2.0, 0)
+
+func _cherry(p: Vector3, sc: float) -> void:
+	var m := Build.model(self, "nature/CommonTree_%d" % (1 + randi() % 3), ground(p) - Vector3(0, 0.08, 0), randf() * TAU, sc)
+	for mi in m.find_children("*", "MeshInstance3D", true, false):
+		for i in mi.mesh.get_surface_count():
+			var mat: BaseMaterial3D = mi.mesh.surface_get_material(i)
+			if mat and mat.albedo_texture and mat.albedo_texture.resource_path.contains("Leaves"):
+				var pink: BaseMaterial3D = mat.duplicate()
+				pink.albedo_texture = load("res://assets/nature/Leaves_Cherry.png")
+				pink.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+				pink.alpha_scissor_threshold = 0.45
+				pink.cull_mode = BaseMaterial3D.CULL_DISABLED
+				mi.set_surface_override_material(i, pink)
+
+## The tavern: a long hall you can walk into, with tables, lanterns and the arm wrestling table.
+func _tavern(at: Vector3) -> void:
+	var t := Node3D.new()
+	add_child(t)
+	t.position = at
+	t.rotation.y = atan2(-at.x, -at.z)
+	var w := 13.0
+	var d := 9.0
+	var h := 3.6
+	Build.tbox(t, Vector3(w + 1.6, 0.3, d + 1.6), Vector3(0, 0.15, 0), "stone", Asia.STONE, true, 0.5)
+	Build.tbox(t, Vector3(w, 0.06, d), Vector3(0, 0.33, 0), "planks", Color(0.5, 0.4, 0.33), false, 0.5)
+	Build.tbox(t, Vector3(3.2, 0.15, 1.0), Vector3(0, 0.07, d / 2.0 + 1.2), "stone", Asia.STONE, true, 0.5)
+	# Walls, with a wide doorway in the front.
+	Build.tbox(t, Vector3(w, h, 0.3), Vector3(0, 0.3 + h / 2.0, -d / 2.0), "plaster", Asia.CREAM, true, 0.3)
+	for sx in [-1.0, 1.0]:
+		Build.tbox(t, Vector3(0.3, h, d), Vector3(sx * w / 2.0, 0.3 + h / 2.0, 0), "plaster", Asia.CREAM, true, 0.3)
+		Build.tbox(t, Vector3(w / 2.0 - 1.5, h, 0.3), Vector3(sx * (w / 4.0 + 0.75), 0.3 + h / 2.0, d / 2.0), "plaster", Asia.CREAM, true, 0.3)
+		Asia.quad(t, Vector2(2.2, 1.4), Vector3(sx * (w / 4.0 + 0.75), 2.4, d / 2.0 + 0.17), 0.0, "tex/lattice.jpg", false, 0.4)
+		Asia.quad(t, Vector2(2.2, 1.4), Vector3(sx * (w / 4.0 + 0.75), 2.4, d / 2.0 - 0.17), PI, "tex/lattice.jpg", false, 0.4)
+		Asia.paper_lantern(t, Vector3(sx * 1.9, 3.3, d / 2.0 + 0.7), false, 1.1)
+	Build.tbox(t, Vector3(3.2, 0.5, 0.34), Vector3(0, h + 0.05, d / 2.0), "lacquer", Color.WHITE, false, 0.6)
+	Build.tbox(t, Vector3(w + 0.1, 1.0, d + 0.1), Vector3(0, 0.8, 0), "darkwood", Color.WHITE, false, 0.5).visible = false
+	for i in 5:
+		var x := -w / 2.0 + w * i / 4.0
+		for sz in [-1.0, 1.0]:
+			Build.tcyl(t, 0.18, 0.2, h, Vector3(x, 0.3 + h / 2.0, sz * (d / 2.0 + 0.22)), "lacquer", Color.WHITE, 8, false, 0.6)
+		Build.tbox(t, Vector3(0.22, 0.26, d), Vector3(x, h + 0.2, 0), "darkwood")
+	Asia.roof(t, w, d, Vector3(0, 0.3 + h, 0), 3.2, 1.6)
+	Asia.quad(t, Vector2(1.3, 3.2), Vector3(0, 2.4, -d / 2.0 + 0.2), 0.0, "ui/banner.png", true)
+	Asia.quad(t, Vector2(1.6, 1.6), Vector3(0, h + 1.2, d / 2.0 + 1.75), 0.0, "ui/emblem.png", true, 0.3)
+	# Inside.
+	Asia.table_set(t, Vector3(-4.2, 0.36, -2.2), 0.0)
+	Asia.table_set(t, Vector3(4.2, 0.36, -2.2), 0.0)
+	Asia.table_set(t, Vector3(-4.3, 0.36, 1.6), PI / 2.0, 2.2)
+	Build.tbox(t, Vector3(1.3, 0.12, 0.8), Vector3(0, 1.08, 0.2), "darkwood", Color.WHITE, true)
+	Build.tbox(t, Vector3(0.9, 0.72, 0.5), Vector3(0, 0.7, 0.2), "darkwood")
+	for sx in [-1.0, 1.0]:
+		Build.tcyl(t, 0.05, 0.05, 0.16, Vector3(sx * 0.52, 1.22, 0.2), "iron", Color(0.6, 0.6, 0.6), 6)
+		Build.tbox(t, Vector3(0.3, 0.05, 0.3), Vector3(sx * 0.3, 1.16, 0.2), "cloth")
+	for p in [Vector3(-4.2, 3.0, -1.5), Vector3(4.2, 3.0, -1.5), Vector3(0, 3.1, 1.0)]:
+		Asia.paper_lantern(t, p, true, 1.0)
+	for i in 3:
+		Build.tcyl(t, 0.34, 0.3, 0.9, Vector3(5.3 - i * 0.75, 0.8, 3.4), "darkwood", Color(0.9, 0.8, 0.7), 10, true)
+	var table := Thing.new()
+	table.setup("Sit down at the arm wrestling table", _arm_wrestle)
+	t.add_child(table)
+	table.position = Vector3(0, 0.3, 0.9)
+
+func _arm_wrestle() -> void:
+	Game.battle.start_wrestle()
 
 ## Grass as one batched draw per kind, scattered where the player actually walks.
 func _grass(model_name: String, count: int) -> void:

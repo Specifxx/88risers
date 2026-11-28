@@ -5,9 +5,15 @@ const WALK := 5.5
 const SPRINT := 8.5
 const REACH := 3.6
 
+const Character = preload("res://scripts/character.gd")
+const Asia = preload("res://scripts/asia.gd")
+
 var cam: Camera3D
 var target: Node = null
+var third := true
 var _pitch := 0.0
+var _pivot: Node3D
+var _figure: Node3D
 
 func _ready() -> void:
 	var cs := CollisionShape3D.new()
@@ -17,12 +23,18 @@ func _ready() -> void:
 	cs.shape = sh
 	cs.position.y = 0.9
 	add_child(cs)
+	_pivot = Node3D.new()
+	_pivot.position.y = 1.65
+	add_child(_pivot)
 	cam = Camera3D.new()
-	cam.position.y = 1.65
-	cam.fov = 75
-	cam.far = 600
-	add_child(cam)
+	cam.fov = 72
+	cam.far = 1800
+	_pivot.add_child(cam)
 	cam.current = true
+	# The pilgrim: dark hooded travelling clothes with the club crest on the back.
+	_figure = Character.make(self, {"body": "Male_Ranger", "hood": true, "tint": Color(0.3, 0.3, 0.33)})
+	_figure.rotation.y = PI
+	Asia.quad(_figure, Vector2(0.34, 0.34), Vector3(0, 1.3, -0.215), PI, "ui/emblem.png", true, 0.25)
 
 func _unhandled_input(ev: InputEvent) -> void:
 	if Game.modal:
@@ -31,17 +43,38 @@ func _unhandled_input(ev: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	elif ev is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		rotation.y -= ev.relative.x * 0.0025
-		_pitch = clamp(_pitch - ev.relative.y * 0.0025, -1.4, 1.4)
-		cam.rotation.x = _pitch
+		_pitch = clamp(_pitch - ev.relative.y * 0.0025, -1.3, 1.3)
 	elif ev.is_action_pressed("ui_cancel"):
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	elif ev.is_action_pressed("interact") and target != null:
 		target.interact()
+	elif ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_V:
+		third = not third
 	elif ev.is_action_pressed("journal"):
 		Game.hud.toggle_journal()
 	elif ev.is_action_pressed("eat"):
 		if Game.eat():
 			Game.say("You eat some bread.")
+
+func _process(_dt: float) -> void:
+	# Conversations and fights are seen through the pilgrim's own eyes.
+	var behind := third and not Game.modal
+	_pivot.rotation.x = _pitch
+	_figure.visible = behind
+	var want := Vector3(0.55, 0.35, 3.1) if behind else Vector3.ZERO
+	if behind:
+		# Pull the camera in if a wall or the ground is in the way.
+		var from := _pivot.global_position
+		var to := _pivot.global_transform * want
+		var q := PhysicsRayQueryParameters3D.create(from, to)
+		q.exclude = [get_rid()]
+		var hit := get_world_3d().direct_space_state.intersect_ray(q)
+		if not hit.is_empty():
+			want *= clamp((from.distance_to(hit["position"]) - 0.25) / from.distance_to(to), 0.05, 1.0)
+	cam.position = cam.position.lerp(want, 0.3)
+	if behind:
+		var speed := Vector2(velocity.x, velocity.z).length()
+		Character.play(_figure, "Idle" if speed < 0.5 else ("Jog_Fwd" if speed > 6.5 else "Walk"))
 
 func _physics_process(dt: float) -> void:
 	if Game.modal:
@@ -65,7 +98,7 @@ func _find_target() -> void:
 	var best: Node = null
 	var best_score := 0.0
 	var fwd := -cam.global_transform.basis.z
-	var eye := cam.global_position
+	var eye := _pivot.global_position
 	for n in get_tree().get_nodes_in_group("interact"):
 		var at: Vector3 = n.global_position + Vector3(0, 1.2, 0)
 		var to := at - eye
@@ -83,7 +116,7 @@ func _find_target() -> void:
 
 func look_level(pitch := 0.0) -> void:
 	_pitch = pitch
-	cam.rotation.x = pitch
+	_pivot.rotation.x = pitch
 
 func heading() -> String:
 	var a := fposmod(rad_to_deg(-rotation.y), 360.0)

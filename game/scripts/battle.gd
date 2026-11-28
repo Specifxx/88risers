@@ -18,6 +18,9 @@ var grip := 0
 var turns := 0
 var lines: Array = []
 var result := ""
+var _mode := "fight"
+var _pins := [0, 0]
+var _rival: Node = null
 
 var _root: Control
 var _title: Label
@@ -82,6 +85,7 @@ func start_npc(n: Node) -> void:
 	_fight_menu()
 
 func _begin(n: String, hp: int, atk: int) -> void:
+	_mode = "fight"
 	foe_name = n
 	foe_hp = hp
 	foe_max = hp
@@ -108,6 +112,10 @@ func _say(t: String) -> void:
 	_log.append_text(t + "\n")
 
 func _refresh() -> void:
+	if _mode == "wrestle":
+		_status.text = "You %d   ·   %s %d   ·   first to three   ·   your coin: %d" % [_pins[0], foe_name, _pins[1], Game.coins]
+		Game.touch()
+		return
 	_title.text = foe_name
 	_status.text = "You: %d / %d health, %d wind   ·   Them: %d / %d   ·   Chalk %d, straps %d" % [
 		Game.hp, Game.max_hp, stamina, max(foe_hp, 0), foe_max, Game.chalk, Game.straps]
@@ -128,6 +136,70 @@ func _unhandled_key_input(ev: InputEvent) -> void:
 	if k >= 0 and k < _buttons.get_child_count():
 		get_viewport().set_input_as_handled()
 		(_buttons.get_child(k) as Button).pressed.emit()
+
+# --- The table: arm wrestling in the tavern ------------------------------------
+
+const BEATS := {"Toproll": "Hook", "Hook": "Press", "Press": "Toproll"}
+
+func start_wrestle() -> void:
+	if active():
+		return
+	if Game.coins < 5:
+		Game.say("It is five coin on the table to pull. You haven't got it.")
+		return
+	var founders: Array = Game.villagers("rhodes")
+	if founders.is_empty():
+		Game.say("There is nobody left to pull against.")
+		return
+	_rival = founders[randi() % founders.size()]
+	if _rival.hostile():
+		Game.say("%s will not sit down with you." % _rival.npc_name)
+		return
+	_mode = "wrestle"
+	foe = null
+	foe_name = _rival.npc_name
+	_pins = [0, 0]
+	result = ""
+	_log.clear()
+	_title.text = "The table: %s" % foe_name
+	_root.visible = true
+	UI.open_modal()
+	_say("%s sits down opposite and sets an elbow on the pad. Five coin each." % foe_name)
+	_say("[color=#9a968a]A toproll peels open a hook. A hook drags a press inside. A press drives through a toproll.[/color]")
+	_wrestle_menu()
+
+func _wrestle_menu() -> void:
+	_menu([["Toproll", _pull.bind("Toproll")], ["Hook", _pull.bind("Hook")], ["Press", _pull.bind("Press")], ["Stand up and leave", _leave_table]])
+
+func _pull(mine: String) -> void:
+	# Everyone at the table has a move they lean on.
+	var moves: Array = BEATS.keys()
+	var favourite: String = moves[abs(hash(foe_name)) % 3]
+	var theirs: String = favourite if randf() < 0.5 else moves[randi() % 3]
+	if mine == theirs:
+		_say("\nYou both go for the %s. Neither arm moves. The referee resets you." % mine.to_lower())
+	elif BEATS[mine] == theirs:
+		_pins[0] += 1
+		_say("\nYour %s beats the %s. [b]Pin.[/b]" % [mine.to_lower(), theirs.to_lower()])
+	else:
+		_pins[1] += 1
+		_say("\n%s's %s beats your %s. You are pinned." % [foe_name, theirs.to_lower(), mine.to_lower()])
+	if _pins[0] >= 3:
+		Game.coins += 5
+		_say("\nYou take the table, and five coin. %s shakes your hand." % foe_name)
+		_rival.mind.experience("helped", 0.5, 0.6)
+		_finish("wrestled")
+	elif _pins[1] >= 3:
+		Game.coins -= 5
+		_say("\n%s takes the table, and your five coin. \"Again some time.\"" % foe_name)
+		_rival.mind.experience("helped", 0.4, 0.5)
+		_finish("wrestled")
+	else:
+		_wrestle_menu()
+
+func _leave_table() -> void:
+	_say("\nYou stand up. Nobody holds it against you.")
+	_finish("left")
 
 # --- The fight -------------------------------------------------------------
 
@@ -268,8 +340,7 @@ func _oswin_raised() -> void:
 		if n.id == "mara" and n.alive:
 			n.willing = 90
 			n.willing_cap = 100
-			n.disp += 30
-			n.remember("raised_father")
+			n.mind.experience("raised_kin", 1.0, 4.0, true, "Oswin")
 	Game.note("Oswin Quill has risen. Mara should be told.")
 
 func _finish(r: String) -> void:

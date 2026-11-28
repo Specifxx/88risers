@@ -15,6 +15,11 @@ var _end: Control
 var _fade: ColorRect
 var _fade_text: Label
 var _cross: Label
+var _health: ProgressBar
+var _register: ProgressBar
+var _goal: Label
+var _band: Control
+var _slots := {}
 var _end_title: Label
 
 func _ready() -> void:
@@ -24,18 +29,67 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
-	_stats = UI.text(root, "", 19)
-	_stats.position = Vector2(18, 14)
+	# Top left: the crest, health, the Register, and what you are doing.
+	var top := UI.panel(root, Color(0.05, 0.04, 0.04, 0.72))
+	top.position = Vector2(14, 12)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	top.add_child(row)
+	var crest := TextureRect.new()
+	crest.texture = load("res://assets/ui/emblem.png")
+	crest.custom_minimum_size = Vector2(64, 64)
+	crest.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	crest.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	row.add_child(crest)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	row.add_child(col)
+	_health = _bar(col, Color(0.74, 0.14, 0.13))
+	_register = _bar(col, UI.GOLD)
+	_stats = UI.text(col, "", 15, UI.PAPER)
 	_stats.autowrap_mode = TextServer.AUTOWRAP_OFF
-	_shadow(_stats)
+	_goal = UI.text(col, "", 15, Color(0.86, 0.78, 0.6))
+	_goal.custom_minimum_size = Vector2(300, 0)
 
-	_compass = UI.text(root, "", 22, UI.GOLD)
+	# Top centre: a compass band that turns with you.
+	_band = Control.new()
+	_band.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_band.custom_minimum_size = Vector2(420, 34)
+	_band.offset_left = -210
+	_band.offset_right = 210
+	_band.offset_top = 14
+	_band.offset_bottom = 48
+	_band.clip_contents = true
+	_band.draw.connect(_draw_band)
+	root.add_child(_band)
+	_compass = UI.text(root, "", 15, Color(0.86, 0.78, 0.6))
 	_compass.autowrap_mode = TextServer.AUTOWRAP_OFF
-	_compass.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_compass.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_compass.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	_compass.offset_top = 14
-	_compass.offset_right = -18
+	_compass.offset_top = 50
 	_shadow(_compass)
+
+	# Bottom right: what you are carrying.
+	var slots := HBoxContainer.new()
+	slots.add_theme_constant_override("separation", 8)
+	slots.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	slots.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	slots.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	slots.offset_right = -16
+	slots.offset_bottom = -16
+	root.add_child(slots)
+	for item in ["Chalk", "Straps", "Bread", "Coin"]:
+		var slot := UI.panel(slots, Color(0.05, 0.04, 0.04, 0.72))
+		slot.custom_minimum_size = Vector2(78, 70)
+		var v := VBoxContainer.new()
+		slot.add_child(v)
+		var n := UI.text(v, "0", 26, UI.GOLD)
+		n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		n.autowrap_mode = TextServer.AUTOWRAP_OFF
+		var l := UI.text(v, item + ("  H" if item == "Bread" else ""), 13, Color(0.75, 0.72, 0.65))
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.autowrap_mode = TextServer.AUTOWRAP_OFF
+		_slots[item] = n
 
 	_cross = UI.text(root, "·", 30, Color(1, 1, 1, 0.7))
 	_cross.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -75,15 +129,76 @@ func _shadow(l: Label) -> void:
 	l.add_theme_constant_override("shadow_offset_x", 2)
 	l.add_theme_constant_override("shadow_offset_y", 2)
 
+func _bar(parent: Node, fill: Color) -> ProgressBar:
+	var b := ProgressBar.new()
+	b.custom_minimum_size = Vector2(300, 14)
+	b.show_percentage = false
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.12, 0.1, 0.09)
+	bg.border_color = Color(UI.GOLD, 0.45)
+	bg.set_border_width_all(1)
+	bg.set_corner_radius_all(3)
+	var fg := StyleBoxFlat.new()
+	fg.bg_color = fill
+	fg.set_corner_radius_all(3)
+	b.add_theme_stylebox_override("background", bg)
+	b.add_theme_stylebox_override("fill", fg)
+	parent.add_child(b)
+	return b
+
+func _objective() -> String:
+	if Game.flags.has("slice_done"):
+		return "Walk the island. Most of the Register is still empty."
+	if Game.recruits.size() >= Game.SLICE_GOAL:
+		return "Return to Harry Lu at the Register."
+	if Game.chalk + Game.straps == 0 and Game.journal.is_empty():
+		return "Speak to Harry Lu at the Register."
+	return "Find three at Tallow Ford who are willing and able  (%d / %d)" % [Game.recruits.size(), Game.SLICE_GOAL]
+
 func _refresh() -> void:
-	_stats.text = "Health %d / %d     Chalk %d     Straps %d     Bread %d     Coin %d\nRegister %d / %d" % [
-		Game.hp, Game.max_hp, Game.chalk, Game.straps, Game.bread, Game.coins, Game.register_count(), Game.QUOTA]
+	_health.max_value = Game.max_hp
+	_health.value = Game.hp
+	_register.max_value = Game.QUOTA
+	_register.value = Game.register_count()
+	_stats.text = "Health %d / %d      Register %d / %d" % [Game.hp, Game.max_hp, Game.register_count(), Game.QUOTA]
+	_goal.text = _objective()
+	_slots["Chalk"].text = str(Game.chalk)
+	_slots["Straps"].text = str(Game.straps)
+	_slots["Bread"].text = str(Game.bread)
+	_slots["Coin"].text = str(Game.coins)
+
+func _draw_band() -> void:
+	if Game.player == null:
+		return
+	var font := ThemeDB.fallback_font
+	var w := _band.size.x
+	_band.draw_rect(Rect2(0, 0, w, 34), Color(0.05, 0.04, 0.04, 0.6))
+	_band.draw_rect(Rect2(0, 0, w, 34), Color(UI.GOLD, 0.45), false, 1.0)
+	var facing := fposmod(rad_to_deg(-Game.player.rotation.y), 360.0)
+	var marks := {0: "N", 45: "NE", 90: "E", 135: "SE", 180: "S", 225: "SW", 270: "W", 315: "NW"}
+	for deg in range(0, 360, 15):
+		var off := wrapf(deg - facing, -180.0, 180.0)
+		var x := w / 2.0 + off * 3.2
+		if x < -20 or x > w + 20:
+			continue
+		if marks.has(deg):
+			var big: bool = deg % 90 == 0
+			var t: String = marks[deg]
+			var fs := 20 if big else 13
+			var tw := font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			_band.draw_string(font, Vector2(x - tw / 2.0, 24), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, UI.GOLD if big else Color(0.75, 0.72, 0.65))
+		else:
+			_band.draw_line(Vector2(x, 12), Vector2(x, 22), Color(0.75, 0.72, 0.65, 0.6), 1.0)
+	_band.draw_line(Vector2(w / 2.0, 0), Vector2(w / 2.0, 7), UI.GOLD, 2.0)
 
 func _process(_dt: float) -> void:
 	if Game.player == null:
 		return
+	_band.queue_redraw()
 	var where := "Inside the Ring" if Game.in_ring(Game.player.global_position) else "Outside the Ring"
-	_compass.text = "%s   ·   %s" % [Game.player.heading(), where]
+	var h := int(Game.hour)
+	var part := "Night" if Game.is_night() else ("Morning" if h < 11 else ("Midday" if h < 15 else ("Afternoon" if h < 18 else "Evening")))
+	_compass.text = "%s   ·   %s" % [where, part]
 	var t: Node = Game.player.target
 	_prompt.text = "[E]  %s" % t.prompt() if t != null and not Game.modal else ""
 	_cross.visible = not Game.modal
@@ -181,7 +296,7 @@ func _build_title(root: Control) -> void:
 	var t := UI.text(v, "88 RISERS", 64, UI.GOLD)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	UI.text(v, "The dead cannot rise on their own any more. Whatever dies unattended sinks into the ground and comes back as one of the Pinned.\n\nA Riser knows the rite that lets the dead pass on. There used to be 88. Now there are eight, in one village, inside one ring of safe ground.\n\nYou are a pilgrim. Find more.", 21)
-	UI.text(v, "WASD move  ·  mouse look (arrow keys also turn)  ·  Shift run  ·  E talk or use  ·  J journal  ·  H eat bread  ·  Esc free the mouse\nIn fights and conversations, click a choice or press its number.", 16, Color(0.7, 0.68, 0.6))
+	UI.text(v, "WASD move  ·  mouse look (arrow keys also turn)  ·  Shift run  ·  E talk or use  ·  V first or third person  ·  J journal  ·  H eat bread  ·  Esc free the mouse\nIn fights and conversations, click a choice or press its number.", 16, Color(0.7, 0.68, 0.6))
 	UI.button(v, "Begin", _begin, 24).alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 func _begin() -> void:
