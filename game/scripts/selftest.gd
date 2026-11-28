@@ -352,16 +352,29 @@ func _run() -> void:
 	Game.dialogue._pay(Game.bounty["tallow"])
 	_check(Game.bounty["tallow"] == 0, "Paying settles the law")
 	Game.dialogue.close()
-	# Someone bold who cannot stand the player shoves them.
-	var ivo2 := _npc("ivo")
-	ivo2.mind.fear = 0.0
-	ivo2.global_position = Game.player.global_position + Vector3(0, 0, 1.2)
-	var push0: Vector3 = Game.player._push
-	ivo2._shove_cd = 0.0
-	ivo2._crowd_check()
-	print("    Ivo feels %.2f and %s" % [ivo2.mind.feeling(), "shoved the pilgrim" if Game.player._push != push0 else "did not shove"])
-	_check(Game.player._push != push0, "Someone bold who loathes the player shoves them when crowded")
-	Game.player._push = Vector3.ZERO
+	# Nobody walks through walls: someone sent straight at a house goes round it or stops.
+	var walker := _npc("ned")
+	walker.aggro = false
+	var house := Vector3(211, 0, 33)
+	walker.global_position = Game.main.ground(house + Vector3(0, 0, 9))
+	var inside := false
+	walker._state = "walk"
+	for f in 400:
+		walker._step_towards(house + Vector3(0, 0, -9), 0.05)
+		var rel: Vector3 = walker.global_position - house
+		# The house is 6 by 4.5, turned to face the square; well inside its footprint is inside the wall.
+		if Vector2(rel.x, rel.z).length() < 1.6:
+			inside = true
+	print("    Sent at a house, Ned ended %.1f m from its centre" % Vector2(walker.global_position.x - house.x, walker.global_position.z - house.z).length())
+	_check(not inside, "A person sent straight at a house does not pass through it")
+	var ring_edge := Vector3(28, 0, 22)
+	var kel := _npc("kelvin")
+	kel.global_position = Game.main.ground(ring_edge)
+	kel._state = "avoid"
+	for f in 200:
+		kel._step_towards(ring_edge + Vector3(30, 0, 12), 0.05)
+	print("    Run at the Ring wall, Kelvin ended %.1f m from the centre (the wall is at %.0f)" % [Vector2(kel.global_position.x, kel.global_position.z).length(), Game.RING_RADIUS])
+	_check(Game.in_ring(kel.global_position), "Someone running at the Ring wall stays inside it")
 	# And how they speak changes with it.
 	var luie := _npc("luie")
 	luie.mind.fear = 0.9

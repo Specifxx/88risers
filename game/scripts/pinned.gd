@@ -154,9 +154,9 @@ func _process(dt: float) -> void:
 	_grace = max(0.0, _grace - dt)
 	_cooldown = max(0.0, _cooldown - dt)
 	if _knock.length() > 0.1:
-		var pushed := global_position + _knock * dt
+		var pushed: Vector3 = Game.main.walk(global_position, global_position + _knock * dt)
 		if Vector2(pushed.x, pushed.z).length() > Game.RING_RADIUS + 2.0:
-			global_position = Game.main.ground(pushed)
+			global_position = pushed
 		_knock = _knock.lerp(Vector3.ZERO, min(1.0, dt * 4.5))
 	if _stagger > 0.0:
 		_stagger -= dt
@@ -193,10 +193,10 @@ func _process(dt: float) -> void:
 		return
 	var moving := false
 	if to.length() > 0.3:
-		var next := global_position + to.normalized() * speed * dt
+		var next: Vector3 = Game.main.walk(global_position, global_position + to.normalized() * speed * dt)
 		# The Pinned cannot cross the Ring.
-		if Vector2(next.x, next.z).length() > Game.RING_RADIUS + 2.0:
-			global_position = Game.main.ground(next)
+		if Vector2(next.x, next.z).length() > Game.RING_RADIUS + 2.0 and next.distance_to(global_position) > 0.001:
+			global_position = next
 			moving = true
 		rotation.y = lerp_angle(rotation.y, atan2(to.x, to.z), 0.12)
 	Character.play(_body, ("Jog_Fwd" if speed > 2.0 else "Walk") if moving else "Idle")

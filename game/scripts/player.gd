@@ -59,28 +59,10 @@ func _dress() -> void:
 	_worn = Game.equip.duplicate()
 	Gear.dress(_figure, _worn)
 
-## Thrown back by a blow or a shove.
-func shove(v: Vector3, shake := 0.1) -> void:
+## Thrown back by a blow.
+func recoil(v: Vector3, shake := 0.1) -> void:
 	_push += v
 	_shake = max(_shake, shake)
-
-## Put both hands on whoever is in front of you and push. No damage, but nobody likes it.
-func shove_other() -> void:
-	if _cooldown > 0.0 or Game.modal:
-		return
-	_cooldown = 0.6
-	_anim_hold = 0.5
-	Game.spend(6.0)
-	Character.play(_figure, "Push", true)
-	var fwd := -global_transform.basis.z
-	for n in get_tree().get_nodes_in_group("hittable"):
-		var to: Vector3 = n.global_position - global_position
-		to.y = 0
-		if n.can_be_hit() and to.length() < 2.0 and fwd.dot(to.normalized()) > 0.5 and n.has_method("knock"):
-			n.knock(fwd * 5.5)
-			if n.has_method("shoved"):
-				n.shoved()
-			return
 
 func _unhandled_input(ev: InputEvent) -> void:
 	if Game.modal:
@@ -99,8 +81,6 @@ func _unhandled_input(ev: InputEvent) -> void:
 		target.interact()
 	elif ev.is_action_pressed("attack"):
 		swing()
-	elif ev.is_action_pressed("shove"):
-		shove_other()
 	elif ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_V:
 		third = not third
 	elif ev.is_action_pressed("journal"):

@@ -65,9 +65,6 @@ const SHOUTS := {
 	"theft": ["Thief!", "I saw that!", "That isn't yours!"],
 }
 
-## Said by someone squaring up to the player.
-const SHOVES := ["Get out of my sight.", "You're not wanted here.", "Go on. Move.", "I said back off."]
-
 ## How the same answer comes out, depending on how they feel about you.
 const TONES := {
 	"afraid": "They will not meet your eye, and answer quickly, to have it over with.\n\n\"%s\"",
