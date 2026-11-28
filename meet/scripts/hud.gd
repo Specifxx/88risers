@@ -683,6 +683,18 @@ func _fill_bag() -> void:
 	_gfx.text = "Graphics: %s   (running at %d frames a second; tap to change)" % ["automatic" if Meet.quality_auto else ["sharpest", "sharp", "smooth", "smoothest"][Meet.quality], int(Meet.main.fps)]
 	Wear.dress(_doll, Meet.worn)
 	UI.clear(_bag_list)
+	if Meet.lions > 0:
+		var home: bool = Meet.flags.has("lions_home")
+		UI.text(_bag_list, "Lions:  %d %s" % [Meet.lions, "waiting at the gate" if home else "following you"], 16, UI.GOLD)
+		UI.button(_bag_list, "Call the lions back to you" if home else "Send the lions to wait at the gate", func():
+			if Meet.flags.has("lions_home"):
+				Meet.flags.erase("lions_home")
+				Meet.say("A whistle. Small stone-coloured shapes come bounding over.")
+			else:
+				Meet.flags["lions_home"] = {"on": true}
+				Meet.say("The lions pad off to wait by the gate. They look back twice.")
+			Meet.save()
+			_fill_bag(), 15)
 	for slot in [["hand", "In your hand (and what you swing)"], ["head", "On your head"], ["body", "On your body"]]:
 		var on: String = Meet.worn[slot[0]]
 		UI.text(_bag_list, "%s:  %s" % [slot[1], Meet.ITEMS[on]["name"] if on != "" else "nothing"], 16, UI.GOLD)

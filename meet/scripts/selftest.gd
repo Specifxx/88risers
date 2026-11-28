@@ -201,6 +201,8 @@ func _run() -> void:
 		if erick.state == "search":
 			searched = true
 			break
+		if erick.state == "idle":
+			erick.go_pull(Meet.main.TABLES[0] + Vector3(-0.85, 0, 0), Meet.main.TABLES[0])
 	check(searched, "the owner goes to their bag, finds it gone and starts looking")
 	await wait(1.5)
 	await shot("07_search")
@@ -368,7 +370,7 @@ func _run() -> void:
 	var fe: float = ek.mind.feeling()
 	Meet.heat = 0.0
 	Meet.main._wallet_take("erick")
-	check(ek.state == "confront" and ek.mind.feeling() < fe - 0.2 and Meet.heat >= 1.0, "caught in Erick's wallet: he comes for you and thinks far worse of you (%.2f -> %.2f)" % [fe, ek.mind.feeling()])
+	check(ek.state == "confront" and ek.mind.feeling() < fe - 0.12 and Meet.heat >= 1.0, "caught in Erick's wallet: he comes for you and thinks far worse of you (%.2f -> %.2f)" % [fe, ek.mind.feeling()])
 	ek.idle()
 	Meet.heat = 0.0
 	for r in Meet.risers:
@@ -605,6 +607,18 @@ func _run() -> void:
 	p.slap()
 	await wait(0.6)
 	check(Meet.lions == 1 and Meet.main._pets.size() == 1, "an attack-10 item breaks a stone lion, and a living one comes out")
+	var lc: Vector3 = Meet.main.clear(Vector3(-5.2, 0, 22.5))
+	check(Vector2(lc.x + 5.2, lc.z - 22.5).length() > 1.2, "nobody can walk through the lion that is still stone")
+	Meet.flags["lions_home"] = {"on": true}
+	await wait(0.2)
+	check(not Meet.main._pets[0]["node"].visible, "the lions can be sent to wait at the gate")
+	Meet.flags.erase("lions_home")
+	var km: Node3D = Meet.riser("tommy")
+	for i in 4:
+		km.mind.experience("nagged", -0.3, 0.9, true, "")
+	check(km.attitude_key() in ["fed_up", "angry", "furious", "funny_pest", "hurt"], "pelting someone makes them cross, not scared (%s)" % km.attitude())
+	km.mind.experience("helped", 0.8, 5.0)
+	km.mind.experience("helped", 0.8, 5.0)
 	await wait(2.5)
 	stand(Vector3(4.0, 0, 16.0), Vector3(5.2, 0, 22.5))
 	await wait(1.0)

@@ -1761,16 +1761,27 @@ func axes() -> Dictionary:
 func attitude_key() -> String:
 	var a := axes()
 	var lvl := mood_level()
+	# Anger first: being pestered, pelted and mouthed off at makes people cross, not scared.
+	var irr: float = a["irritation"]
+	var bold: bool = strength >= 70.0 or mind.grudge >= 1.0
 	if lvl <= -3:
+		if irr >= a["wary"] or bold:
+			return "furious"
 		return "afraid" if a["wary"] > 0.5 else "done"
+	if irr > 0.45 and irr >= a["wary"] * 0.7:
+		if a["fun"] > 0.3 and lvl >= 0:
+			return "funny_pest"
+		if a["warmth"] > 0.35 and lvl >= -1:
+			return "hurt"
+		if lvl <= -2 or irr > 1.4:
+			return "furious"
+		if lvl <= -1 or irr > 0.9:
+			return "angry"
+		return "mouth" if mind.remembers("heckle") else "fed_up"
 	if a["wary"] > 0.5 and lvl < 0:
-		return "afraid"
+		return "squaring" if bold else "afraid"
 	if a["trust"] < -0.35:
 		return "arm_not_bag" if a["respect"] > 0.3 else "no_trust"
-	if a["irritation"] > 0.45:
-		if a["fun"] > 0.3:
-			return "funny_pest"
-		return "hurt" if a["warmth"] > 0.35 else "mouth"
 	if a["wary"] > 0.35:
 		return "wary"
 	if lvl < 0:
@@ -2372,9 +2383,13 @@ func splatted(by: Node) -> void:
 		mind.experience("chalk", 0.2, 0.5)
 		throw_at(Meet.player)
 	else:
-		say_aloud(["This is a clean shirt!", "Did you just throw FOOD at me?", "Unbelievable."][randi() % 3], 3.5)
-		mind.experience("nagged", -0.3, 0.9, true, riser_name)
+		# The first one is an outrage. By the third they are coming over.
+		say_aloud((["This is a clean shirt!", "Did you just throw FOOD at me?", "Unbelievable."] if n == 0 else ["AGAIN? Are you serious?", "One more. Throw ONE more.", "Right. That's it."])[randi() % 3], 3.5)
+		mind.experience("nagged", -0.3 - 0.1 * min(n, 3), 0.9 + 0.3 * min(n, 3), true, riser_name)
+		_mood_check = 0.0
 		Meet.add_heat(0.3)
+		if n >= 2 and (is_riser or guest) and state not in ["pull", "to_table", "scrap", "confront"] and not Meet.main.invaded():
+			confront()
 		if passer:
 			bolt(1.6)
 

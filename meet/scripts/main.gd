@@ -149,6 +149,14 @@ func clear(p: Vector3) -> Vector3:
 			d = d.normalized() * 1.15
 			p.x = t.x + d.x
 			p.z = t.z + d.y
+	# Stone lions are solid, for as long as they are still stone.
+	for holder in _lions:
+		if holder.visible:
+			var dl := Vector2(p.x - holder.position.x, p.z - holder.position.z)
+			if dl.length() < 1.25:
+				dl = (dl.normalized() if dl.length() > 0.001 else Vector2(0, -1)) * 1.25
+				p.x = holder.position.x + dl.x
+				p.z = holder.position.z + dl.y
 	p.x = clamp(p.x, -24.0, 24.0)
 	p.z = clamp(p.z, -20.0, 28.75)   # right up to the railing
 	return ground(p)
@@ -1948,8 +1956,12 @@ func _free_lion(at: Vector3) -> void:
 ## The lions that got out follow you about, and have a mind of their own while they do.
 func _run_pets(dt: float) -> void:
 	var p: Node3D = Meet.player
+	var home: bool = Meet.flags.has("lions_home")
 	for pet in _pets:
 		var n: Node3D = pet["node"]
+		n.visible = not home
+		if home:
+			continue
 		pet["t"] -= dt
 		if pet["t"] <= 0.0:
 			pet["t"] = randf_range(5.0, 11.0)
