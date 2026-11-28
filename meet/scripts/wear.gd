@@ -144,8 +144,13 @@ static func model(item: String) -> Node3D:
 		"footy":
 			Build.sphere(n, 0.12, Vector3(0, 0.22, 0), Color(0.75, 0.3, 0.15)).scale = Vector3(0.75, 1.3, 0.75)
 		"balloon":
-			Build.cyl(n, 0.004, 0.004, 0.7, Vector3(0, 0.4, 0), Color(0.9, 0.9, 0.9), 4)
-			Build.sphere(n, 0.17, Vector3(0, 0.9, 0), Color(0.95, 0.2, 0.3)).scale = Vector3(1, 1.2, 1)
+			# The string and balloon hang from a pivot the holder keeps upright and lets sway.
+			var bal := Node3D.new()
+			bal.name = "Sway"
+			n.add_child(bal)
+			Build.cyl(bal, 0.004, 0.004, 0.9, Vector3(0, 0.45, 0), Color(0.9, 0.9, 0.9), 4)
+			Build.sphere(bal, 0.2, Vector3(0, 1.08, 0), Color(0.95, 0.2, 0.3)).scale = Vector3(1, 1.2, 1)
+			Build.cyl(bal, 0.0, 0.03, 0.05, Vector3(0, 0.84, 0), Color(0.8, 0.15, 0.25), 6)
 		"possum_hat":
 			Build.sphere(n, 0.13, Vector3(0, 0.22, 0), Color(0.5, 0.48, 0.45)).scale = Vector3(1.2, 0.7, 1.5)
 			Build.sphere(n, 0.07, Vector3(0, 0.22, 0.17), Color(0.55, 0.53, 0.5))
@@ -207,3 +212,19 @@ static func gripling() -> Node3D:
 	Build.sphere(n, 0.11, Vector3(0.4, 0.44, 0.02), c * 0.9)
 	Build.cyl(n, 0.03, 0.03, 0.12, Vector3(-0.2, 0.26, 0), c * 0.8, 6).rotation.z = 1.3
 	return n
+
+## Chalk on someone: white dust across the chest and shoulders, not a coat of paint.
+static func dust(figure: Node3D, seconds: float, c := Color(0.97, 0.97, 0.97)) -> void:
+	var n := Node3D.new()
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	for i in 9:
+		var blob := Build.sphere(n, rng.randf_range(0.05, 0.11), Vector3(rng.randf_range(-0.2, 0.2), rng.randf_range(-0.22, 0.2), 0.13 + rng.randf_range(-0.02, 0.03)), c)
+		blob.scale = Vector3(1.0, rng.randf_range(0.6, 1.1), 0.22)
+		blob.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for sx in [-1.0, 1.0]:
+		Build.sphere(n, 0.08, Vector3(sx * 0.2, 0.22, 0.04), c).scale = Vector3(1.2, 0.35, 1.0)
+	hold(figure, n, "spine_03", "Dust")
+	figure.get_tree().create_timer(seconds).timeout.connect(func():
+		if is_instance_valid(figure):
+			drop(figure, "Dust"))

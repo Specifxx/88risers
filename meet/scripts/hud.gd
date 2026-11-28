@@ -29,6 +29,7 @@ var _cam_vec := Vector2.ZERO
 var _cam_moved := 0.0
 var _cam_knob: Panel
 var _gfx: Button
+var _jump_pad: Button
 var _bag_dirty := false
 var _banner: PanelContainer
 var _banner_title: Label
@@ -144,7 +145,7 @@ func _shadow(l: Label) -> void:
 
 func _refresh() -> void:
 	_bar.value = Meet.composure
-	_stats.text = "$%d  ·  Snacks %d  ·  Chalk %d%s%s  ·  Won %d, lost %d" % [Meet.money, Meet.snacks, Meet.chalk, "  ·  Hands chalked" if Meet.chalked else "",
+	_stats.text = "$%d  ·  Snacks %d  ·  Chalk %d%s%s  ·  Won %d, lost %d" % [Meet.money, Meet.snacks, Meet.chalk, ("  ·  Hands chalked" if Meet.chalked else "") + ("  ·  CARRYING A TABLE" if Meet.carrying >= 0 else "") + ("  ·  WINDY" if Meet.wind > 0.0 else ""),
 		"  ·  Straps in pocket %d" % Meet.straps.size() if not Meet.straps.is_empty() else "", Meet.wins, Meet.losses]
 	_heat.text = "Heat  %s%s" % ["★".repeat(Meet.stars()), "☆".repeat(5 - Meet.stars())] if Meet.stars() > 0 else ""
 	_heat.visible = Meet.stars() > 0
@@ -166,6 +167,12 @@ func _process(dt: float) -> void:
 	var riding: bool = Meet.player.riding
 	_prompt.text = ("[E]  Get off the bike" if riding else "[E]  %s" % t.prompt()) if (t != null or riding) and not Meet.modal and not Meet.touch else ""
 	_touch_ui.visible = Meet.touch and not Meet.modal and not _title.visible
+	if _jump_pad != null and Meet.touch:
+		# Holding the button counts as holding the key, for flying.
+		if _jump_pad.button_pressed:
+			Input.action_press("jump")
+		elif Input.is_action_pressed("jump") and not Input.is_key_pressed(KEY_SPACE):
+			Input.action_release("jump")
 	if _cam_id >= 0 and not Meet.modal:
 		Meet.player.look += Vector2(_cam_vec.x * 560.0, _cam_vec.y * 300.0) * dt
 	if Meet.touch:
@@ -310,7 +317,7 @@ func _build_touch() -> void:
 	_cam_knob.visible = false
 	_touch_ui.add_child(_cam_knob)
 	_pad(_touch_ui, "PUNCH", 104, Vector2(250, 86), func(): Meet.player.slap())
-	_pad(_touch_ui, "JUMP", 92, Vector2(124, 292), func(): Meet.player.jump())
+	_jump_pad = _pad(_touch_ui, "JUMP", 92, Vector2(124, 292), func(): Meet.player.jump())
 	_pad(_touch_ui, "CHALK", 84, Vector2(232, 214), func(): Meet.player.throw_chalk())
 	_pad(_touch_ui, "ITEM", 84, Vector2(366, 150), func(): Meet.player.use_item())
 	_pad(_touch_ui, "THROW", 80, Vector2(372, 54), func(): Meet.player.throw_snack())

@@ -113,6 +113,8 @@ var bracket := "open"          # open | in | semi | wait | final | out | won | n
 var dark := 0.0                # seconds the lights are out: nobody can see what you do
 var ripples: Array = []         # what you changed tonight
 var away := {}                 # kit you have put down somewhere tonight
+var wind := 0.0                # seconds of proper wind left
+var carrying := -1             # the table you have hold of, or -1
 var pump := 0                  # sets of curls done tonight, up to 4
 var double_points := false
 var peak_heat := 0
@@ -234,6 +236,8 @@ func new_night() -> void:
 	fish = 0
 	bracket = "open"
 	dark = 0.0
+	wind = 0.0
+	carrying = -1
 	ripples = []
 	away = {}
 	pump = 0
@@ -462,6 +466,8 @@ const DARE_POOL := [
 	{"text": "Send a lost tourist through the middle of the meet", "event": "tourist", "tier": 2},
 	{"text": "Steal the cyclist's bike and go for a ride", "event": "bike", "tier": 2},
 	{"text": "Start a food fight", "event": "foodfight", "tier": 2},
+	{"text": "Kiss Kelvin's cousin", "event": "kiss", "tier": 2},
+	{"text": "Pull someone out of the bay", "event": "rescue", "tier": 0},
 	{"text": "Shout something at the whole meet", "event": "shout", "tier": 1},
 	{"text": "Knock someone over with a bicycle", "event": "bowl", "tier": 2},
 ]

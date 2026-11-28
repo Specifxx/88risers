@@ -80,6 +80,8 @@ func _show() -> void:
 		UI.open_modal()
 
 func close() -> void:
+	if active() and who != null and not _forced and who.has_method("after_talk"):
+		who.after_talk()
 	if active() and _forced and who != null:
 		# Turning your back on someone who came over to have it out.
 		_forced = false
@@ -497,6 +499,10 @@ func _answer(o: Dictionary, show_say := true) -> void:
 	if show_say:
 		_text.append_text("\n[color=#b9b3a0]%s[/color]\n" % o["say"])
 	_text.append_text("\"%s\"\n" % o["reply"])
+	var outcome: String = r.react(v)
+	if outcome != "":
+		_text.append_text("[color=%s][i]↳ %s[/i][/color]\n" % ["#8fd9a8" if v > 0.0 else "#ff9a7a", outcome])
+		Meet.sfx("grip" if v > 0.0 else "miss", -10.0)
 	_effects(o)
 	match o.get("do", ""):
 		"tip":
