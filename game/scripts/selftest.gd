@@ -29,7 +29,7 @@ func _shot(shot_name: String, at: Vector3, yaw_deg: float, pitch_deg := 0.0) -> 
 	Game.player.global_position = Game.main.ground(at) + Vector3(0, 0.15, 0)
 	Game.player.velocity = Vector3.ZERO
 	Game.player.rotation.y = deg_to_rad(yaw_deg)
-	Game.player.cam.rotation.x = deg_to_rad(pitch_deg)
+	Game.player.look_level(deg_to_rad(pitch_deg))
 	await _save(shot_name)
 
 func _npc(id: String) -> Node:
@@ -143,6 +143,7 @@ func _run() -> void:
 	_check(Game.battle.result == "lost", "Saying the rite before the spirit is ready wastes the strap")
 	_press("Continue")
 
+	await _shot("07b_tavern", Vector3(22.2, 0.4, -22.2), 135, -4)
 	await _shot("08_village", Vector3(198, 0.1, 17), -92, 3)
 	await _shot("09_village_square", Vector3(238, 0.1, 32), 120, 0)
 	await _shot("09b_ned", Vector3(223.2, 0.1, 31.2), 157, 0)
@@ -230,6 +231,17 @@ func _run() -> void:
 	var h_before: float = hearer.mind.feeling()
 	_check(hearer.mind.hear(teller.mind.gossip()), "News can be passed from one person to another")
 	_check(hearer.mind.feeling() < h_before, "Hearing of a killing lowers their opinion without having seen it")
+
+	# The tavern table.
+	Game.coins = 20
+	Game.battle.start_wrestle()
+	_check(Game.battle.active(), "The arm wrestling table can be sat at")
+	var rounds := 0
+	while Game.battle.result == "" and rounds < 60:
+		rounds += 1
+		_press(["Toproll", "Hook", "Press"][rounds % 3])
+	_check(Game.battle.result == "wrestled" and Game.coins != 20, "A match is pulled to three pins and coin changes hands")
+	_press("Continue")
 
 	_check(harry.topics().has("I've brought three from Tallow Ford"), "Harry can be told about the three recruits")
 	harry.topic_text("I've brought three from Tallow Ford")

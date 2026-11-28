@@ -44,7 +44,7 @@ const MINDS := {
 
 ## Where people drift to when they are not at their post.
 const SPOTS := {
-	"rhodes": [Vector3(21.5, 0, 12.5), Vector3(18.5, 0, 15.5), Vector3(2, 0, 2.5), Vector3(-3, 0, 3), Vector3(12, 0, -10.5), Vector3(31, 0, 1.5), Vector3(-16, 0, 6)],
+	"rhodes": [Vector3(22.6, 0, -22.4), Vector3(25.4, 0, -22.0), Vector3(21.5, 0, 12.5), Vector3(18.5, 0, 15.5), Vector3(2, 0, 2.5), Vector3(-3, 0, 3), Vector3(12, 0, -10.5), Vector3(31, 0, 1.5), Vector3(-16, 0, 6)],
 	"tallow": [Vector3(231.6, 0, 23.4), Vector3(228.3, 0, 21.2), Vector3(212, 0, 8.5), Vector3(236, 0, 7.5), Vector3(207, 0, 17.5), Vector3(226, 0, 31)],
 }
 

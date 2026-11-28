@@ -147,7 +147,7 @@ void fragment() {
 	vec3 e = texture(earth, uv * 0.7).rgb * vec3(1.15, 1.05, 0.9);
 	vec3 c = mix(g * vec3(0.5, 0.58, 0.4), r * 0.7, COLOR.g);
 	c = mix(c, d * vec3(0.62, 0.56, 0.5), COLOR.r);
-	c = mix(c, e * vec3(0.6, 0.55, 0.5), COLOR.b);
+	c = mix(c, e * vec3(0.5, 0.47, 0.44), COLOR.b);
 	ALBEDO = c;
 	ROUGHNESS = 0.95;
 }
