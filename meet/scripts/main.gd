@@ -249,11 +249,12 @@ func _place() -> void:
 	add_child(dr)
 	dr.position = SNACKS + Vector3(1.9, 0, 0.9)
 	# Loose change people have dropped.
-	for i in 5:
+	for i in 2:
 		var a := randf() * TAU
-		var r := randf_range(3.0, 20.0)
+		var r := randf_range(6.0, 20.0)
 		_coin(clear(Vector3(cos(a) * r, 0, absf(sin(a)) * r + 2.0)), 2)
-	_coin(Vector3(-9, 0, 20.6), 20)
+	if randf() < 0.25:
+		_coin(Vector3(-9, 0, 20.6), 20)
 	# The way in from the water, the club's guardians, and its banners.
 	Asia.gate(self, Vector3(0, 0, 24.5), 0.0, 6.0)
 	Asia.lion(self, Vector3(-5.2, 0, 22.5), 0.2, 1.0)
@@ -364,8 +365,13 @@ func _call_out(i: int) -> void:
 	if pool.is_empty():
 		Meet.say("\"WHO WANTS A PULL?\" Nobody does. Either they're busy or they've had enough of you.")
 		return
-	pool.sort_custom(func(a, b): return (1.0 if a.wants_pull else 0.0) + a.mind.feeling() + randf() * 0.6 > (1.0 if b.wants_pull else 0.0) + b.mind.feeling() + randf() * 0.6)
 	var r: Node = pool[0]
+	var top := -99.0
+	for c in pool:
+		var sc: float = (1.0 if c.wants_pull else 0.0) + c.mind.feeling() + randf() * 0.6
+		if sc > top:
+			top = sc
+			r = c
 	r.say_aloud(["I'll have that.", "Me. I'm coming.", "Go on, then. Don't move.", "Finally. Stay there."][randi() % 4], 4.0)
 	Meet.say("\"WHO WANTS A PULL?\" %s is on the way over. Stay by the table." % r.riser_name)
 	r._convo = {}

@@ -45,18 +45,21 @@ func _ready() -> void:
 	left.size_flags_stretch_ratio = 1.4
 	h.add_child(left)
 	_name = UI.text(left, "", 28, UI.GOLD)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	# The row of lights, then how they have you figured on a line of its own, so it can wrap.
+	var row := VBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
 	left.add_child(row)
 	_dots = HBoxContainer.new()
 	_dots.add_theme_constant_override("separation", 3)
+	_dots.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	row.add_child(_dots)
 	for i in 10:
 		var d := ColorRect.new()
 		d.custom_minimum_size = Vector2(11, 11)
 		_dots.add_child(d)
 	_sub = UI.text(row, "", 15, Color(0.75, 0.72, 0.62))
-	_sub.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_sub.custom_minimum_size = Vector2(260, 0)
 	_text = UI.rich(left, 20)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL

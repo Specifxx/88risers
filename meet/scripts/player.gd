@@ -26,6 +26,8 @@ var _hold := 0.0
 var _down := 0.0
 var _worn := {}
 var _tag: Label3D
+var riding := false
+var _ride_v := Vector3.ZERO
 var sitting := false
 var _orbit := false
 var _orbit_yaw := PI
@@ -177,7 +179,27 @@ func caught(seconds: float) -> void:
 	_down = seconds
 	_hold = 0.0
 
+func mount() -> void:
+	riding = true
+	sitting = false
+	_ride_v = Vector3.ZERO
+	_figure.position.y = 0.3
+
+func dismount() -> void:
+	if not riding:
+		return
+	riding = false
+	_ride_v = Vector3.ZERO
+	_figure.position.y = 0.0
+	Meet.main.evening.dismounted()
+
+func speed() -> float:
+	return _ride_v.length() if riding else Vector2(velocity.x, velocity.z).length()
+
 func use() -> void:
+	if riding and not Meet.modal:
+		dismount()
+		return
 	if is_instance_valid(target) and not Meet.modal:
 		target.interact()
 
@@ -417,7 +439,9 @@ func _process(dt: float) -> void:
 	if _down > 0.0:
 		_down -= dt
 		return
-	if _hold <= 0.0 and not _figure.has_meta("posed"):
+	if riding:
+		Character.play(_figure, "Driving")
+	elif _hold <= 0.0 and not _figure.has_meta("posed"):
 		var speed := Vector2(velocity.x, velocity.z).length()
 		Character.play(_figure, "Jump" if _jump > 0.05 else ("Idle" if speed < 0.4 else ("Jog_Fwd" if speed > 5.0 else "Walk")))
 
@@ -434,6 +458,24 @@ func _physics_process(dt: float) -> void:
 		rotation.y += 1.8 * dt
 	if Input.is_key_pressed(KEY_RIGHT):
 		rotation.y -= 1.8 * dt
+	if riding:
+		# A bike: quicker than running, slow to stop, and it turns with the camera.
+		var want := (transform.basis * Vector3(dir.x, 0, dir.y)) * (12.5 if dir.length() > 0.9 or Input.is_action_pressed("sprint") else 7.0)
+		_ride_v = _ride_v.lerp(want, min(1.0, dt * (1.6 if want.length() > _ride_v.length() else 2.4)))
+		velocity = _ride_v
+		move_and_slide()
+		var gp: Vector3 = Meet.main.clear(global_position)
+		global_position = Vector3(gp.x, lerp(global_position.y, gp.y, min(1.0, dt * 14.0)), gp.z)
+		if _ride_v.length() > 6.5:
+			for r in Meet.risers:
+				var to: Vector3 = r.global_position - global_position
+				to.y = 0
+				if to.length() < 1.0 and _ride_v.normalized().dot(to.normalized()) > 0.2 and r.state != "winded":
+					r.bowled(_ride_v)
+					_ride_v *= 0.45
+					Meet.hud.shake()
+		_find_target()
+		return
 	var running: bool = (Input.is_action_pressed("sprint") or Meet.stick.length() > 0.9) and dir.length() > 0.1 and Meet.stamina > 1.0
 	var pace := RUN if running else WALK
 	Meet.stamina = clamp(Meet.stamina + (-13.0 if running else 0.9) * dt, 0.0, 100.0)
