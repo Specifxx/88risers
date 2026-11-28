@@ -54,17 +54,10 @@ func _press(label_start: String) -> bool:
 			return true
 	return false
 
-func _beat_down() -> void:
-	var guard := 0
-	while Game.battle.foe_hp > 0 and Game.battle.result == "" and guard < 80:
-		guard += 1
-		Game.hp = Game.max_hp
-		_press("Strike")
-
-## Fight a Pinned to the ground and raise it, choosing only the true things to say.
+## Put a Pinned on the ground, begin the rite, and say only the true things.
 func _raise(p: Node) -> String:
-	Game.battle.start_pinned(p)
-	_beat_down()
+	p.take_hit(999, Game.player.global_position)
+	p.interact()
 	_press("Throw chalk")
 	_press("Bind it")
 	for l in p.spirit["say"]:
@@ -105,25 +98,79 @@ func _run() -> void:
 	_check(Game.journal.size() == 1, "Journal records Harry's directions")
 
 	await _shot("05_road", Vector3(60, 0.1, 0), -90, 2)
+	# Real-time fighting. First, being attacked.
 	var carter := _pinned("Tobin")
 	Game.player.global_position = Game.main.ground(carter.global_position + Vector3(-6, 0, 0)) + Vector3(0, 0.15, 0)
-	for f in 300:
+	var hp_before := Game.hp
+	for f in 420:
 		await get_tree().physics_frame
-		if Game.battle.active():
+		if Game.hp < hp_before:
 			break
-	_check(Game.battle.active(), "A Pinned on the road comes for the player and starts a fight")
+	_check(Game.hp < hp_before, "A Pinned on the road comes for the player and strikes them")
 	await _save("06_fight")
+	# Armour and blocking reduce what gets through.
+	Game.hp = Game.max_hp
+	var bare: int = Game.hurt_player(10, Game.player.global_position + Vector3(0, 0, -1))
+	Game.add_item("cuirass")
+	Game.toggle_equip("cuirass")
+	Game.hp = Game.max_hp
+	var armoured: int = Game.hurt_player(10, Game.player.global_position + Vector3(0, 0, -1))
+	Game.blocking = true
+	Game.player.rotation.y = 0.0
+	Game.hp = Game.max_hp
+	var blocked: int = Game.hurt_player(10, Game.player.global_position + Vector3(0, 0, -1))
+	Game.blocking = false
+	print("    A blow of 10 does %d bare, %d in a cuirass, %d blocked as well" % [bare, armoured, blocked])
+	_check(armoured < bare and blocked < armoured, "Armour and blocking each reduce damage")
+	_check(Game.armor() == 7, "Worn armour counts towards the armour rating")
+	Game.toggle_equip("cuirass")
+	Game.remove_item("cuirass")
+	_check(Game.armor() == 0, "Taking it off removes it")
+	# Striking back: skill decides whether blows land.
+	Game.hp = Game.max_hp
+	carter.global_position = Game.main.ground(Game.player.global_position + Vector3(0, 0, -1.6))
+	Game.player.rotation.y = 0.0
+	Game.skills["blunt"] = 100
+	var blows := 0
+	while carter.can_be_hit() and blows < 40:
+		blows += 1
+		Game.hp = Game.max_hp
+		Game.fatigue = Game.max_fatigue
+		Game.player._cooldown = 0.0
+		Game.player.swing()
+		Game.player._land_blow()
+	print("    The carter (14 health) went down in %d blows of the staff" % blows)
+	_check(carter.state == "fallen", "Blows from the equipped weapon put a Pinned on the ground")
+	_check(carter.is_in_group("interact"), "A fallen Pinned can have the rite begun over it")
+	Game.skills["blunt"] = 20
+	var better := Game.hit_chance("blunt")
+	Game.fatigue = 0.0
+	_check(Game.hit_chance("blunt") < better, "Exhaustion makes blows less likely to land")
+	Game.fatigue = Game.max_fatigue
 	Game.chalk = 10
 	Game.straps = 10
 
 	# Killing without raising: it comes back.
-	_beat_down()
+	carter.interact()
 	_press("Leave it")
 	_press("Continue")
-	_check(carter.state == "down", "A Pinned that is only killed sinks, to return later")
+	_check(carter.state == "down", "A Pinned that is only beaten sinks, to return later")
 	carter._timer = 0.1
 	await get_tree().create_timer(0.4).timeout
-	_check(carter.state == "roam", "...and it gets back up")
+	_check(carter.state == "roam" and carter.hp == carter.max_hp, "...and it gets back up, whole")
+
+	# Jumping.
+	Game.player.global_position = Game.main.ground(Vector3(60, 0, 0)) + Vector3(0, 0.1, 0)
+	for f in 20:
+		await get_tree().physics_frame
+	var y0: float = Game.player.global_position.y
+	Game.player.jump()
+	var top := y0
+	for f in 40:
+		await get_tree().physics_frame
+		top = max(top, Game.player.global_position.y)
+	print("    A jump clears %.2f m" % (top - y0))
+	_check(top - y0 > 0.8, "The pilgrim can jump")
 
 	_check(not _npc("wren").can_join(), "Wren does not trust a stranger")
 	_check(_raise(carter) == "raised", "Chalk, strap and rite raise the carter for good")
@@ -133,8 +180,9 @@ func _run() -> void:
 	_check(_raise(_pinned("Pip")) == "raised", "The child is raised")
 
 	# A strap that runs out.
-	Game.battle.start_pinned(_pinned("Edda"))
-	_beat_down()
+	var edda := _pinned("Edda")
+	edda.take_hit(999, Game.player.global_position)
+	edda.interact()
 	_press("Throw chalk")
 	_press("Bind it")
 	await _save("07_rite")
@@ -142,6 +190,14 @@ func _run() -> void:
 		_press("Say the Rite")
 	_check(Game.battle.result == "lost", "Saying the rite before the spirit is ready wastes the strap")
 	_press("Continue")
+
+	# The old porter leaves something behind.
+	_check(_raise(_pinned("A porter")) == "raised" and Game.count("old_sword") == 1, "Raising the old porter leaves a sword behind")
+	Game.toggle_equip("old_sword")
+	_check(Game.weapon()["name"] == "Pilgrim's old sword", "A found weapon can be wielded")
+	Game.inventory.toggle()
+	await _save("07a_inventory")
+	Game.inventory.toggle()
 
 	await _shot("07b_tavern", Vector3(22.2, 0.4, -22.2), 135, -4)
 	await _shot("08_village", Vector3(198, 0.1, 17), -92, 3)
@@ -199,17 +255,51 @@ func _run() -> void:
 	_check(guarded.feeling() < easy.feeling(), "A wrong sinks deeper into someone who holds grudges")
 	_check(easy.expects("trade") > easy.expects("theft"), "They expect different things from you in different situations")
 
+	# Trade, looting, and things that belong to someone.
+	var pell := _npc("pell")
+	Game.coins = 40
+	var axes := Game.count("axe")
+	pell._buy("axe", 26)
+	_check(Game.count("axe") == axes + 1 and Game.coins == 14, "Goods can be bought")
+	pell._sell("axe", 11)
+	_check(Game.count("axe") == axes and Game.coins == 25, "...and sold")
+	var crate: Node = null
+	for n in get_tree().get_nodes_in_group("interact"):
+		if n.has_method("empty") and n.title == "the carter's crate":
+			crate = n
+	crate.interact()
+	_check(Game.count("coat") == 1 and crate.empty(), "An unowned crate can be searched without offence")
+
 	# Crime.
 	Game.player.global_position = Vector3(236, 0.1, -6.5)
 	Game.main._steal()
 	_check(Game.flags.has("stolen"), "The strongbox can be robbed")
 	var before: float = Game.standing("tallow")
-	Game.battle.start_npc(_npc("pell"))
-	_beat_down()
-	_press("Continue")
-	_check(not _npc("pell").alive, "A villager can be killed")
+	# A first blow turns them; guards who see it come for the player.
+	var wren_guard := _npc("wren")
+	wren_guard.global_position = pell.global_position + Vector3(3, 0, 0)
+	pell.take_hit(1, Game.player.global_position)
+	_check(pell.aggro and pell._flee, "A shopkeeper who is struck turns and runs")
+	_check(wren_guard.aggro and not wren_guard._flee, "A guard who sees it comes for the player")
+	pell.take_hit(999, Game.player.global_position)
+	_check(not pell.alive, "A villager can be killed")
 	_check(Game.standing("tallow") < before - 0.2, "Those who saw it turn against the player")
 	_check(Game.pinned.size() == 7, "The victim will come back as one of the Pinned")
+	var sack: Node = null
+	for n in get_tree().get_nodes_in_group("interact"):
+		if n.has_method("empty") and String(n.title).begins_with("Pell"):
+			sack = n
+	_check(sack != null and not sack.empty(), "The dead leave their belongings behind")
+	# Amends.
+	var grieved: Node = null
+	for n in Game.villagers("tallow"):
+		if n.hostile() and grieved == null:
+			grieved = n
+	Game.coins = 100
+	grieved.aggro = false
+	grieved._amends(60)
+	print("    After amends %s feels %.2f" % [grieved.npc_name, grieved.mind.feeling()])
+	_check(not grieved.hostile(), "Paying amends lets someone speak to the player again")
 	var seen_it := 0
 	var hostile_now := 0
 	for n in Game.villagers("tallow"):
@@ -218,7 +308,7 @@ func _run() -> void:
 		if n.hostile():
 			hostile_now += 1
 	print("    %d villagers know about the killing; %d are now hostile" % [seen_it, hostile_now])
-	_check(hostile_now >= 1, "People who saw the killing refuse to speak to the player")
+	_check(seen_it >= 2, "More than one person saw the killing")
 	# Word of mouth: someone who knows tells someone who does not.
 	var teller: Node = null
 	var hearer: Node = null

@@ -9,13 +9,31 @@ const QUOTA := 88
 const SLICE_GOAL := 3
 const RHODES_SPAWN := Vector3(4, 0.1, 6)
 
+const Items = preload("res://scripts/items.gd")
+const CAPACITY := 60.0
+
 var hp := 30
 var max_hp := 30
-var power := 5
-var chalk := 0
-var straps := 0
-var bread := 1
+var fatigue := 60.0
+var max_fatigue := 60.0
+var blocking := false
+var power := 5   # used by the turn-based fights until real-time combat replaces them
 var coins := 20
+## Everything carried, by item id. Chalk, straps and bread are items like any other.
+var items := {"staff": 1, "bread": 1}
+var equip := {"weapon": "staff", "shield": "", "head": "", "body": "", "hands": "", "feet": ""}
+var skills := {"blade": 15, "blunt": 20, "spear": 15, "hand": 15, "block": 10, "athletics": 20, "acrobatics": 15, "speech": 20}
+var _progress := {}
+
+var chalk: int:
+	get: return count("chalk")
+	set(v): _set_count("chalk", v)
+var straps: int:
+	get: return count("strap")
+	set(v): _set_count("strap", v)
+var bread: int:
+	get: return count("bread")
+	set(v): _set_count("bread", v)
 var raised := 0
 var recruits: Array = []
 var founders_alive := 8
@@ -30,6 +48,7 @@ var player: CharacterBody3D
 var hud: CanvasLayer
 var dialogue: CanvasLayer
 var battle: CanvasLayer
+var inventory: CanvasLayer
 var npcs: Array = []
 var pinned: Array = []
 
@@ -42,6 +61,10 @@ func _ready() -> void:
 	_action("interact", [KEY_E])
 	_action("journal", [KEY_J])
 	_action("eat", [KEY_H])
+	_action("jump", [KEY_SPACE])
+	_action("inventory", [KEY_TAB, KEY_I])
+	_action("attack", [KEY_F])
+	_action("block", [KEY_C])
 
 func _action(action: String, keys: Array) -> void:
 	if not InputMap.has_action(action):
@@ -73,12 +96,108 @@ func heal_full() -> void:
 	touch()
 
 func eat() -> bool:
-	if bread <= 0 or hp >= max_hp:
+	if count("bread") <= 0 or hp >= max_hp:
 		return false
-	bread -= 1
-	hp = min(max_hp, hp + 12)
+	return use_item("bread")
+
+# --- Carrying, wearing, wielding ----------------------------------------------
+
+func count(id: String) -> int:
+	return items.get(id, 0)
+
+func _set_count(id: String, n: int) -> void:
+	if n <= 0:
+		items.erase(id)
+	else:
+		items[id] = n
+
+func add_item(id: String, n := 1) -> void:
+	items[id] = count(id) + n
 	touch()
+
+func remove_item(id: String, n := 1) -> void:
+	_set_count(id, count(id) - n)
+	for slot in equip:
+		if equip[slot] == id and count(id) == 0:
+			equip[slot] = ""
+	touch()
+
+func weight() -> float:
+	var w := 0.0
+	for id in items:
+		w += Items.ITEMS[id]["weight"] * items[id]
+	return w
+
+func weapon() -> Dictionary:
+	var id: String = equip["weapon"]
+	return Items.ITEMS[id if id != "" else "fists"]
+
+func armor() -> int:
+	var a := 0
+	for slot in equip:
+		if slot != "weapon" and equip[slot] != "":
+			a += Items.ITEMS[equip[slot]].get("armor", 0)
+	return a
+
+## Wear or wield it, or take it off if it is already on.
+func toggle_equip(id: String) -> void:
+	var it: Dictionary = Items.ITEMS[id]
+	var slot: String = "weapon" if it["type"] == "weapon" else it.get("slot", "")
+	if slot == "" or count(id) <= 0:
+		return
+	equip[slot] = "" if equip[slot] == id else id
+	touch()
+
+func use_item(id: String) -> bool:
+	var it: Dictionary = Items.ITEMS[id]
+	if it["type"] != "food" or count(id) <= 0:
+		return false
+	hp = min(max_hp, hp + int(it.get("heal", 0)))
+	fatigue = min(max_fatigue, fatigue + float(it.get("fatigue", 0)))
+	remove_item(id)
 	return true
+
+# --- Skill, which only comes from doing ---------------------------------------
+
+func train(skill: String, amount := 1.0) -> void:
+	_progress[skill] = _progress.get(skill, 0.0) + amount
+	var need: float = 4.0 + skills[skill] * 0.25
+	if _progress[skill] >= need:
+		_progress[skill] = 0.0
+		skills[skill] += 1
+		say("Your %s is now %d." % [Items.SKILL_NAMES[skill].to_lower(), skills[skill]])
+		touch()
+
+## The chance a blow lands: skill, and how much wind you have left.
+func hit_chance(skill: String) -> float:
+	return clamp(0.42 + skills[skill] * 0.009 + (fatigue / max_fatigue - 0.5) * 0.3, 0.15, 0.97)
+
+func spend(amount: float) -> void:
+	fatigue = max(0.0, fatigue - amount)
+
+## Something hits the player. Blocking and armour take their share. Returns the damage done.
+func hurt_player(raw: int, from: Vector3) -> int:
+	var dmg := float(raw)
+	if blocking and player != null:
+		var to := from - player.global_position
+		to.y = 0
+		var facing: Vector3 = -player.global_transform.basis.z
+		if to.length() > 0.01 and facing.dot(to.normalized()) > 0.2:
+			var soak: float = 0.5 + skills["block"] * 0.004
+			if equip["shield"] != "":
+				soak = max(soak, Items.ITEMS[equip["shield"]]["block"] + skills["block"] * 0.002)
+			dmg *= 1.0 - min(soak, 0.92)
+			spend(6.0)
+			train("block", 1.0)
+	dmg *= 12.0 / (12.0 + armor())
+	var dealt: int = max(1, int(round(dmg)))
+	hp -= dealt
+	if hud:
+		hud.hurt_flash()
+	touch()
+	if hp <= 0:
+		fall()
+	return dealt
 
 func villagers(village: String) -> Array:
 	var out: Array = []
@@ -105,6 +224,9 @@ func deed(kind: String, valence: float, weight: float, at: Vector3, village: Str
 		if n.global_position.distance_to(at) < radius:
 			n.mind.experience(kind, valence, weight, true, about)
 			seen.append(n)
+			# Those whose job it is to keep the peace do not just remember it.
+			if kind == "violence" and n.def.get("guard", false):
+				n.aggro = true
 	return seen
 
 ## News that reaches a whole village by word of mouth, such as a quiet road.
@@ -125,6 +247,9 @@ func witnesses(at: Vector3, except: Node = null, radius := 22.0) -> Array:
 
 func fall() -> void:
 	hp = int(max_hp / 2.0)
+	fatigue = max_fatigue
+	for n in npcs:
+		n.aggro = false
 	coins = int(coins / 2.0)
 	player.global_position = RHODES_SPAWN
 	player.velocity = Vector3.ZERO

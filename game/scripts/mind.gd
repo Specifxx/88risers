@@ -122,6 +122,17 @@ func reflect(steps := 6) -> void:
 		var m: Dictionary = memories[_rng.randi() % memories.size()]
 		_step(_inputs(m["kind"]), m["valence"], 0.03)
 
+## Amends have been made. The memory stays; its hold on them loosens.
+func forgive() -> void:
+	for m in memories:
+		if m["valence"] < 0.0:
+			m["weight"] *= 0.1
+	# Being paid what is owed counts the same for everyone, however guarded.
+	memories.append({"kind": "helped", "valence": 0.5, "weight": 3.0, "firsthand": true, "about": ""})
+	for i in 30:
+		_step(_inputs("helped"), 0.5, 0.07)
+	reflect(60)
+
 func tick(dt: float) -> void:
 	mood = move_toward(mood, 0.0, dt * 0.01)
 

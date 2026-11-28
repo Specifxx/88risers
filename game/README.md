@@ -12,20 +12,24 @@ emblem are generated from scratch or from the club crest in `public/crest.jpg`.
 - **Rhodes**, inside the Ring: a gate with stone guardian lions, the Register pavilion, tiled halls, club banners, lanterns, the wreck of Wukhan, and a tavern you can walk into.
 - **The east road**, with five Pinned on it. They come for you the moment you are outside the Ring and stop at its edge.
 - **Tallow Ford**, a village of six people. Three can be recruited, each for a different reason; three cannot.
-- **Fights** are turn-based. A Pinned that is only killed gets back up. To end one you throw chalk, bind it with a strap, find the true things to say before the strap gives, and say the rite.
+- **Fighting** is in real time. Left click (or F) swings whatever you are holding; whether it lands depends on your skill with that kind of weapon and how much wind you have left. Right click (or C) blocks. Armour and a shield take their share of what gets through.
+- **The rite.** A Pinned that is beaten down lies there for a short while. Begin the rite over it (E): throw chalk, bind it with a strap, find the true things to say before the strap gives, and say the words. Leave it and it sinks, and is back later.
+- **Things.** Weapons, armour, a shield, food and drink, chalk and straps are all items with weight and worth. Tab opens the pack: click to wield, wear, take off, eat or drink. Traders buy and sell. Crates and chests can be searched; if they belong to someone living, that is theft.
+- **Skills** rise only by use: blade, blunt weapon, spear, hand-to-hand, block, athletics, acrobatics, speechcraft.
 - **Minds.** Every person has a small neural network of their own (`scripts/mind.gd`) that learns, from what happens to them and what they hear, how dealing with you tends to go. Temperament differs per person, so the same act lands differently; opinions depend on the situation; and news travels only when one person tells another. The words they speak are written lines chosen by their state of mind.
 - **Lives.** People keep a post, drift to the fire, the well or the tavern, stop to talk to each other, greet or avoid you, and go home at night. A day lasts about twelve minutes.
 - **The founders** follow their cards on 88risers.com (hair, beard, build, clothing), and their card is shown when you talk to them.
 - **The table.** Sit down in the tavern and pull against a founder: toproll, hook or press, first to three pins, five coin a side.
-- **Freedom**: anyone can be attacked and killed, founders included. Someone you kill outside the Ring comes back as one of the Pinned. Pell's strongbox can be robbed. Those who see it remember, and tell others.
+- **Freedom**: anyone can be struck and killed, founders included. The brave fight back, the rest run, and guards who see it come for you. The dead leave their belongings, and outside the Ring they come back as one of the Pinned. Those who see a crime remember it and tell others; coin can make amends, at a price.
 - There are no quest markers. Directions come from what people tell you, and the journal (J) keeps what you were told.
 
 The slice ends when you tell Harry you have brought three recruits. You can keep playing afterwards.
 
 ## Controls
 
-WASD move, mouse look (left/right arrows also turn), Shift run, E talk or use, V first or third person, J journal, H eat bread, Esc free the mouse.
-In fights and conversations, click a choice or press its number.
+WASD move, mouse look (left/right arrows also turn), Shift run, Space jump, left click or F attack, right click or C block,
+E talk or use, Tab inventory, V first or third person, J journal, H eat bread, Esc free the mouse.
+In conversations and the rite, click a choice or press its number.
 
 ## Not in it yet
 

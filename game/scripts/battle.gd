@@ -4,21 +4,16 @@ extends CanvasLayer
 
 const UI = preload("res://scripts/ui.gd")
 
-const STRAP_HOLD := 5
+const STRAP_HOLD := 6
 
 var foe: Node = null
 var foe_is_pinned := true
 var foe_name := ""
-var foe_hp := 0
-var foe_max := 0
-var foe_atk := 0
-var stamina := 3
-var guarding := false
 var grip := 0
 var turns := 0
 var lines: Array = []
 var result := ""
-var _mode := "fight"
+var _mode := "rite"
 var _pins := [0, 0]
 var _rival: Node = null
 
@@ -65,48 +60,32 @@ func _ready() -> void:
 func active() -> bool:
 	return _root.visible
 
-func start_pinned(p: Node) -> void:
+## A Pinned has been beaten down. What happens next is up to the player.
+func start_rite(p: Node) -> void:
 	if active():
 		return
 	foe = p
 	foe_is_pinned = true
-	var s: Dictionary = p.spirit
-	_begin(p.display_name(), s["hp"], s["atk"])
-	_say("[i]It comes at you without a sound.[/i]")
-	_fight_menu()
-
-func start_npc(n: Node) -> void:
-	if active():
-		return
-	foe = n
-	foe_is_pinned = false
-	_begin(n.npc_name, 16 + int(n.capable / 4.0) + (30 if n.id == "phillip" else 0), 3 + int(n.capable / 25.0))
-	_say("[i]%s backs away, then stands their ground.[/i]" % n.npc_name)
-	_fight_menu()
-
-func _begin(n: String, hp: int, atk: int) -> void:
-	_mode = "fight"
-	foe_name = n
-	foe_hp = hp
-	foe_max = hp
-	foe_atk = atk
-	stamina = 3
-	guarding = false
+	_mode = "rite"
+	foe_name = p.display_name()
 	result = ""
 	_log.clear()
-	var to: Vector3 = foe.global_position - Game.player.global_position
+	_title.text = foe_name
+	var to: Vector3 = p.global_position - Game.player.global_position
 	to.y = 0
-	if to.length() < 0.1:
-		to = Vector3(0, 0, -1)
-	Game.player.rotation.y = atan2(-to.x, -to.z)
-	Game.player.look_level(-0.3)
-	if foe_is_pinned:
-		foe.global_position = Game.main.ground(Game.player.global_position + to.normalized() * 3.4)
-		foe.rotation.y = atan2(-to.x, -to.z)
-		foe.face_off()
+	if to.length() > 0.1:
+		Game.player.rotation.y = atan2(-to.x, -to.z)
+	Game.player.look_level(-0.45)
 	_root.visible = true
 	UI.open_modal()
-	_refresh()
+	_say("It lies folded on the ground. Already the dark is pulling it under.")
+	var items: Array = []
+	if Game.chalk > 0:
+		items.append(["Throw chalk", _chalk])
+	else:
+		_say("[color=#9a968a]You have no chalk.[/color]")
+	items.append(["Leave it. It will be back.", _abandon])
+	_menu(items)
 
 func _say(t: String) -> void:
 	_log.append_text(t + "\n")
@@ -114,11 +93,9 @@ func _say(t: String) -> void:
 func _refresh() -> void:
 	if _mode == "wrestle":
 		_status.text = "You %d   ·   %s %d   ·   first to three   ·   your coin: %d" % [_pins[0], foe_name, _pins[1], Game.coins]
-		Game.touch()
-		return
-	_title.text = foe_name
-	_status.text = "You: %d / %d health, %d wind   ·   Them: %d / %d   ·   Chalk %d, straps %d" % [
-		Game.hp, Game.max_hp, stamina, max(foe_hp, 0), foe_max, Game.chalk, Game.straps]
+	else:
+		_title.text = foe_name
+		_status.text = "Chalk %d   ·   Straps %d" % [Game.chalk, Game.straps]
 	Game.touch()
 
 func _menu(items: Array) -> void:
@@ -201,75 +178,6 @@ func _leave_table() -> void:
 	_say("\nYou stand up. Nobody holds it against you.")
 	_finish("left")
 
-# --- The fight -------------------------------------------------------------
-
-func _fight_menu() -> void:
-	var items := [["Strike", _move.bind("strike")]]
-	if stamina >= 2:
-		items.append(["Heavy strike (2 wind)", _move.bind("heavy")])
-	items.append(["Guard (take half, recover wind)", _move.bind("guard")])
-	if Game.bread > 0 and Game.hp < Game.max_hp:
-		items.append(["Eat bread", _move.bind("eat")])
-	items.append(["Run", _move.bind("run")])
-	_menu(items)
-
-func _move(kind: String) -> void:
-	guarding = false
-	match kind:
-		"strike":
-			var dmg := Game.power + randi_range(-1, 1)
-			foe_hp -= dmg
-			_say("You strike for [b]%d[/b]." % dmg)
-		"heavy":
-			stamina -= 2
-			var dmg2 := Game.power * 2 + randi_range(-1, 2)
-			foe_hp -= dmg2
-			_say("You put your whole weight into it: [b]%d[/b]." % dmg2)
-		"guard":
-			guarding = true
-			stamina = min(3, stamina + 2)
-			_say("You set your feet and get your breath.")
-		"eat":
-			Game.eat()
-			_say("You tear off some bread and swallow it.")
-		"run":
-			if randf() < 0.65:
-				_say("You break away.")
-				if foe_is_pinned:
-					foe.back_off()
-				_finish("ran")
-				return
-			_say("It is on you before you have turned.")
-	if foe_hp <= 0:
-		_foe_down()
-		return
-	var hit := foe_atk + randi_range(-1, 1)
-	if guarding:
-		hit = int(ceil(hit / 2.0))
-	hit = max(hit, 1)
-	Game.hp -= hit
-	_say("%s hits you for [b]%d[/b]." % [foe_name, hit])
-	if Game.hp <= 0:
-		_say("\n[i]You go down.[/i]")
-		if foe_is_pinned:
-			foe.back_off()
-		_finish("fell")
-		return
-	_fight_menu()
-
-func _foe_down() -> void:
-	if not foe_is_pinned:
-		_say("\n%s falls and does not get up." % foe_name)
-		foe.die()
-		_finish("killed")
-		return
-	_say("\nIt folds to the ground. Already the dark is pulling it under.")
-	var items: Array = []
-	if Game.chalk > 0:
-		items.append(["Throw chalk", _chalk])
-	items.append(["Leave it. It will be back.", _abandon])
-	_menu(items)
-
 # --- Chalk, strap, rite ------------------------------------------------------
 
 func _chalk() -> void:
@@ -350,8 +258,7 @@ func _finish(r: String) -> void:
 func _close() -> void:
 	_root.visible = false
 	UI.close_modal()
-	if result == "fell":
-		Game.fall()
-	elif result == "raised":
+	Game.player.look_level(0.0)
+	if result == "raised":
 		Game.say("One fewer on the road. People in the villages will hear of it.")
 	Game.touch()

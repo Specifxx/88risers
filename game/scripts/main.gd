@@ -13,6 +13,8 @@ const Thing = preload("res://scripts/thing.gd")
 
 const TerrainScript = preload("res://scripts/terrain.gd")
 const Asia = preload("res://scripts/asia.gd")
+const LootScript = preload("res://scripts/loot.gd")
+const InventoryScript = preload("res://scripts/inventory.gd")
 
 const R := Game.RING_RADIUS
 const ROAD := [Vector3(30, 0, 0), Vector3(70, 0, 0), Vector3(120, 0, -18), Vector3(180, 0, 8), Vector3(228, 0, 20)]
@@ -37,6 +39,7 @@ func _ready() -> void:
 	_tallow_ford()
 	_wilds()
 	_people()
+	_containers()
 	_player_and_ui()
 	Game.changed.connect(_on_changed)
 	_on_changed()
@@ -525,6 +528,20 @@ func _add_pinned(s: Dictionary, at: Vector3, delay: float) -> void:
 	p.setup(s, ground(at), delay)
 	Game.pinned.append(p)
 
+func drop_loot(title: String, items: Dictionary, coin: int, at: Vector3, owned_by := "", village := "", sack := true, lifetime := 180.0) -> Node3D:
+	var l: Node3D = LootScript.new()
+	add_child(l)
+	l.setup(title, items, coin, owned_by, village, sack, lifetime)
+	l.global_position = ground(at) if sack else at
+	return l
+
+## Things lying about the island, some of them somebody's.
+func _containers() -> void:
+	drop_loot("the Wall House chest", {"spear": 1, "cuirass": 1}, 0, Vector3(9.5, 0, -29.5), "phillip", "rhodes", false, -1.0)
+	drop_loot("the carter's crate", {"coat": 1, "wine": 2}, 6, ground(Vector3(86.0, 0, -7.0)), "", "", false, -1.0)
+	drop_loot("a bundle on the jetty", {"pole": 1}, 0, Vector3(274.5, 0.75, 64.0), "", "", true, -1.0)
+	drop_loot("a chest behind the tavern bar", {"wine": 3, "bread": 2, "shield": 1}, 12, Vector3(27.5, 0.36, -26.5), "tommy", "rhodes", false, -1.0)
+
 ## Someone the player killed comes back where they fell. Inside the Ring they stay down.
 func spawn_victim(who: String, at: Vector3) -> void:
 	if Game.in_ring(at):
@@ -542,5 +559,7 @@ func _player_and_ui() -> void:
 	add_child(Game.dialogue)
 	Game.battle = BattleScript.new()
 	add_child(Game.battle)
+	Game.inventory = InventoryScript.new()
+	add_child(Game.inventory)
 	Game.hud = HudScript.new()
 	add_child(Game.hud)
