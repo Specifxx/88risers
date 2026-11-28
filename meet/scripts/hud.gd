@@ -14,6 +14,8 @@ var _bag_side: VBoxContainer
 var _bag_people: VBoxContainer
 var _over_title: Label
 var _name_box: LineEdit
+var _heat: Label
+var _dares: VBoxContainer
 var _prompt: Label
 var _log: VBoxContainer
 var _float: Label
@@ -55,6 +57,13 @@ func _ready() -> void:
 	_stam = _meter(col, "Stamina", Color(0.3, 0.75, 0.4))
 	_stats = UI.text(col, "", 15)
 	_stats.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_heat = UI.text(col, "", 15, Color(1.0, 0.55, 0.3))
+	_heat.autowrap_mode = TextServer.AUTOWRAP_OFF
+	# Tonight's dares, under the panel.
+	_dares = VBoxContainer.new()
+	_dares.position = Vector2(18, 168)
+	_dares.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_dares)
 	_prompt = UI.text(_root, "", 22)
 	_prompt.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -118,6 +127,13 @@ func _refresh() -> void:
 	_bar.value = Meet.composure
 	_stats.text = "$%d  ·  Snacks %d  ·  Chalk %d%s%s  ·  Won %d, lost %d" % [Meet.money, Meet.snacks, Meet.chalk, "  ·  Hands chalked" if Meet.chalked else "",
 		"  ·  Straps in pocket %d" % Meet.straps.size() if not Meet.straps.is_empty() else "", Meet.wins, Meet.losses]
+	_heat.text = "Heat  %s%s" % ["★".repeat(Meet.stars()), "☆".repeat(5 - Meet.stars())] if Meet.stars() > 0 else ""
+	_heat.visible = Meet.stars() > 0
+	UI.clear(_dares)
+	for d in Meet.dares:
+		var l := UI.text(_dares, "%s %s%s" % ["✔" if d["done"] else "○", d["text"], " (%d/%d)" % [d["have"], d["need"]] if d["need"] > 1 and not d["done"] else ""], 14, Color(0.6, 0.9, 0.7) if d["done"] else Color(0.95, 0.92, 0.85))
+		l.autowrap_mode = TextServer.AUTOWRAP_OFF
+		_shadow(l)
 	if _bag and _bag.visible:
 		_fill_bag()
 
@@ -422,7 +438,15 @@ func _build_title() -> void:
 	if Meet.touch:
 		UI.text(v, "Left thumb moves, drag to look around, buttons on the right.", 16, Color(0.75, 0.72, 0.62))
 	else:
-		UI.text(v, "WASD move  ·  mouse look  ·  Shift run  ·  Space jump  ·  E talk or use  ·  click or F punch  ·  G throw chalk  ·  R eat a snack  ·  Tab bag  ·  P photo  ·  Esc free the mouse", 16, Color(0.75, 0.72, 0.62))
+		UI.text(v, "WASD move  ·  mouse look  ·  Shift run  ·  Space jump  ·  E talk or use  ·  click or F punch  ·  G throw chalk  ·  R eat a snack  ·  M sound  ·  Tab bag  ·  P photo  ·  Esc free the mouse", 16, Color(0.75, 0.72, 0.62))
+	var g: Dictionary = load("res://scripts/people.gd").GUESTS[Meet.week() % 5]
+	var f: Dictionary = load("res://scripts/people.gd").FINDS[Meet.week() % 4]
+	var wk := "This week: %s is visiting." % g["name"]
+	if not Meet.owned.has(f["item"]):
+		wk += " And somebody has left something %s." % f["hint"]
+	UI.text(v, wk, 16, Color(0.65, 0.85, 1.0))
+	if Meet.last_recap != "":
+		UI.text(v, Meet.last_recap, 15, Color(0.75, 0.72, 0.62))
 	UI.text(v, "What do they call you?", 16, UI.GOLD)
 	_name_box = LineEdit.new()
 	_name_box.placeholder_text = "Your name"
@@ -442,7 +466,8 @@ func _begin() -> void:
 	Meet.modal = false
 	if not Meet.touch:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	Meet.say("Visit %d. The tables are out and the lights are on." % Meet.visits)
+	Meet.audio.set_muted(Meet.muted)
+	Meet.say("Visit %d. The tables are out and the lights are on. Three dares for tonight are on the left." % Meet.visits)
 	Meet.save()
 
 func _build_over() -> void:

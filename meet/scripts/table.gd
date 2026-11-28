@@ -210,6 +210,8 @@ func tick(dt: float) -> void:
 		if _wait <= 0.0:
 			phase = "go"
 			_call.text = "GRIP!"
+			if mine + theirs == 0:
+				Meet.sfx("whistle", -6.0)
 		return
 	if phase != "go":
 		return
@@ -246,8 +248,10 @@ func tap() -> void:
 func _grip_to(me: bool, text: String) -> void:
 	if me:
 		mine += 1
+		Meet.sfx("grip", -3.0, 1.0 + mine * 0.08)
 	else:
 		theirs += 1
+		Meet.sfx("miss", -3.0)
 	_call.text = text
 	Meet.main.rig_lean(_table, float(mine - theirs) / NEED)
 	if mine >= NEED or theirs >= NEED:
@@ -269,6 +273,12 @@ func _show() -> void:
 func _finish(victory: bool) -> void:
 	phase = "done"
 	won = victory
+	Meet.sfx("win" if victory else "lose")
+	Meet.sfx("ooh", -6.0)
+	if rival.is_riser:
+		Meet.points += 3 if victory else 1
+	if victory:
+		Meet.dare("win", rival.id)
 	Meet.chalked = false
 	Meet.stamina = max(0.0, Meet.stamina - 25.0)
 	_grip.visible = false
@@ -277,6 +287,7 @@ func _finish(victory: bool) -> void:
 	rival.mind.experience("match", 0.35 if victory else 0.3, 1.0, true, "")
 	if rival.guest_ready:
 		rival.recruited = true
+		Meet.dare("recruit")
 		Meet.recruits += 1
 		_call.text = "You pin %s." % rival.first_name if victory else "%s pins you. Oh." % rival.riser_name
 		Meet.results.append(("You beat %s" if victory else "%s beat you, somehow") % rival.first_name)

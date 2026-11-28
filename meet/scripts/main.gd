@@ -47,6 +47,7 @@ var _drone_to := Vector3.ZERO
 var _gulls: Node3D
 var _gulls_t := 0.0
 var _gulls_off := false
+var _bucket: Array = []
 var _free_snacks := 3
 var _reward := 3.0
 var _passer := 4.0
@@ -67,6 +68,9 @@ func _ready() -> void:
 	add_child(Meet.menu)
 	Meet.table = TableScript.new()
 	add_child(Meet.table)
+	Meet.audio = load("res://scripts/sfx.gd").new()
+	add_child(Meet.audio)
+	Meet.new_dares()
 	Meet.strapgame = load("res://scripts/strapgame.gd").new()
 	add_child(Meet.strapgame)
 	Meet.hud = HudScript.new()
@@ -196,9 +200,13 @@ func _place() -> void:
 	add_child(snt)
 	snt.position = SNACKS + Vector3(0, 0, 0.9)
 	# The chalk bucket.
-	Build.tcyl(self, 0.28, 0.22, 0.5, CHALK + Vector3(0, 0.55, 0), "iron", Color(0.5, 0.52, 0.56), 12)
+	_bucket = [Build.tcyl(self, 0.28, 0.22, 0.5, CHALK + Vector3(0, 0.55, 0), "iron", Color(0.5, 0.52, 0.56), 12),
+		Build.cyl(self, 0.25, 0.25, 0.04, CHALK + Vector3(0, 0.8, 0), Color(0.97, 0.97, 0.97), 12)]
 	Build.tcyl(self, 0.05, 0.2, 0.3, CHALK + Vector3(0, 0.15, 0), "iron", Color(0.3, 0.3, 0.33), 8)
-	Build.cyl(self, 0.25, 0.25, 0.04, CHALK + Vector3(0, 0.8, 0), Color(0.97, 0.97, 0.97), 12)
+	var hide := Thing.new()
+	hide.setup("Hide the chalk bucket", _hide_chalk)
+	add_child(hide)
+	hide.position = CHALK + Vector3(0, 0, -0.6)
 	var ch := Thing.new()
 	ch.setup("Chalk your hands", _chalk_up)
 	add_child(ch)
@@ -213,6 +221,18 @@ func _place() -> void:
 		var a := 2.0 + fi * 0.13
 		_bag(d, Vector3(cos(a) * 8.3, 0, sin(a) * 8.3))
 		fi += 1
+	var tr := Thing.new()
+	tr.setup("Throw a snack in the air", _bait_gulls)
+	add_child(tr)
+	tr.position = SNACKS + Vector3(-1.7, 0, 0.9)
+	# The club ladder, on a board by the way in.
+	Build.tbox(self, Vector3(1.6, 1.1, 0.06), Vector3(3.6, 1.5, 21.0), "darkwood")
+	Build.tbox(self, Vector3(0.08, 2.1, 0.08), Vector3(3.6, 1.05, 21.05), "iron", Color(0.3, 0.3, 0.33))
+	Build.box(self, Vector3(1.4, 0.9, 0.01), Vector3(3.6, 1.5, 20.96), Color(0.93, 0.9, 0.82))
+	var lad := Thing.new()
+	lad.setup("Read the club ladder", func(): Meet.menu.ladder())
+	add_child(lad)
+	lad.position = Vector3(3.6, 0, 20.2)
 	# Drinks: an esky with an honesty tin.
 	var dr := Thing.new()
 	dr.setup("Buy a cold drink ($3)", _buy_drink)
@@ -313,6 +333,9 @@ func _strap_in(i: int) -> void:
 	Meet.strapgame.start(func(hits: int):
 		var a: Node = m["a"]
 		var b: Node = m["b"]
+		Meet.sfx("strap")
+		if hits == 3:
+			Meet.dare("strapin")
 		if hits >= 2:
 			for r in [a, b]:
 				r.mind.experience("helped", 0.45 if hits == 3 else 0.3, 1.2, true, "the strap")
@@ -423,6 +446,10 @@ func _bag(d: Dictionary, at: Vector3) -> void:
 	add_child(th)
 	th.position = at
 	_bags[d["id"]] = {"at": at, "strap": strap, "thing": th, "who": who}
+	var pt := Thing.new()
+	pt.setup("Plant another strap in %s's bag" % who, _strap_plant.bind(d["id"]))
+	add_child(pt)
+	pt.position = at * 0.93 + Vector3(0.3, 0, 0)
 	var wt := Thing.new()
 	wt.setup("Go through %s's wallet" % who, _wallet_take.bind(d["id"]))
 	add_child(wt)
@@ -447,6 +474,7 @@ func _buy_drink() -> void:
 		Meet.say("Drinks are $3 and you have $%d." % Meet.money)
 		return
 	Meet.pay(-3)
+	Meet.sfx("sip")
 	Meet.stamina = 100.0
 	Meet.composure = min(100.0, Meet.composure + 20.0)
 	Meet.player.act("PickUp_Table", 0.8)
@@ -548,6 +576,7 @@ func _strap_take(id: String) -> void:
 	bag["strap"].visible = false
 	bag["thing"]._text = "Put %s's strap back" % bag["who"]
 	if seen.is_empty():
+		Meet.dare("strap")
 		Meet.straps_lifted += 1
 		Meet.say("%s's strap is in your pocket. Nobody saw. It'll help your grip at the table." % bag["who"])
 		if Meet.straps_lifted >= 3:
@@ -561,7 +590,62 @@ func _strap_take(id: String) -> void:
 	Meet.save()
 	Meet.touch_state()
 
+func _hide_chalk() -> void:
+	if Meet.chalk_hidden > 0.0:
+		Meet.say("It's already gone. You did that.")
+		return
+	var p: Vector3 = Meet.player.global_position
+	for r in Meet.risers:
+		if r.is_riser and r.state != "winded" and r.global_position.distance_to(p) < 9.0 and r.facing(p):
+			r.say_aloud("Oi. Leave the chalk where it is.", 4.0)
+			r.mind.experience("nagged", -0.15, 0.6)
+			Meet.add_heat(0.5, "caught at the chalk")
+			return
+	Meet.player.act("PickUp_Table", 0.9)
+	Meet.chalk_hidden = 50.0
+	for m in _bucket:
+		m.visible = false
+	Meet.add_heat(0.3)
+	Meet.say("You tuck the chalk bucket behind a banner. Nobody saw. This will cause problems.")
+
+func _bait_gulls() -> void:
+	if Meet.snacks <= 0:
+		Meet.say("You've no snack to throw.")
+		return
+	Meet.snacks -= 1
+	Meet.player.act("Punch_Jab", 0.6)
+	Meet.touch_state()
+	if _gulls != null:
+		Meet.say("They're already here.")
+		return
+	Meet.add_heat(0.4, "feeding the gulls")
+	Meet.say("You lob a snack straight up. Somewhere over the water, something notices.")
+	start_gulls()
+
+## Put a strap you are carrying into somebody else's bag.
+func _strap_plant(id: String) -> void:
+	var mine: Array = Meet.straps.filter(func(x): return x != id)
+	if mine.is_empty():
+		Meet.say("You've no strap on you to plant. Lift one from another bag first.")
+		return
+	var whose: String = mine[0]
+	var p: Vector3 = Meet.player.global_position
+	Meet.player.act("Fixing_Kneeling", 1.0)
+	Meet.straps.erase(whose)
+	Meet.planted[whose] = id
+	var seen := false
+	for r in Meet.risers:
+		if r.is_riser and r.state != "winded" and r.global_position.distance_to(p) < 10.0 and r.facing(p):
+			r.saw_theft[whose] = true
+			seen = true
+	Meet.dare("plant")
+	Meet.say("%s's strap is now in %s's bag.%s" % [_bags[whose]["who"], _bags[id]["who"], " Somebody was looking this way." if seen else " Nobody saw. Wait for it."])
+	Meet.touch_state()
+
 func _chalk_up() -> void:
+	if Meet.chalk_hidden > 0.0:
+		Meet.say("There's no chalk. Somebody hid the bucket. You.")
+		return
 	Meet.player.gesture("chalk", 2.2, CHALK + Vector3(0, 1, 0), func():
 		Meet.chalked = true
 		Fx.burst(self, Meet.player.global_position - Meet.player.global_transform.basis.z * 0.35 + Vector3(0, 1.25, 0), Vector3.UP, false, 14)
@@ -569,6 +653,9 @@ func _chalk_up() -> void:
 		Meet.touch_state())
 
 func _chalk_take() -> void:
+	if Meet.chalk_hidden > 0.0:
+		Meet.say("There's no chalk. Somebody hid the bucket. You.")
+		return
 	if Meet.chalk >= 3:
 		Meet.say("That's as much chalk as two hands can hold.")
 		return
@@ -582,6 +669,7 @@ func puff(from: Vector3, to: Vector3, landed: Callable, time := 0.35) -> void:
 	var tw := create_tween()
 	tw.tween_property(ball, "position", to, time)
 	tw.tween_callback(func():
+		Meet.sfx("puff", -2.0, randf_range(0.9, 1.1))
 		Fx.burst(self, ball.position, Vector3.UP, false, 16)
 		ball.queue_free()
 		landed.call())
@@ -590,6 +678,7 @@ func puff(from: Vector3, to: Vector3, landed: Callable, time := 0.35) -> void:
 func public_hit(who: Node) -> void:
 	Meet.scraps += 1
 	Meet.say("%s runs for it. The whole meet saw that." % who.riser_name)
+	Meet.add_heat(2.0, "hitting the public")
 	stir(who.global_position, ["Did you see that?", "That's a member of the public!", "What is WRONG with them?"], 16.0, 0.7, false)
 	warn("Why did you do that? That was a member of the PUBLIC. We lose this venue if someone complains.")
 	if Meet.scraps >= 3:
@@ -647,6 +736,15 @@ func _skyline() -> void:
 func _people() -> void:
 	for d in People.FOUNDERS:
 		_add(d, true)
+	# This week's visitor.
+	var g: Dictionary = People.GUESTS[Meet.week() % People.GUESTS.size()]
+	_add(g, false)
+	Meet.risers[-1].join_meet()
+	Meet.risers[-1].wants_pull = false
+	_events.append({"at": randf_range(200.0, 520.0), "kind": People.RUMOURS[Meet.week() % People.RUMOURS.size()]})
+	var f: Dictionary = People.FINDS[Meet.week() % People.FINDS.size()]
+	if not Meet.owned.has(f["item"]):
+		drop([f["item"]], f["at"])
 
 func _add(d: Dictionary, is_riser: bool) -> void:
 	var r: Node3D = RiserScript.new()
@@ -686,6 +784,8 @@ func _process(dt: float) -> void:
 	_dusk()
 	if Meet.clock >= NIGHT:
 		Meet.clock = NIGHT
+		Meet.last_recap = "Last time: %d won, %d lost, standing %s, $%d in your pocket." % [Meet.results.filter(func(t): return t.begins_with("You beat")).size(), Meet.results.filter(func(t): return t.ends_with("beat you")).size(), Meet.standing().to_lower(), Meet.money]
+		Meet.sfx("whistle")
 		Meet.hud.night_over(_summary(), "HALF PAST SEVEN")
 		return
 	for ev in _events.duplicate():
@@ -693,6 +793,23 @@ func _process(dt: float) -> void:
 			_events.erase(ev)
 			call("start_" + ev["kind"])
 			break
+	# Heat cools with time; a hidden bucket turns up again.
+	if Meet.heat > 0.0:
+		var st: int = Meet.stars()
+		Meet.heat = max(0.0, Meet.heat - dt / 70.0)
+		if Meet.stars() != st:
+			Meet.touch_state()
+	if Meet.chalk_hidden > 0.0:
+		Meet.chalk_hidden -= dt
+		if Meet.chalk_hidden <= 0.0:
+			for m in _bucket:
+				m.visible = true
+			var h: Node = Meet.riser("harry")
+			if h:
+				h.say_aloud("Found the chalk. Behind a banner. WHO did this?", 5.0)
+			stir(CHALK, ["Not me.", "Tommy?", "Wasn't me!", "Classic."], 12.0, 0.6, false)
+	if _gulls != null:
+		Meet.sfx("gull", -6.0, randf_range(0.9, 1.15), 2.2)
 	# George notices when the club is taking to you.
 	_reward -= dt
 	if _reward <= 0.0:
@@ -818,6 +935,7 @@ func scrap_over(who: Node, player_won: bool) -> void:
 		who.mind.experience("scrap", 0.25, 0.8, true, "")
 		who.idle()
 	if player_won:
+		Meet.add_heat(1.5, "flooring a member")
 		warn("You put %s on the floor. At a club meet. What were you thinking?" % who.first_name, who)
 	Meet.save()
 	if Meet.scraps >= 3:
@@ -834,6 +952,7 @@ func _grab_snack() -> void:
 		Meet.pay(-2)
 	_free_snacks -= 1
 	Meet.snacks += 1
+	Meet.sfx("crunch", -6.0)
 	Meet.player.act("PickUp_Table", 0.9)
 	Meet.say("You take a snack. That's %d. Eat one from your bag (%s) to get your breath back." % [Meet.snacks, "BAG" if Meet.touch else "R"])
 	Meet.touch_state()
@@ -859,6 +978,7 @@ func start_ufo() -> void:
 	beam.omni_range = 22.0
 	_ufo.add_child(beam)
 	beam.position = Vector3(0, -2, 0)
+	Meet.audio.loop("ufo", true, -6.0)
 	Meet.say("Everyone has stopped talking. Something is coming down over the water.")
 	for r in Meet.risers:
 		r.say_aloud(["What is THAT?", "Is that... no.", "Are you seeing this?", "..."][randi() % 4], 4.0)
@@ -903,6 +1023,7 @@ func _run_ufo(dt: float) -> void:
 			if is_instance_valid(al):
 				al.global_position = al.global_position.move_toward(_ufo.global_position, dt * 12.0)
 		if _ufo.position.y > 70.0:
+			Meet.audio.loop("ufo", false)
 			for al in _aliens:
 				al.queue_free()
 			_aliens.clear()
@@ -979,6 +1100,7 @@ func start_drone() -> void:
 		for sz in [-1.0, 1.0]:
 			Build.cyl(_drone, 0.22, 0.22, 0.02, Vector3(sx * 0.35, 0.08, sz * 0.35), Color(0.6, 0.6, 0.65), 8)
 	Build.sphere(_drone, 0.06, Vector3(0, -0.08, 0.2), Color(1.0, 0.1, 0.1), 2.0)
+	Meet.audio.loop("drone", true, -8.0)
 	_drone.position = Vector3(-30, 14, 20)
 	_drone_t = 0.0
 	var a := randf() * TAU
@@ -999,6 +1121,8 @@ func _run_drone(dt: float) -> void:
 	_drone.rotation.x += dt * 9.0
 	if _drone.position.distance_to(_drone_to) < 0.2:
 		_drone_t = -1.0
+		Meet.audio.loop("drone", false)
+		Meet.sfx("crash")
 		_drone.rotation = Vector3(0.5, 1.0, 2.6)
 		Fx.burst(self, _drone_to + Vector3(0, 0.5, 0), Vector3.UP, false, 30)
 		Meet.say("The drone has landed. Upside down. In several pieces.")
@@ -1053,6 +1177,7 @@ func _run_gulls(dt: float) -> void:
 		return
 	if Meet.player.global_position.distance_to(SNACKS) < 3.4:
 		_gulls_off = true
+		Meet.dare("gulls")
 		Meet.say("You run at them waving your arms. It works. One of them drops something on the way out.")
 		drop(["golden_chip"], SNACKS + Vector3(-0.6, 0, 1.8))
 	elif _gulls_t > 40.0:
@@ -1063,6 +1188,7 @@ func _run_gulls(dt: float) -> void:
 
 ## Something noteworthy happened: some of the people nearby turn, say something, maybe come over.
 func stir(at: Vector3, lines: Array, radius := 12.0, share := 0.6, gather := false) -> void:
+	Meet.sfx("ooh", -8.0, randf_range(0.9, 1.1), 2.5)
 	for r in Meet.risers:
 		if r.alien or r.global_position.distance_to(at) > radius or r.global_position.distance_to(at) < 0.3:
 			continue
@@ -1100,3 +1226,16 @@ func warn(text: String, not_this_one: Node = null) -> void:
 			break
 	if pick != null:
 		pick.confront("warn", text)
+
+## The club's patience, as stars. Three: nobody will pull you. Four: a warning. Five: the gate.
+func heat_rose(now: int) -> void:
+	var harry: Node = Meet.riser("harry")
+	if now == 2 and harry:
+		harry.say_aloud("I'm watching you.", 4.0)
+		harry.stare(3.0)
+	elif now == 3:
+		stir(Meet.player.global_position, ["Calm down.", "Give it a rest.", "Somebody's going to get thrown out."], 14.0, 0.5, false)
+	elif now == 4:
+		warn("That's enough. You've been at it all night. One more thing and you're through that gate.")
+	elif now >= 5:
+		Meet.hud.night_over("Five stars. Harry, George and Kelvin walk you to the gate in a tight triangle. Tommy holds it open.\n\n\"Go home. Think about what you've done. The chalk bucket has feelings.\"")

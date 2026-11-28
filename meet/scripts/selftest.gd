@@ -43,6 +43,11 @@ func _run() -> void:
 	stand(Vector3(0, 0, 9.5), Vector3(0, 0, 0))
 	await wait(14.0)
 	await shot("02_plaza")
+	check(Meet.dares.size() == 3, "three dares for tonight: %s" % ", ".join(Meet.dares.map(func(d): return d["text"])))
+	check(Meet.riser(preload("res://scripts/people.gd").GUESTS[Meet.week() % 5]["id"]) != null, "this week's guest is here")
+	for n in ["puff", "punch", "grip", "win", "coin", "murmur", "music", "bark", "gull", "ufo"]:
+		Meet.audio.play(n, -40.0)
+	check(Meet.audio._cache.size() >= 10, "the sounds load and play")
 	check(Meet.risers.size() >= 8, "the founders are here (%d people)" % Meet.risers.size())
 	await wait(16.0)
 	check(Meet.main.match_on() or not Meet.results.is_empty(), "people pull at the tables without being asked")
@@ -172,6 +177,39 @@ func _run() -> void:
 	stand(Vector3(0, 0, 10.5), Vector3(0, 0, 6))
 	await wait(0.3)
 	await shot("07c_huddle")
+
+	# Heat, and the tools for causing it.
+	Meet.heat = 0.0
+	Meet.add_heat(1.2, "test")
+	check(Meet.stars() == 1, "mischief raises heat: %d star" % Meet.stars())
+	for r in Meet.risers:
+		r.global_position = Meet.main.ground(Vector3(8, 0, -6))
+		r.rotation.y = 0.0
+	stand(Meet.main.CHALK + Vector3(0, 0, -1.2), Meet.main.CHALK)
+	Meet.main._hide_chalk()
+	check(Meet.chalk_hidden > 0.0 and not Meet.main._bucket[0].visible, "the chalk bucket can be hidden when nobody is looking")
+	Meet.chalk_hidden = 0.01
+	Meet.straps = ["tommy"]
+	Meet.main._strap_plant("phillip")
+	check(Meet.planted.get("tommy", "") == "phillip", "a strap can be planted in someone else's bag")
+	var tie_tp: float = Meet.tie("phillip", "tommy")
+	tommy._strap_planted()
+	check(Meet.tie("phillip", "tommy") < tie_tp, "Tommy finds it in Phillip's bag and they fall out")
+	Meet.worn["head"] = ""
+	var line: String = Meet.riser("luie").cone_on()
+	check(Meet.riser("luie").coned, "the cone goes on someone's head: %s" % line)
+	Meet.menu.ladder()
+	await wait(0.2)
+	await shot("07f_ladder")
+	check(Meet.menu.active(), "the club ladder can be read")
+	Meet.menu.close()
+	var d0: Dictionary = Meet.dares[0]
+	Meet.dare(d0["event"], d0["arg"])
+	Meet.dare(d0["event"], d0["arg"])
+	Meet.night_cash = 99
+	Meet.dare("cash")
+	check(d0["done"], "doing what a dare says ticks it off")
+	Meet.heat = 0.0
 
 	# Talk that carries from one person to the next.
 	var People2 = preload("res://scripts/people.gd")
@@ -336,6 +374,7 @@ func _run() -> void:
 	kelvin.global_position = Meet.main.ground(Vector3(-4, 0, 11))
 	stand(kelvin.global_position + Vector3(0, 0, 1.4), kelvin.global_position)
 	var fk: float = kelvin.mind.feeling()
+	Meet.heat = 0.0
 	Meet.stamina = 100.0
 	p._cooldown = 0.0
 	p.slap()
@@ -376,6 +415,8 @@ func _run() -> void:
 		await wait(0.25)
 	check(Meet.menu.active() and warner != null and warner.confront_kind == "warn", "someone comes over to warn you: do it again and you're out")
 	await shot("10c_warned")
+	check(Meet.stars() >= 2, "a beating puts stars on you (%d)" % Meet.stars())
+	Meet.heat = 0.0
 	Meet.warned = false
 	Meet.menu._forced = false
 	Meet.menu.close()
@@ -438,6 +479,28 @@ func _run() -> void:
 	var said: String = bh.read_clipboard("Bhavya is a legend")
 	check(said.contains("legend") and Meet.player_name == "Sam", "they read what you wrote on the clipboard: %s" % said)
 	check(bh.read_clipboard("pull me at the table") != "" and bh.calling > 0.0, "a written challenge is accepted")
+
+	# A dog off the lead.
+	var owner: Node3D = null
+	for i in 240:
+		for r in Meet.risers:
+			if r._dog_node != null and r.state != "flee":
+				owner = r
+		if owner:
+			break
+		await wait(0.25)
+	if owner:
+		for c in owner._dog_node.get_children():
+			if c.has_method("prompt") and c.prompt().begins_with("Unclip"):
+				c.interact()
+		await wait(2.0)
+		stand(owner._dog_node.global_position + Vector3(0, 0, 5), owner._dog_node.global_position)
+		await wait(0.3)
+		await shot("15b_dog_loose")
+		check(owner._dog_free > 0.0, "the dog can be let off its lead")
+	else:
+		print("  note  no dog walker came past in time")
+	Meet.heat = 0.0
 
 	# Friendly things.
 	var tm: Node3D = Meet.riser("tommy")

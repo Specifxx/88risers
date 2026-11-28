@@ -277,6 +277,8 @@ func _high_five() -> void:
 		Meet.say("You are left hanging. People saw.")
 		Meet.main.stir(r.global_position, People.LEFT_HANGING, 9.0, 0.5, false)
 	else:
+		Meet.dare("five")
+		Meet.sfx("punch", -8.0, 1.6)
 		r.gesture("Punch_Jab", 0.6)
 		if not r._asked.has("five"):
 			r._asked["five"] = true
@@ -290,6 +292,7 @@ func _dance() -> void:
 	r.say_aloud(People.DANCE["yes" if yes else "no"][randi() % 3], 3.5)
 	Meet.main.stir(Meet.player.global_position, People.WATCHING_DANCE, 12.0, 0.6, true)
 	if yes:
+		Meet.dare("dance")
 		r.gesture("Dance", 3.2)
 		if not r._asked.has("dance"):
 			r._asked["dance"] = true
@@ -415,6 +418,7 @@ func _topic(t: Dictionary) -> void:
 ## Something you heard elsewhere, raised with the person it concerns.
 func _lead(id: String) -> void:
 	Meet.used[id] = true
+	Meet.dare("carry")
 	var l: Dictionary = Web.LEADS[id]
 	_text.append_text("\n[color=#b9b3a0]%s[/color]\n" % l["ask"])
 	if l.has("opts"):
@@ -504,6 +508,13 @@ func _answer(o: Dictionary, show_say := true) -> void:
 
 func _insults() -> void:
 	UI.clear(_list)
+	if Meet.worn["head"] == "cone":
+		UI.button(_list, "Put the traffic cone on their head", func():
+			Meet.worn["head"] = ""
+			Meet.touch_state()
+			var reply: String = who.cone_on()
+			if reply != "" and active():
+				_line("[i]You lower the cone onto their head.[/i]\n\"%s\"" % reply), 18)
 	for ins in People.INSULTS:
 		UI.button(_list, ins["say"], _insult.bind(ins), 18)
 	UI.button(_list, "(Think better of it.)", _options, 18)
@@ -534,6 +545,7 @@ func confrontation(r: Node) -> void:
 	_text.clear()
 	var warn: bool = r.confront_kind == "warn"
 	var opener: String = r.confront_text if warn else ["You've been at me all night. What is your problem?", "I've had enough of you. Say what you've got to say to my face.", "One chance. Explain yourself."][randi() % 3]
+	Meet.sfx("sting", -3.0)
 	_text.append_text("[i]%s has walked straight up to you.[/i]\n\n\"%s\"\n" % [r.riser_name, opener])
 	if warn:
 		_text.append_text("\"Do it again and you're out of this club. Understood?\"\n")
@@ -651,6 +663,9 @@ func _drink() -> void:
 		_line("[i]Drinks are $3 and you have $%d.[/i]" % Meet.money)
 		return
 	Meet.pay(-3)
+	Meet.sfx("sip")
+	Meet.dare("round")
+	Meet.add_heat(-0.3)
 	who.mind.experience("gift", 0.5, 1.0, true, "the drink")
 	_line("[i]Three dollars in the tin.[/i] \"%s\"" % ["Oh, nice one. Cheers.", "You didn't have to. But thanks.", "First drink anyone's bought me here."][randi() % 3])
 
@@ -808,6 +823,43 @@ func _mates_check() -> void:
 			n += 1
 	if n >= 4:
 		Meet.grant("lion_mask")
+
+# --- The ladder ------------------------------------------------------------------------------------
+
+## Season standings. The founders' points are worked out from their strength and the week;
+## yours are real: three for beating a founder, one for turning up to the table and losing.
+func ladder() -> void:
+	who = null
+	_name.text = "The club ladder"
+	_card.visible = false
+	_dots.visible = false
+	_sub.text = "Week %d of the season. Founders' points are simulated for now; yours are earned." % (Meet.week() % 12 + 1)
+	_text.clear()
+	var rows: Array = [["%s (you)" % Meet.you("You"), Meet.points, true]]
+	var wk: int = Meet.week() % 12 + 1
+	for r in Meet.risers:
+		if r.is_riser:
+			var pts := int((r.strength - 58.0) * 0.5 * wk * 0.35) + (hash(r.id + str(Meet.week())) % 5)
+			for line in Meet.results:
+				if String(line).begins_with(r.first_name + " beat"):
+					pts += 1
+			rows.append([r.riser_name, pts, false])
+	rows.sort_custom(func(a, b): return a[1] > b[1])
+	var mine := 0
+	for i in rows.size():
+		if rows[i][2]:
+			mine = i
+		_text.append_text("%s%d.  %s  —  %d%s\n" % ["[color=#edc259]" if rows[i][2] else "", i + 1, rows[i][0], rows[i][1], "[/color]" if rows[i][2] else ""])
+	if mine > 0:
+		_text.append_text("\n[i]%s is %d ahead of you. Three points for beating a founder.[/i]\n" % [rows[mine - 1][0], rows[mine - 1][1] - Meet.points])
+	else:
+		_text.append_text("\n[i]Top of the ladder. Everyone wants a pull with you now.[/i]\n")
+	_show()
+	UI.clear(_list)
+	UI.text(_list, "Tonight's dares", 18, UI.GOLD)
+	for d in Meet.dares:
+		UI.text(_list, "%s  %s" % ["✔" if d["done"] else "•", d["text"]], 16, Color(0.6, 0.9, 0.7) if d["done"] else UI.PAPER)
+	UI.button(_list, "Walk on", close, 18)
 
 # --- Notes at the lanterns ---------------------------------------------------------------
 

@@ -56,6 +56,11 @@ var settle := false              # the pull in progress settles a grievance
 var _chase := 0.0
 var _dog_node: Node3D
 var _dog_wag := 0.0
+var _dog_free := 0.0
+var _dog_goal := Vector3.ZERO
+var _dog_ate := false
+var _lead: MeshInstance3D
+var coned := false
 var _chalk_t := 0.0
 var backing := false             # has agreed to watch your back tonight
 var _asked := {}
@@ -160,12 +165,29 @@ func _dog() -> void:
 		for z in [-0.18, 0.18]:
 			Build.box(dog, Vector3(0.05, 0.22, 0.05), Vector3(e * 0.07, 0.11, z), c)
 	Build.box(dog, Vector3(0.04, 0.16, 0.04), Vector3(0, 0.46, -0.27), c).rotation.x = -0.6
-	Build.cyl(self, 0.006, 0.006, 0.95, Vector3(0.52, 0.72, 0.42), Color(0.8, 0.1, 0.1), 4).rotation = Vector3(0.5, 0, -0.9)
+	_lead = Build.cyl(self, 0.006, 0.006, 0.95, Vector3(0.52, 0.72, 0.42), Color(0.8, 0.1, 0.1), 4)
+	_lead.rotation = Vector3(0.5, 0, -0.9)
+	var unclip: Node3D = load("res://scripts/thing.gd").new()
+	dog.add_child(unclip)
+	unclip.position = Vector3(-0.3, 0, -0.3)
+	unclip.setup("Unclip %s's lead" % dog_name, func():
+		if _dog_free > 0.0:
+			return
+		_dog_free = 24.0
+		_lead.visible = false
+		dog.reparent(Meet.main)
+		_dog_goal = dog.global_position
+		say_aloud("%s! NO! Come BACK!" % dog_name.to_upper(), 4.0)
+		Meet.add_heat(0.5, "letting a dog loose")
+		Meet.say("%s is free, and has never been happier." % dog_name)
+		Meet.main.stir(global_position, ["There's a dog loose!", "Get it away from the snacks!", "Ha! Go on, mate!", "Who let the dog out?"], 30.0, 0.6, false))
 	var pat: Node3D = load("res://scripts/thing.gd").new()
 	dog.add_child(pat)
 	pat.position = Vector3(0.3, 0, 0.3)
 	pat.setup("Pet %s" % dog_name, func():
 		_dog_wag = 2.6
+		Meet.dare("pet")
+		Meet.sfx("bark", -4.0, 1.3 if def.get("dog_size", 1.0) < 1.0 else 1.0)
 		Meet.player.gesture("pet", 2.6, _dog_node.global_position + Vector3(0, 0.5 * _dog_node.scale.y, 0.2 * _dog_node.scale.y))
 		Meet.composure = min(100.0, Meet.composure + 10.0)
 		say_aloud(["She likes you.", "He doesn't do that for everyone.", "You've made a friend."][randi() % 3], 3.5)
@@ -262,6 +284,9 @@ func _process(dt: float) -> void:
 		_alien(dt)
 		return
 	calling = max(0.0, calling - dt)
+	if _dog_free > 0.0:
+		_run_dog(dt)
+		return
 	if _dog_wag > 0.0:
 		# Being petted: the dog wriggles and its owner waits.
 		_dog_wag -= dt
@@ -581,6 +606,9 @@ func _arrive() -> void:
 			if wallet_taken > 0:
 				_wallet_missed()
 				return
+			if Meet.planted.has(id):
+				_strap_planted()
+				return
 			if has_strap():
 				state = "prep"
 				_qanim = "Fixing_Kneeling"
@@ -596,6 +624,11 @@ func _arrive() -> void:
 				_asks = 0
 				say_aloud(People.STRAP_HUNT[0])
 		"chalk":
+			if Meet.chalk_hidden > 0.0:
+				say_aloud(["Where's the chalk?!", "Who's moved the chalk?", "No chalk. Brilliant."][randi() % 3], 3.5)
+				Meet.main.stir(global_position, ["It was right there.", "Not again.", "Check behind the banners."], 8.0, 0.4, false)
+				_next_leg()
+				return
 			state = "prep"
 			_qanim = "Interact"
 			_look(Meet.main.CHALK, 1.0)
@@ -735,6 +768,7 @@ func heckle() -> String:
 
 ## Enough. They come for the player.
 func square_up() -> void:
+	Meet.sfx("sting", -4.0, 1.0, 1.0)
 	for r in Meet.risers:
 		if r != self and r.backing and r.is_free() and r.global_position.distance_to(global_position) < 16.0:
 			r.backing = false
@@ -776,6 +810,7 @@ func take_hit(dmg: int, from: Vector3) -> void:
 		Meet.main.public_hit(self)
 		return
 	if state != "scrap":
+		Meet.add_heat(1.0, "throwing a punch")
 		Meet.main.defend(self, "punch")
 		Meet.main.stir(global_position, ["Whoa, whoa!", "Not at the meet!", "Break it up!", "Did you see that?"], 14.0, 0.7, true)
 		# Hit out of nowhere: everyone watching thinks less of the player for it.
@@ -909,6 +944,7 @@ func _alien(dt: float) -> void:
 	_look(target, 0.3)
 	if _strike <= 0.0:
 		_wind = 0.6
+		Meet.sfx("zap", -5.0, randf_range(0.9, 1.2))
 		Fx.tint(_figure, Color(1.0, 0.3, 0.9, 0.6), 0.6)
 		Character.play(_figure, "Spell_Simple_Shoot", true)
 
@@ -973,6 +1009,7 @@ func caught_with_strap() -> void:
 	strength += 5.0
 	Meet.main.strap_back(id)
 	mind.experience("theft", -0.7, 2.0, true, "my strap")
+	Meet.add_heat(0.8, "caught with a strap")
 	say_aloud("That's MY strap. Hand it over.", 4.0)
 	Meet.main.stir(global_position, ["Ooh.", "Busted.", "In his BAG?", "Not cool."], 12.0, 0.6, false)
 	Meet.say("%s takes the strap back off you. That did not go unnoticed." % riser_name)
@@ -1011,6 +1048,8 @@ func dusted(by: Node) -> void:
 		return
 	Meet.main.defend(self, "chalk")
 	Meet.dusted += 1
+	Meet.dare("chalk", id)
+	Meet.add_heat(0.4)
 	if Meet.dusted >= 5:
 		Meet.grant("ghost")
 	if alien:
@@ -1206,6 +1245,7 @@ func insult(key: String) -> String:
 	Meet.main.defend(self, "insult")
 	if People.SORE.get(id, "") == key:
 		mind.experience("heckle", -0.95, 2.5, true, riser_name)
+		Meet.add_heat(0.7, "going too far")
 		Meet.flag(id, "sore")
 		for r in Meet.risers:
 			if r != self and r.is_riser and r.global_position.distance_to(global_position) < 8.0:
@@ -1375,7 +1415,9 @@ func _mood_changed() -> void:
 			0: Meet.say("%s has cooled down." % riser_name) if was < 0 else null
 			-1: Meet.say("%s still isn't happy, but it's better than it was." % riser_name)
 			-2: Meet.say("%s no longer hates you. Only dislikes." % riser_name)
-			1: Meet.say("%s has warmed to you." % riser_name)
+			1:
+				Meet.say("%s has warmed to you." % riser_name)
+				Meet.dare("like", id)
 			2: Meet.say("%s counts you a close mate." % riser_name)
 
 # --- Making it right ---------------------------------------------------------------------------
@@ -1383,6 +1425,7 @@ func _mood_changed() -> void:
 ## Say sorry. Words work on an annoyance; anything worse wants a peace offering as well.
 func apologise(with_snack: bool) -> String:
 	var lvl := mood_level()
+	Meet.add_heat(-0.7)
 	if _apologised and not with_snack:
 		return "You already said sorry. Show me."
 	_apologised = true
@@ -1454,6 +1497,8 @@ func saw_beating(victim: Node) -> void:
 func reluctance() -> String:
 	if tonight.get("id", "") == "sore":
 		return "Elbow's gone. Ask me next week."
+	if Meet.stars() >= 3:
+		return "Not while you're carrying on like this. Calm down first."
 	if mood_level() <= -2:
 		return "Not with you. Not tonight."
 	if mood_level() == -1:
@@ -1497,6 +1542,7 @@ func _wallet_missed() -> void:
 	if witness:
 		Meet.pay(-min(taken, Meet.money))
 		mind.experience("theft", -0.85, 2.5, true, "my wallet")
+		Meet.add_heat(1.5, "caught thieving")
 		say_aloud("My wallet's light, and I know EXACTLY who was in my bag.", 5.0)
 		Meet.say("%s marches over and takes the money back out of your pocket." % riser_name)
 		Meet.main.stir(global_position, ["From his WALLET?", "That's low.", "Not cool. Not cool at all."], 14.0, 0.7, false)
@@ -1521,6 +1567,7 @@ func confront(kind := "beef", text := "") -> void:
 	confront_text = text
 	_chase = 0.0
 	_stare = 0.0
+	Meet.sfx("sting", -6.0, 1.2, 1.0)
 	state = "confront"
 	say_aloud(["Oi. You. A word.", "Hey. We need to talk.", "Come here. Now."][randi() % 3], 3.0)
 
@@ -1596,3 +1643,92 @@ func gesture(anim: String, seconds: float) -> void:
 	_act_anim = anim
 	_act_t = seconds
 	Character.play(_figure, anim, true)
+
+# --- More trouble ---------------------------------------------------------------------------------
+
+## Their strap has turned up in somebody else's bag.
+func _strap_planted() -> void:
+	var where: String = Meet.planted[id]
+	Meet.planted.erase(id)
+	Meet.main.drop_match(self)
+	Meet.main.strap_back(id)
+	var other: Node = Meet.riser(where)
+	say_aloud("My strap's gone. ...Hang on. It's in %s's bag!" % other.first_name, 5.0)
+	var witness: Node = null
+	for r in Meet.risers:
+		if r.saw_theft.has(id) and r != self:
+			witness = r
+	if witness != null:
+		witness.say_aloud("It wasn't %s. I watched who did it." % other.first_name, 5.0)
+		mind.experience("theft", -0.6, 1.8, true, "my strap")
+		other.mind.experience("theft", -0.5, 1.5, false, "being set up")
+		Meet.add_heat(1.0, "caught planting a strap")
+		confront()
+		return
+	other.say_aloud("I never touched it! Why would I want YOUR strap?", 5.0)
+	Meet.bump(id, where, -0.3)
+	Meet.main.stir(global_position, ["Ooh.", "In his BAG?", "Awkward.", "I'm staying out of this."], 12.0, 0.6, true)
+	Meet.say("%s and %s are having words about a strap. Nobody is looking at you." % [riser_name, other.riser_name])
+	idle()
+
+func _run_dog(dt: float) -> void:
+	_dog_free -= dt
+	var d := _dog_node
+	var to := _dog_goal - d.global_position
+	to.y = 0
+	if to.length() < 0.6:
+		var a := randf() * TAU
+		_dog_goal = Meet.main.clear(Vector3(cos(a) * randf_range(2, 8), 0, sin(a) * randf_range(2, 8) + 3.0))
+		if randf() < 0.5:
+			_dog_goal = Meet.main.SNACKS + Vector3(randf_range(-1, 1), 0, 1.3)
+	else:
+		d.global_position += to.normalized() * 5.5 * dt
+		d.global_position.y = absf(sin(_dog_free * 14.0)) * 0.12
+		d.rotation.y = atan2(to.x, to.z)
+	Meet.sfx("bark", -8.0, randf_range(1.0, 1.4), 1.6)
+	if not _dog_ate and d.global_position.distance_to(Meet.main.SNACKS) < 1.8:
+		_dog_ate = true
+		Meet.say("The dog has found the snack table. The dog is having the best night of its life.")
+		var kelvin: Node = Meet.riser("kelvin")
+		if kelvin:
+			kelvin.say_aloud("NOT THE RED ONES!", 4.0)
+	# The owner, in pursuit.
+	_goal = d.global_position
+	var od := _goal - global_position
+	od.y = 0
+	if od.length() > 1.0:
+		global_position = Meet.main.clear(global_position + od.normalized() * 3.2 * dt)
+		_look(_goal, 0.2)
+		Character.play(_figure, "Jog_Fwd")
+	if _dog_free <= 0.0 or (od.length() < 1.0 and _dog_free < 14.0):
+		_dog_free = 0.0
+		d.reparent(self)
+		d.position = Vector3(0.75, 0, 0.5)
+		d.rotation = Vector3.ZERO
+		_lead.visible = true
+		say_aloud("Got you. Bad. BAD. ...Who unclipped this?", 5.0)
+		mind.experience("nagged", -0.4, 1.0)
+		state = "pass"
+
+## The traffic cone, placed on their head by the player.
+func cone_on() -> String:
+	if coned:
+		return "I'm already wearing it. Apparently."
+	coned = true
+	Wear.hold(_figure, Wear.model("cone"), "Head", "Cone")
+	Meet.dare("cone")
+	Meet.main.stir(global_position, ["HA!", "Leave it on!", "Suits you.", "Somebody get a photo."], 10.0, 0.7, false)
+	Meet.sfx("laugh", -6.0)
+	var lvl := mood_level()
+	if lvl >= 1:
+		mind.experience("talk", 0.2, 0.6)
+		return "...Is it straight? I'm keeping it on. I'm the cone now."
+	if lvl == 0:
+		mind.experience("nagged", -0.15, 0.6)
+		Meet.add_heat(0.3)
+		return "Very funny. Very mature."
+	mind.experience("heckle", -0.5, 1.4, true, riser_name)
+	Meet.add_heat(0.6)
+	Meet.menu.close()
+	confront()
+	return ""
