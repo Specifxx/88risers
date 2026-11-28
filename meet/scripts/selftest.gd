@@ -11,14 +11,10 @@ func _soak() -> void:
 	Meet.hud._begin()
 	Meet.muted = true
 	Engine.time_scale = 24.0
-	get_tree().create_timer(40.0).timeout.connect(func():
-		var ra: Node = Meet.riser("luie")
-		var rb: Node = Meet.riser("tommy")
-		rb.global_position = ra.global_position + Vector3(1.5, 0, 0)
-		ra.row_with(rb)
-		print("  ROW started"))
-	get_tree().create_timer(40.0 + 30.0).timeout.connect(func():
-		print("  ROW after: luie=%s tommy=%s tie=%.2f" % [Meet.riser("luie").state, Meet.riser("tommy").state, Meet.tie("luie", "tommy")]))
+	if "--soakdon" in OS.get_cmdline_user_args():
+		get_tree().create_timer(40.0).timeout.connect(func():
+			Meet.main.evening._m_legend_don()
+			print("  DON arrives"))
 	var tick := 0
 	while not Meet.hud._over.visible:
 		tick += 1

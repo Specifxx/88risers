@@ -25,6 +25,115 @@ var _bet_things: Array = []
 var _photo := ""               # "" | call | done
 var _photo_t := 0.0
 var _photo_said := 0
+var _don_left := 0.0
+var _don_t := 0.0
+var _don_wins := 0
+var _don_beat := {}
+var _don_here := false
+var _don_talk := 30.0
+
+const DON_CALL := ["YOU. Yes, you. Table. I'll use my bad arm.", "Next! Come on, I've got a flight. I don't, but come on.", "Who's the strongest one here? Wrong. It's me. Who's second?", "You look nervous. Good. Nervous is honest. Table."]
+const DON_WIN := ["That's one! Was that one? I've lost count. I never lose count. Fourteen.", "You felt that? That's called the Ottawa Special. I made it up just now.", "Good hand! Terrible everything else! NEXT!", "I wasn't even looking. I was looking at the snacks. NEXT."]
+const DON_FAN := ["I just got pinned by Big Don. Best day of my life.", "He said 'good hand'. He said GOOD HAND.", "I'm never washing this arm.", "Did somebody film that? Tell me somebody filmed that.", "I lasted two seconds. TWO. Against HIM."]
+const DON_IDOL := ["I had his poster. I HAVE his poster.", "He's the reason I started. I watched the '09 final forty times.", "Look at the size of his forearm. LOOK at it.", "He talks exactly like he does in the videos.", "Do you think he'd sign my strap?", "Fourteen world titles and he's eating our snacks.", "I can't breathe. Is anyone else not breathing?", "He called me 'kid'. I'm thirty-one. I loved it."]
+const DON_AFTER := ["Big Don was HERE. At OUR meet.", "He pinned me and I thanked him. I actually said thank you.", "I'm telling everyone at work. Nobody will know who he is. I don't care.", "Did you see when he stamped on the table? That's my table now.", "We need a plaque. 'Big Don pulled here.'"]
+
+## Big Don doesn't stand and watch. He calls people out, one after another, and makes a scene of each.
+func _run_don(dt: float) -> void:
+	var don: Node = null
+	for l in _legends:
+		if is_instance_valid(l) and l.legend == "don" and not l.dead:
+			don = l
+	if don == null:
+		# Gone, but they'll be talking about it all night.
+		if _don_here:
+			_don_talk -= dt
+			if _don_talk <= 0.0:
+				_don_talk = randf_range(35.0, 60.0)
+				var fans: Array = _free()
+				if not fans.is_empty():
+					fans[randi() % fans.size()].say_aloud(DON_AFTER[randi() % DON_AFTER.size()], 4.5)
+		return
+	_don_left -= dt
+	_don_talk -= dt
+	if _don_talk <= 0.0:
+		_don_talk = randf_range(6.0, 10.0)
+		var fans2: Array = Meet.risers.filter(func(r): return r.is_riser and not r.dead and r.state in ["idle", "watch", "walk", "chat", "sit", "snack"])
+		if not fans2.is_empty():
+			var f: Node = fans2[randi() % fans2.size()]
+			f.say_aloud(DON_IDOL[randi() % DON_IDOL.size()], 4.0)
+			if f.state in ["idle", "watch"]:
+				f._face_at = don.global_position
+	var busy: bool = main._matches.any(func(m): return m["a"] == don or m["b"] == don)
+	if busy or don.state in ["to_table", "pull", "prep", "scrap", "winded", "confront"] or Meet.menu.who == don or (Meet.table.active() and Meet.table.rival == don):
+		return
+	if _don_left <= 0.0:
+		if don.state == "watch" and don._timer > 2.0:
+			don.say_aloud("Right. Ottawa doesn't run itself. Keep pulling. Keep TALKING. Mostly talking.", 5.0)
+			don._timer = 1.5
+		return
+	if don.state == "watch":
+		don._timer = max(don._timer, 12.0)   # he isn't going anywhere yet
+	_don_t -= dt
+	if _don_t > 0.0:
+		return
+	_don_t = 4.0
+	var marks: Array = Meet.risers.filter(func(r): return r.is_riser and r.is_free() and not _don_beat.has(r.id))
+	if marks.is_empty():
+		return
+	var mark: Node = marks[randi() % marks.size()]
+	for i in main.TABLES.size():
+		if main.table_busy(i) or i == main._player_table or main._gone_tables.has(i):
+			continue
+		var total := randf_range(6.0, 9.0)
+		main._matches.append({"table": i, "a": don, "b": mark, "time": total, "total": total, "tag": "don", "a_wins": randf() < 0.96})
+		don.go_pull(main.TABLES[i] + Vector3(-0.66, 0, 0), main.TABLES[i])
+		mark.go_pull(main.TABLES[i] + Vector3(0.66, 0, 0), main.TABLES[i])
+		don.say_aloud(DON_CALL[randi() % DON_CALL.size()], 4.5)
+		mark.say_aloud(["Me? ME? Oh no. Oh YES.", "Coming, Mr Don!", "This is happening. This is actually happening.", "Somebody hold my snack."][randi() % 4], 3.5)
+		Meet.say("Big Don has called %s to a table." % mark.first_name)
+		main.stir(main.TABLES[i], ["Go on, %s!" % mark.first_name, "He's going to get destroyed.", "I'm next! I'm next!", "FILM IT."], 30.0, 0.7, true)
+		return
+
+func _don_pulled(m: Dictionary, winner: Node) -> void:
+	var don: Node = m["a"]
+	var mark: Node = m["b"]
+	var at: Vector3 = main.TABLES[m["table"]]
+	_don_beat[mark.id] = true
+	if winner == don:
+		_don_wins += 1
+		Meet.sfx("crash", -6.0, 1.2)
+		Meet.hud.shake()
+		get_tree().create_timer(1.2).timeout.connect(func():
+			if is_instance_valid(don) and not don.dead:
+				don.say_aloud(DON_WIN[randi() % DON_WIN.size()], 5.0)
+				don.stomp(4))
+		get_tree().create_timer(2.6).timeout.connect(func():
+			if is_instance_valid(mark) and not mark.dead:
+				mark.say_aloud(DON_FAN[randi() % DON_FAN.size()], 5.0)
+				mark.mind.experience("match", 0.3, 1.0, false, "pulling Big Don"))
+		Meet.say("Big Don pins %s in about a second. That's %d." % [mark.first_name, _don_wins])
+		main.stir(at, ["OHHH!", "He didn't even try!", "That's %d!" % _don_wins, "Legend. LEGEND.", "Me next!"], 30.0, 0.8, false)
+		if _don_wins % 2 == 0:
+			# Every second win he celebrates with the chalk bucket.
+			var near: Array = Meet.risers.filter(func(r): return r.is_riser and not r.dead and r != mark and r.global_position.distance_to(at) < 9.0)
+			for r in near.slice(0, 3):
+				var tgt: Node = r
+				main.puff(at + Vector3(0, 1.6, 0), tgt.global_position + Vector3(0, 1.4, 0), func():
+					if is_instance_valid(tgt) and not tgt.dead:
+						load("res://scripts/wear.gd").dust(tgt._figure, 40.0)
+						tgt.say_aloud(["Big Don chalked me!", "I'm framing this shirt.", "HA! Again!"][randi() % 3], 3.0))
+			Meet.hud.banner("BIG DON IS CELEBRATING", "With the chalk. All of the chalk.")
+	else:
+		# It happens about once in twenty-five. Nobody will ever shut up about it.
+		Meet.hud.banner("%s JUST BEAT BIG DON" % mark.first_name.to_upper(), "Nobody is breathing. Big Don is laughing.")
+		Meet.sfx("win")
+		mark.say_aloud("I... I BEAT... DID EVERYONE SEE THAT?", 6.0)
+		don.say_aloud("HA! You know what? I slipped. I slipped and I LOVED it. Come here, kid!", 6.0)
+		Meet.ripple("%s beat Big Don from Ottawa and will mention it every week forever." % mark.first_name)
+		main.stir(at, ["NO WAY!", "HE DID IT!", "%s! %s! %s!" % [mark.first_name, mark.first_name, mark.first_name]], 40.0, 1.0, true)
+	_don_t = 5.0
+
 var _pack := false
 var _packed := 0
 var _table_nodes: Array = []
@@ -139,6 +248,7 @@ func _process(dt: float) -> void:
 	if _busk > 0.0:
 		_busk -= dt
 	_run_kaiju(dt)
+	_run_don(dt)
 	_run_carry()
 	if Meet.wind > 0.0:
 		Meet.wind -= dt
@@ -236,6 +346,8 @@ func match_ended(m: Dictionary, winner: Node) -> void:
 		else:
 			Meet.say("%s wins. That's your $%d gone." % [winner.first_name.capitalize(), bet["amt"]])
 			Meet.sfx("lose", -6.0)
+	if m.get("tag", "") == "don":
+		_don_pulled(m, winner)
 	if m.get("tag", "") == "semi":
 		_br["other_winner"] = winner
 		Meet.say("Bracket: %s goes through to the final." % winner.riser_name)
@@ -1536,6 +1648,11 @@ func _m_legend_don() -> void:
 		"chat": ["I'm going to pull every one of you. Then the table. Then whoever built the table.", "Arm wrestling is ninety percent talking. I've done the maths. Out loud. For hours.", "You know what your problem is? I don't either, but give me ten minutes.", "I once pulled for six hours straight. Nobody asked me to. Nobody could stop me."]}, 1.12)
 	if r == null:
 		return
+	_don_left = 150.0
+	_don_t = 9.0
+	_don_wins = 0
+	_don_beat = {}
+	_don_here = true
 	Meet.hud.banner("NO WAY", "Big Don from Ottawa has just walked through the gate. Talking.")
 	Meet.sfx("win", -4.0)
 	r.say_aloud("Is this the place? This is the place. Who's first? Everybody's first.", 6.0)
