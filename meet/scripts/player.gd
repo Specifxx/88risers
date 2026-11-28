@@ -6,6 +6,7 @@ const Asia = preload("res://scripts/asia.gd")
 const Build = preload("res://scripts/build.gd")
 const Fx = preload("res://scripts/fx.gd")
 const Wear = preload("res://scripts/wear.gd")
+const Pose = preload("res://scripts/pose.gd")
 
 const WALK := 4.2
 const RUN := 7.0
@@ -25,6 +26,11 @@ var _hold := 0.0
 var _down := 0.0
 var _worn := {}
 var _tag: Label3D
+var _gesture := ""
+var _gesture_t := 0.0
+var _gesture_len := 0.0
+var _gesture_at := Vector3.ZERO
+var _gesture_done: Callable
 
 func _ready() -> void:
 	var cs := CollisionShape3D.new()
@@ -80,8 +86,43 @@ func _unhandled_input(ev: InputEvent) -> void:
 
 func set_name_tag() -> void:
 	if _tag == null:
-		_tag = Build.label(self, "", 2.15, Color(0.75, 0.9, 1.0), 30)
+		_tag = Build.label(self, "", 2.05, Color(0.75, 0.9, 1.0), 16)
 	_tag.text = Meet.player_name
+
+## A movement done with your own hands, start to finish: "chalk" or "pet".
+func gesture(kind: String, seconds: float, at := Vector3.ZERO, done := Callable()) -> void:
+	_gesture = kind
+	_gesture_t = 0.0
+	_gesture_len = seconds
+	_gesture_at = at
+	_gesture_done = done
+	if at != Vector3.ZERO:
+		var to := at - global_position
+		rotation.y = atan2(-to.x, -to.z)
+
+func _run_gesture(dt: float) -> void:
+	_gesture_t += dt
+	if _gesture == "chalk":
+		Pose.chalk(_figure, _gesture_t)
+		if fmod(_gesture_t, 0.5) < dt:
+			Fx.burst(Meet.main, global_position - global_transform.basis.z * 0.35 + Vector3(0, 1.25, 0), Vector3.UP, false, 3)
+	else:
+		Pose.pet(_figure, _gesture_at, _gesture_t)
+	if _gesture_t >= _gesture_len:
+		_gesture = ""
+		Pose.stop(_figure)
+		if _gesture_done.is_valid():
+			_gesture_done.call()
+		_chalk_hands()
+
+## White hands for as long as the chalk is on them.
+func _chalk_hands() -> void:
+	for b in ["hand_r", "hand_l"]:
+		Wear.drop(_figure, "Chalk_" + b)
+		if Meet.chalked:
+			var n := Node3D.new()
+			Build.sphere(n, 0.055, Vector3(0, 0.06, 0), Color(0.97, 0.97, 0.97)).scale = Vector3(1, 1.3, 0.7)
+			Wear.hold(_figure, n, b, "Chalk_" + b)
 
 func use() -> void:
 	if is_instance_valid(target) and not Meet.modal:
@@ -184,8 +225,12 @@ func _dress() -> void:
 		return
 	_worn = Meet.worn.duplicate()
 	Wear.dress(_figure, _worn)
+	if _gesture == "":
+		_chalk_hands()
 
 func _process(dt: float) -> void:
+	if _gesture != "":
+		_run_gesture(dt)
 	_cooldown = max(0.0, _cooldown - dt)
 	_hold = max(0.0, _hold - dt)
 	if not Meet.modal:
@@ -201,7 +246,7 @@ func _process(dt: float) -> void:
 		Character.play(_figure, "Jump" if _jump > 0.05 else ("Idle" if speed < 0.4 else ("Jog_Fwd" if speed > 5.0 else "Walk")))
 
 func _physics_process(dt: float) -> void:
-	if Meet.modal or _down > 0.0:
+	if Meet.modal or _down > 0.0 or _gesture != "":
 		velocity = Vector3.ZERO
 		return
 	var dir := Input.get_vector("left", "right", "forward", "back") + Meet.stick

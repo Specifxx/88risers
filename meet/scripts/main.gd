@@ -562,10 +562,11 @@ func _strap_take(id: String) -> void:
 	Meet.touch_state()
 
 func _chalk_up() -> void:
-	Meet.chalked = true
-	Fx.burst(self, Meet.player.global_position + Vector3(0, 1.1, 0), Vector3.UP, false, 8)
-	Meet.say("You chalk your hands. Your grip will last longer in your next pull.")
-	Meet.touch_state()
+	Meet.player.gesture("chalk", 2.2, CHALK + Vector3(0, 1, 0), func():
+		Meet.chalked = true
+		Fx.burst(self, Meet.player.global_position - Meet.player.global_transform.basis.z * 0.35 + Vector3(0, 1.25, 0), Vector3.UP, false, 14)
+		Meet.say("You chalk your hands. The gold zone will be wider in your next pull.")
+		Meet.touch_state())
 
 func _chalk_take() -> void:
 	if Meet.chalk >= 3:

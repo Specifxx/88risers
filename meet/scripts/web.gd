@@ -124,6 +124,33 @@ const LEADS := {
 		{"say": "I'm sorry. It slipped out.", "reply": "...It's argan. If you must know. Don't tell him THAT.", "v": -0.15},
 		{"say": "It's a good beard. Own it.", "reply": "...You know what? Yes. It's argan oil and I'm not ashamed.", "v": 0.3}]},
 
+	# More threads.
+	"novice_erick": {"to": "erick", "ask": "\"Harry's put me in novice at Newcastle.\"", "reply": "Novice? Good. I'll corner you. Don't embarrass me in my own town.", "opts": [
+		{"say": "What do I need to know?", "reply": "Go first, go hard, don't think. Thinking's for the car home.", "v": 0.35, "do": "tip"},
+		{"say": "I'd rather have Bhavya corner me.", "reply": "Bhavya will talk you through a pull you've already lost. Suit yourself.", "v": -0.3, "tie": ["bhavya", "erick", -0.08], "lead": "corner_bhavya"}]},
+	"corner_bhavya": {"to": "bhavya", "ask": "\"Would you corner me at Newcastle? Erick offered, but.\"", "reply": "You picked me over Erick? Correct decision. We start tonight. Stand up straight.", "v": 0.5, "do": "tip"},
+	"fees_harry": {"to": "harry", "ask": "\"George is paying for the club out of his own pocket.\"", "reply": "He's what? He told me the tin covered it.", "opts": [
+		{"say": "The tin is buttons.", "reply": "...Right. I'll sort him out. He never says anything, that's his problem.", "v": 0.4, "tie": ["george", "harry", 0.2], "do": "tell:harry:george", "lead": "sorted_george"},
+		{"say": "Maybe charge the new people.", "reply": "Nobody pays to belong. I'll find it another way.", "v": 0.1}]},
+	"sorted_george": {"to": "george", "ask": "\"Did Harry talk to you about the money?\"", "reply": "He gave me three hundred dollars and told me I was an idiot. Best day of my year.", "v": 0.6, "do": "pay:10"},
+	"rain_tommy": {"to": "tommy", "ask": "\"Phillip listens to rain sounds. For ten hours.\"", "reply": "RAIN SOUNDS. Oh, that's beautiful. I'm going to stand behind him and do thunder.", "opts": [
+		{"say": "Do it.", "reply": "Watch and learn.", "v": 0.35, "tie": ["phillip", "tommy", -0.1], "do": "tell:tommy:phillip"},
+		{"say": "Leave him be. It works for him.", "reply": "...Yeah. It does, doesn't it. Fine.", "v": 0.1, "tie": ["phillip", "tommy", 0.05]}]},
+	"wrist_phillip": {"to": "phillip", "ask": "\"Bhavya says nobody's ever fixed your wrist.\"", "reply": "My wrist is fine.", "opts": [
+		{"say": "He says you'd be unbeatable.", "reply": "...Unbeatable. He said that.", "v": 0.35, "tie": ["bhavya", "phillip", 0.2], "do": "tell:phillip:bhavya"},
+		{"say": "He says it's wrong.", "reply": "Bhavya says everything is wrong.", "v": -0.2, "tie": ["bhavya", "phillip", -0.1]}]},
+	"meat_tommy": {"to": "tommy", "ask": "\"Kelvin won a meat tray at Bushy's.\"", "reply": "And shared NONE of it. Not a sausage. I've never forgiven him.", "opts": [
+		{"say": "Let it go, Tommy.", "reply": "It's been two years. ...Fine. It's gone. I'm free.", "v": 0.2, "tie": ["kelvin", "tommy", 0.15]},
+		{"say": "Go and tell him.", "reply": "I will. This ends tonight.", "v": 0.25, "tie": ["kelvin", "tommy", -0.1], "do": "tell:tommy:kelvin", "lead": "meat_kelvin"}]},
+	"meat_kelvin": {"to": "kelvin", "ask": "\"Tommy's still upset about the meat tray.\"", "reply": "It was MY meat tray. ...Was he really upset? I'll bring him a sausage next week.", "v": 0.2, "tie": ["kelvin", "tommy", 0.2]},
+	"van_harry": {"to": "harry", "ask": "\"About Tommy's van...\"", "reply": "It's at the mechanic's.", "opts": [
+		{"say": "It was sold. In 2023.", "reply": "TOMMY.", "v": 0.1, "tie": ["harry", "tommy", -0.25], "do": "tell:harry:tommy", "v_other": ["tommy", -0.6]},
+		{"say": "Yeah. The mechanic's. Sure.", "reply": "Long job. Gearbox, he said.", "v": 0.0, "v_other": ["tommy", 0.3]}]},
+	"corner_kelvin": {"to": "kelvin", "ask": "\"Luie says he'd want you in his corner.\"", "reply": "Luie said that? About me? ...I'm going to bring him the good snacks.", "v": 0.5, "tie": ["kelvin", "luie", 0.3], "do": "tell:kelvin:luie"},
+	"erick_lost_luie": {"to": "luie", "ask": "\"Erick still doesn't know how you beat him.\"", "reply": "Good.", "opts": [
+		{"say": "Are you going to tell him?", "reply": "When he stops asking.", "v": 0.3},
+		{"say": "He's losing sleep over it.", "reply": "...I'll give him a rematch. He won't learn anything.", "v": 0.2, "do": "match:luie:erick"}]},
+
 	# Harry's job for you.
 	"job_done": {"to": "harry", "ask": "\"That's three of the public I've got to the table.\"", "reply": "Three? In one night? You're hired. It's unpaid. Well done.", "v": 0.8, "do": "pay:20"},
 }

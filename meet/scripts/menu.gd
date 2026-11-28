@@ -145,40 +145,259 @@ func _header() -> void:
 func _options() -> void:
 	_header()
 	UI.clear(_list)
+	var gold := UI.GOLD
+	var blue := Color(0.65, 0.85, 1.0)
 	if who.is_riser:
-		for t in People.TALK.get(who.id, []):
-			if not who.done_topics.has(t["key"]):
-				UI.button(_list, t["ask"], _topic.bind(t), 18)
-		# Things other people told you that concern this one.
+		# Things other people told you that concern this one come first.
 		if Meet.has_flag("harry", "harry_job") and Meet.recruits >= 3:
 			Meet.leads["job_done"] = true
 		for id in Meet.leads:
 			if not Meet.used.has(id) and Web.LEADS.has(id) and Web.LEADS[id]["to"] == who.id:
-				UI.button(_list, Web.LEADS[id]["ask"], _lead.bind(id), 18).add_theme_color_override("font_color", Color(0.65, 0.85, 1.0))
+				UI.button(_list, Web.LEADS[id]["ask"], _lead.bind(id), 18).add_theme_color_override("font_color", blue)
 		for e in Meet.said:
 			if e["about"] == who.id and not e.get("told", false) and Meet.riser(e["by"]) != null:
-				UI.button(_list, "\"%s was talking about you.\"" % Meet.riser(e["by"]).first_name, _carry.bind(e), 18).add_theme_color_override("font_color", Color(0.65, 0.85, 1.0))
-		UI.button(_list, "Ask what they make of someone...", _about_who, 18)
-		UI.button(_list, "\"Fancy a pull?\"", _challenge, 18).add_theme_color_override("font_color", UI.GOLD)
-		UI.button(_list, "Put money on a pull...", _stakes, 18).add_theme_color_override("font_color", UI.GOLD)
-		UI.button(_list, "Buy them a drink  ($3)", _drink, 18)
-	elif who.guest:
-		UI.button(_list, "\"Another pull?\"", _challenge, 18).add_theme_color_override("font_color", UI.GOLD)
-	else:
-		UI.button(_list, "Talk them into a pull...", _pitches, 18).add_theme_color_override("font_color", UI.GOLD)
+				UI.button(_list, "\"%s was talking about you.\"" % Meet.riser(e["by"]).first_name, _carry.bind(e), 18).add_theme_color_override("font_color", blue)
 	if who.mood_level() < 0:
 		UI.button(_list, "Apologise", _sorry.bind(false), 18).add_theme_color_override("font_color", Color(0.6, 0.9, 0.7))
 		UI.button(_list, "Apologise, with a snack as a peace offering  (%d)" % Meet.snacks, _sorry.bind(true), 18).add_theme_color_override("font_color", Color(0.6, 0.9, 0.7))
-	UI.button(_list, "Small talk", _chat, 18)
 	if Meet.straps.has(who.id):
 		UI.button(_list, "\"Found this. Yours?\"  (hand back the strap)", _strap, 18)
+	UI.button(_list, "Talk...", _menu_talk, 18)
+	UI.button(_list, "Be friendly...", _menu_friendly, 18)
+	if who.is_riser or who.guest:
+		UI.button(_list, "Pull...", _menu_pull, 18).add_theme_color_override("font_color", gold)
+	else:
+		UI.button(_list, "Talk them into a pull...", _pitches, 18).add_theme_color_override("font_color", gold)
+	if who.is_riser:
+		UI.button(_list, "Ask a favour...", _menu_favour, 18)
+	UI.button(_list, "Be difficult...", _insults, 18).add_theme_color_override("font_color", Color(0.9, 0.45, 0.4))
+	UI.button(_list, "See you later", close, 18)
+
+func _back() -> void:
+	UI.button(_list, "(Back.)", _options, 17)
+
+func _menu_talk() -> void:
+	UI.clear(_list)
+	if who.is_riser:
+		for t in People.TALK.get(who.id, []):
+			if not who.done_topics.has(t["key"]):
+				UI.button(_list, t["ask"], _topic.bind(t), 18)
+		UI.button(_list, "Ask what they make of someone...", _about_who, 18)
+		UI.button(_list, "\"What's the news tonight?\"", _news, 18)
+	UI.button(_list, "Small talk", _chat, 18)
+	UI.button(_list, "Ask who's winning tonight", _results, 18)
+	_back()
+
+func _menu_friendly() -> void:
+	UI.clear(_list)
+	UI.button(_list, "Pay them a compliment...", _compliments, 18)
+	UI.button(_list, "Tell them a joke...", _jokes, 18)
+	UI.button(_list, "High five", _high_five, 18)
+	UI.button(_list, "\"Dance with me.\"", _dance, 18)
+	UI.button(_list, "Offer a snack  (%d)" % Meet.snacks, _snack, 18)
+	if who.is_riser:
+		UI.button(_list, "Buy them a drink  ($3)", _drink, 18)
+		UI.button(_list, "Slip them five dollars  ($%d)" % Meet.money, _give, 18)
+	UI.button(_list, "Take a photo together", _photo, 18)
 	if Meet.worn["hand"] == "clipboard":
 		UI.button(_list, "Write something on the clipboard and hand it over", _clip, 18).add_theme_color_override("font_color", Color(0.65, 0.85, 1.0))
-	UI.button(_list, "Offer a snack  (%d)" % Meet.snacks, _snack, 18)
-	UI.button(_list, "Ask who's winning tonight", _results, 18)
-	UI.button(_list, "Take a photo together", _photo, 18)
-	UI.button(_list, "Insult them...", _insults, 18).add_theme_color_override("font_color", Color(0.9, 0.45, 0.4))
-	UI.button(_list, "See you later", close, 18)
+	_back()
+
+func _menu_pull() -> void:
+	UI.clear(_list)
+	UI.button(_list, "\"Fancy a pull?\"" if who.is_riser else "\"Another pull?\"", _challenge, 18).add_theme_color_override("font_color", UI.GOLD)
+	if who.is_riser:
+		UI.button(_list, "Put money on a pull...", _stakes, 18).add_theme_color_override("font_color", UI.GOLD)
+		UI.button(_list, "\"Left arms. Loser buys the drinks.\"  ($3)", _lefts, 18)
+	_back()
+
+func _menu_favour() -> void:
+	UI.clear(_list)
+	UI.button(_list, "\"Lend me five dollars?\"", _favour.bind("lend"), 18)
+	UI.button(_list, "\"Teach me your move.\"", _favour.bind("teach"), 18)
+	UI.button(_list, "\"Watch my back tonight?\"", _favour.bind("back"), 18)
+	UI.button(_list, "\"Put in a word for me with the others?\"", _favour.bind("word"), 18)
+	_back()
+
+# --- Being friendly --------------------------------------------------------------------------------
+
+func _compliments() -> void:
+	UI.clear(_list)
+	for c in People.COMPLIMENTS:
+		UI.button(_list, c["say"], _compliment.bind(c), 18)
+	_back()
+
+func _compliment(c: Dictionary) -> void:
+	if who._asked.has("compliment"):
+		_line("[color=#b9b3a0]%s[/color]\n\"You've already buttered me up once tonight.\"" % c["say"])
+		return
+	who._asked["compliment"] = true
+	if People.FLATTER.get(who.id, "role") == c["key"] and who.mood_level() > -2:
+		who.mind.experience("talk", 0.5, 1.2, true, "the compliment")
+		_line("[color=#b9b3a0]%s[/color]\n\"%s\"" % [c["say"], People.FLATTERED[c["key"]][randi() % 2]])
+	else:
+		who.mind.experience("talk", 0.1, 0.3)
+		_line("[color=#b9b3a0]%s[/color]\n\"%s\"" % [c["say"], People.FLATTER_MEH[randi() % People.FLATTER_MEH.size()]])
+
+func _jokes() -> void:
+	UI.clear(_list)
+	for j in People.JOKES:
+		UI.button(_list, j["say"], _joke.bind(j), 17)
+	_back()
+
+func _joke(j: Dictionary) -> void:
+	var taste: String = People.HUMOUR.get(who.id, "dad")
+	if who._asked.has("joke"):
+		_line("[color=#b9b3a0]%s[/color]\n\"One joke a night. Club rule. I just made it up.\"" % j["say"])
+		return
+	who._asked["joke"] = true
+	if j["key"] == "roast" and who.is_riser and Meet.tie(who.id, "tommy") > 0.35 and who.id != "tommy":
+		who.mind.experience("heckle", -0.3, 0.8)
+		_line("[color=#b9b3a0]%s[/color]\n\"That's my mate you're talking about.\"" % j["say"])
+	elif who.id == "tommy" and j["key"] == "roast":
+		who.mind.experience("talk", 0.4, 1.0)
+		_line("[color=#b9b3a0]%s[/color]\n\"I'M RIGHT HERE. ...It's good, though. Annoyingly.\"" % j["say"])
+	elif taste == j["key"] and who.mood_level() > -2:
+		who.mind.experience("talk", 0.45, 1.1, true, "the joke")
+		Meet.main.stir(who.global_position, ["Ha!", "What was the joke?", "Tell us!"], 6.0, 0.3, false)
+		_line("[color=#b9b3a0]%s[/color]\n\"%s\"" % [j["say"], People.LAUGHS[randi() % People.LAUGHS.size()]])
+	else:
+		who.mind.experience("talk", -0.05 if taste == "none" else 0.05, 0.3)
+		_line("[color=#b9b3a0]%s[/color]\n\"%s\"" % [j["say"], "..." if taste == "none" else People.NO_LAUGH[randi() % People.NO_LAUGH.size()]])
+
+func _high_five() -> void:
+	var r := who
+	var lvl: int = r.mood_level()
+	var kind := "yes" if lvl >= 1 else ("meh" if lvl == 0 and randf() < 0.6 else "no")
+	close()
+	Meet.player.act("Punch_Jab", 0.6)
+	r.say_aloud(People.HIGH_FIVE[kind][randi() % People.HIGH_FIVE[kind].size()], 3.0)
+	if kind == "no":
+		r.mind.experience("nagged", -0.05, 0.3)
+		Meet.say("You are left hanging. People saw.")
+		Meet.main.stir(r.global_position, People.LEFT_HANGING, 9.0, 0.5, false)
+	else:
+		r.gesture("Punch_Jab", 0.6)
+		if not r._asked.has("five"):
+			r._asked["five"] = true
+			r.mind.experience("talk", 0.25 if kind == "yes" else 0.1, 0.6)
+
+func _dance() -> void:
+	var r := who
+	var yes: bool = r.id == "tommy" or r.mood_level() >= 1 or (r.mood_level() == 0 and r.mind.chatty > 0.65)
+	close()
+	Meet.player.act("Dance", 3.2)
+	r.say_aloud(People.DANCE["yes" if yes else "no"][randi() % 3], 3.5)
+	Meet.main.stir(Meet.player.global_position, People.WATCHING_DANCE, 12.0, 0.6, true)
+	if yes:
+		r.gesture("Dance", 3.2)
+		if not r._asked.has("dance"):
+			r._asked["dance"] = true
+			r.mind.experience("talk", 0.4, 1.0, true, "the dancing")
+		Meet.say("You and %s are dancing at an arm wrestling meet. Nobody can look away." % r.first_name)
+	else:
+		Meet.say("You dance alone. With commitment.")
+
+func _give() -> void:
+	if Meet.money < 5:
+		_line("[i]You don't have five dollars.[/i]")
+		return
+	Meet.pay(-5)
+	var proud: bool = who.mind.grudge >= 1.0 and who.id != "kelvin"
+	if who.id == "george":
+		who.mind.experience("gift", 0.5, 1.2)
+		_line("[i]You hold out a five.[/i] \"For the tin? You're a good one. It goes straight in.\"")
+	elif proud:
+		who.mind.experience("gift", -0.1, 0.5)
+		_line("[i]You hold out a five.[/i] \"What's this for? I'm not a charity. ...I'll keep it. But I'm not a charity.\"")
+	else:
+		who.mind.experience("gift", 0.4, 1.0)
+		_line("[i]You hold out a five.[/i] \"%s\"" % ["Snack money. Accepted.", "No strings? Cheers.", "I'll get the next one."][randi() % 3])
+
+# --- Favours ------------------------------------------------------------------------------------------
+
+func _favour(kind: String) -> void:
+	var lvl: int = who.mood_level()
+	if who._asked.has(kind):
+		_line("\"You've asked me that already.\"")
+		return
+	who._asked[kind] = true
+	match kind:
+		"lend":
+			if lvl >= 1:
+				Meet.pay(5)
+				_line("[color=#b9b3a0]\"Lend me five dollars?\"[/color]\n\"Here. Don't make it a habit.\"")
+			else:
+				who.mind.experience("nagged", -0.1, 0.4)
+				_line("[color=#b9b3a0]\"Lend me five dollars?\"[/color]\n\"%s\"" % ("We've known each other ten minutes." if lvl == 0 else "You've got some front, asking me."))
+		"teach":
+			if lvl >= 1:
+				Meet.tips = min(4, Meet.tips + 1)
+				_line("[color=#b9b3a0]\"Teach me your move.\"[/color]\n\"Alright. Hand here. No, here. Feel that? That's it. That's the whole secret.\"\n[i]The gold zone will be a little wider for you, for good.[/i]")
+			else:
+				_line("[color=#b9b3a0]\"Teach me your move.\"[/color]\n\"I don't hand that out to people I barely know. Earn it.\"")
+		"back":
+			if lvl >= 2 or (lvl == 1 and who.mind.grudge < 1.0):
+				who.backing = true
+				_line("[color=#b9b3a0]\"Watch my back tonight?\"[/color]\n\"If anyone squares up to you, I'll step in. Once. Don't start anything.\"")
+			else:
+				_line("[color=#b9b3a0]\"Watch my back tonight?\"[/color]\n\"Why, what have you done?\"")
+		"word":
+			if lvl >= 1:
+				for r in Meet.risers:
+					if r.is_riser and r != who and Meet.tie(who.id, r.id) > 0.3:
+						r.mind.experience("helped", 0.3, 0.9, false, "what %s said" % who.first_name)
+				_line("[color=#b9b3a0]\"Put in a word for me?\"[/color]\n\"I'll tell my lot you're alright. Can't speak for the rest.\"\n[i]%s's friends will hear good things about you.[/i]" % who.first_name)
+			else:
+				_line("[color=#b9b3a0]\"Put in a word for me?\"[/color]\n\"I'd have to have a good word first.\"")
+	Meet.save()
+
+## What's going on tonight, as they see it: who's close, who's fallen out, who's winning.
+func _news() -> void:
+	var best := ["", "", -2.0]
+	var worst := ["", "", 2.0]
+	var ids: Array = []
+	for r in Meet.risers:
+		if r.is_riser:
+			ids.append(r)
+	for a in ids:
+		for b in ids:
+			if a.id < b.id:
+				var t: float = Meet.tie(a.id, b.id)
+				if t > best[2]:
+					best = [a.first_name, b.first_name, t]
+				if t < worst[2]:
+					worst = [a.first_name, b.first_name, t]
+	var bits: Array = []
+	if worst[2] < -0.05:
+		bits.append("%s and %s aren't speaking. Don't ask either of them why." % [worst[0], worst[1]])
+	bits.append("%s and %s are thick as thieves tonight." % [best[0], best[1]])
+	if not Meet.results.is_empty():
+		bits.append("Last pull: %s." % Meet.results[-1])
+	for r in ids:
+		if r.tonight.get("id", "") != "" and r != who:
+			bits.append({"sore": "%s's elbow is gone, so that's one less.", "hungry": "%s hasn't eaten. Guard your snacks.", "fired": "%s is on one tonight. Wants to pull everyone.", "tired": "%s looks wrecked. Long shift.", "chatty": "%s is in a great mood. Suspiciously great."}[r.tonight["id"]] % r.first_name)
+			break
+	if Meet.reputation() >= 65:
+		bits.append("And people are saying good things about you, for what it's worth.")
+	elif Meet.reputation() < 40:
+		bits.append("And honestly? People are talking about you. Not kindly.")
+	_line("[color=#b9b3a0]\"What's the news tonight?\"[/color]\n\"%s\"" % " ".join(bits))
+
+func _lefts() -> void:
+	var no: String = who.reluctance()
+	if no != "":
+		_refused(no)
+		return
+	if Meet.money < 3:
+		_line("[i]Loser buys, and you can't afford to lose.[/i]")
+		return
+	var r := who
+	r.stake = 3
+	r.lefts = true
+	close()
+	r.say_aloud("Left arms? You're braver than you look.", 3.0)
+	Meet.table.start(r)
 
 func _line(t: String) -> void:
 	_text.append_text("\n%s\n" % t)
@@ -209,6 +428,10 @@ func _lead(id: String) -> void:
 ## Everything an answer sets in motion.
 func _effects(o: Dictionary) -> void:
 	var r := who
+	if o.has("v_other"):
+		var ot: Node = Meet.riser(o["v_other"][0])
+		if ot:
+			ot.mind.experience("helped" if o["v_other"][1] > 0.0 else "heckle", o["v_other"][1], 1.4, false, "what you told %s" % r.first_name)
 	if o.has("tie"):
 		Meet.bump(o["tie"][0], o["tie"][1], o["tie"][2])
 	var lead: String = o.get("lead", Web.GRANTS.get(o.get("say", ""), ""))
@@ -230,6 +453,11 @@ func _effects(o: Dictionary) -> void:
 
 func _answer(o: Dictionary, show_say := true) -> void:
 	var r := who
+	if o.has("cost"):
+		if Meet.money < int(o["cost"]):
+			_line("[i]You don't have $%d on you.[/i]" % o["cost"])
+			return
+		Meet.pay(-int(o["cost"]))
 	var v: float = o.get("v", 0.0)
 	if v != 0.0:
 		r.mind.experience(o.get("kind", "talk"), v, 0.6 + absf(v) * 1.6, true, "")
@@ -287,6 +515,10 @@ func _insult(ins: Dictionary) -> void:
 
 func _chat() -> void:
 	var lines: Array = who.def["chat"] if who.def.has("chat") else People.CHAT[who.bond()]
+	if who.is_riser and who.mood_level() >= 0:
+		# Their own small talk, one line at a time, in order.
+		var own: Array = People.SMALL[who.id]
+		lines = [own[_chats.get(who.id, 0) % own.size()]]
 	if _chats.get(who.id, 0) <= 4 and who.bond() != "gone":
 		who.mind.experience("talk", 0.2, 0.3, true, "")
 	_chats[who.id] = _chats.get(who.id, 0) + 1

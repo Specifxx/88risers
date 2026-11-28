@@ -68,6 +68,9 @@ func _run() -> void:
 
 	# Chalk: your own hands, then somebody's face.
 	Meet.main._chalk_up()
+	await wait(1.2)
+	await shot("04b_chalking")
+	await wait(1.4)
 	Meet.main._chalk_take()
 	Meet.main._chalk_take()
 	check(Meet.chalked and Meet.chalk == 2, "chalk on the hands and two handfuls to throw")
@@ -113,7 +116,7 @@ func _run() -> void:
 	var bhavya: Node3D = Meet.riser("bhavya")
 	bhavya.state = "idle"
 	bhavya.interact()
-	var topic: Dictionary = preload("res://scripts/people.gd").TALK["bhavya"][0]
+	var topic: Dictionary = preload("res://scripts/people.gd").TALK["bhavya"].filter(func(t): return t["key"] == "form")[0]
 	Meet.menu._topic(topic)
 	await wait(0.2)
 	await shot("07b_topic")
@@ -174,7 +177,7 @@ func _run() -> void:
 	var People2 = preload("res://scripts/people.gd")
 	tommy.state = "idle"
 	tommy.interact()
-	var jokes: Dictionary = People2.TALK["tommy"][1]
+	var jokes: Dictionary = People2.TALK["tommy"].filter(func(t): return t["key"] == "jokes")[0]
 	Meet.menu._topic(jokes)
 	Meet.menu._answer(jokes["opts"][0])
 	check(Meet.leads.has("joke_bhavya"), "laughing at Tommy's joke gives you something to raise with Bhavya")
@@ -435,6 +438,21 @@ func _run() -> void:
 	var said: String = bh.read_clipboard("Bhavya is a legend")
 	check(said.contains("legend") and Meet.player_name == "Sam", "they read what you wrote on the clipboard: %s" % said)
 	check(bh.read_clipboard("pull me at the table") != "" and bh.calling > 0.0, "a written challenge is accepted")
+
+	# Friendly things.
+	var tm: Node3D = Meet.riser("tommy")
+	tm.state = "idle"
+	tm._vs_player = false
+	tm.interact()
+	Meet.menu._dance()
+	await wait(1.0)
+	await shot("16_dance")
+	check(tm._act_t > 0.0, "Tommy dances with you")
+	await wait(2.5)
+	tm.interact()
+	Meet.menu._news()
+	Meet.menu._favour("word")
+	Meet.menu.close()
 
 	# Remembered.
 	Meet.save()
