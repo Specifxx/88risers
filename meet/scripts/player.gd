@@ -27,6 +27,8 @@ var _down := 0.0
 var _worn := {}
 var _tag: Label3D
 var _lamp: OmniLight3D
+var _bob := 0.0
+var flying := false
 var riding := false
 var _ride_v := Vector3.ZERO
 var sitting := false
@@ -463,7 +465,7 @@ func throw_chalk() -> void:
 
 ## Somebody got you back.
 func dusted() -> void:
-	Fx.tint(_figure, Color(1, 1, 1, 0.8), 30.0)
+	Wear.dust(_figure, 40.0)
 	Meet.hud.float_text("pfff")
 	Meet.say("You are now mostly chalk.")
 
@@ -509,6 +511,13 @@ func _process(dt: float) -> void:
 	look = Vector2.ZERO
 	_pivot.rotation = Vector3(_pitch, _orbit_yaw if _orbit else 0.0, 0)
 	cam.position = cam.position.lerp(Vector3(0.0, 0.2, _orbit_zoom) if _orbit else Vector3(0.5, 0.4, 3.4), min(1.0, dt * 8.0))
+	# A balloon bobs on its string; in a wind it pulls.
+	if Meet.worn["hand"] == "balloon":
+		var sway: Node3D = _figure.find_child("Sway", true, false)
+		if sway:
+			var lean := Vector2(velocity.x, velocity.z).length() * 0.05 + (0.5 if Meet.wind > 0.0 else 0.0)
+			sway.global_rotation = Vector3(sin(_bob * 1.7) * 0.18 + lean, 0, cos(_bob * 2.3) * 0.2 + (sin(_bob * 9.0) * 0.12 if Meet.wind > 0.0 else 0.0))
+	_bob += dt
 	# In the dark, a glow stick in your hand is the only real light. Without one, almost nothing.
 	if _lamp == null:
 		_lamp = OmniLight3D.new()
@@ -568,13 +577,30 @@ func _physics_process(dt: float) -> void:
 		return
 	var running: bool = (Input.is_action_pressed("sprint") or Meet.stick.length() > 0.9) and dir.length() > 0.1 and Meet.stamina > 1.0
 	var pace := RUN if running else WALK
+	if Meet.carrying >= 0:
+		pace = WALK * 0.7
 	Meet.stamina = clamp(Meet.stamina + (-13.0 if running else 0.9) * dt, 0.0, 100.0)
 	var move := (transform.basis * Vector3(dir.x, 0, dir.y)) * pace
 	velocity = Vector3(move.x + _push.x, 0, move.z + _push.z)
 	_push = _push.lerp(Vector3.ZERO, min(1.0, dt * 7.0))
 	move_and_slide()
 	# Jumping and the height of the ground are worked out directly, so steps never trip you.
-	if _jump > 0.0 or _jump_v > 0.0:
+	# A balloon in a real wind carries you: hold jump to climb, let go to drift down.
+	var lifted: bool = Meet.wind > 0.0 and Meet.worn["hand"] == "balloon"
+	if lifted and (Input.is_action_pressed("jump") or _jump > 0.3):
+		if not flying:
+			flying = true
+			Meet.hud.banner("AIRBORNE", "The wind has the balloon and the balloon has you. Hold jump to climb.")
+			Meet.main.stir(global_position, ["They're FLYING.", "Is that... a balloon?", "Come DOWN!", "George! CAMERA!"], 30.0, 0.8, false)
+			Meet.ripple("You flew over the meet on a child's balloon.")
+			Meet.dare("fly")
+		_jump_v = lerp(_jump_v, 3.2 if Input.is_action_pressed("jump") and _jump < 13.0 else -1.3, min(1.0, dt * 2.5))
+		_jump = max(0.0, _jump + _jump_v * dt)
+		if _jump <= 0.0:
+			_jump_v = 0.0
+			flying = false
+	elif _jump > 0.0 or _jump_v > 0.0:
+		flying = false
 		_jump += _jump_v * dt
 		_jump_v -= 16.0 * dt
 		if _jump <= 0.0:

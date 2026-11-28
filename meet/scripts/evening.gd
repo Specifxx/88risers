@@ -137,6 +137,16 @@ func _process(dt: float) -> void:
 	if _busk > 0.0:
 		_busk -= dt
 	_run_kaiju(dt)
+	_run_carry()
+	if Meet.wind > 0.0:
+		Meet.wind -= dt
+		if fmod(Meet.wind, 3.0) < dt:
+			for r in Meet.risers:
+				if not r.alien and r.state not in ["pull", "winded", "post"] and randf() < 0.3:
+					r._knock += Vector3(randf_range(1.0, 2.5), 0, randf_range(-1.0, 1.0))
+		if Meet.wind <= 0.0:
+			Meet.say("The wind drops as suddenly as it came.")
+			Meet.touch_state()
 	# Someone comes to find you about the bracket.
 	if not _invited and Meet.clock > 285.0 and Meet.clock < BRACKET_AT - 20.0 and Meet.bracket == "open" and _kaiju_state == "" and not main.invaded():
 		var asker: Node = Meet.riser("george")
@@ -426,29 +436,59 @@ func _start_pack() -> void:
 		add_child(t)
 		t.position = main.TABLES[i] + Vector3(0, 0, 1.2)
 
+## Pick a table up. It goes over your head, and stays there until you get it to the gate.
 func _carry(i: int, t: Node) -> void:
+	if Meet.carrying >= 0:
+		Meet.say("You're already carrying one. They're not light.")
+		return
 	for m in main._matches.duplicate():
 		if m["table"] == i:
+			# Somebody was mid-pull on it.
+			for r in [m["a"], m["b"]]:
+				r.say_aloud(["OI! We were USING that!", "I was WINNING!", "Put it BACK!", "Mid-pull! MID-PULL!"][randi() % 4], 4.0)
+				r.mind.experience("nagged", -0.25, 0.9, true, r.riser_name)
+				r.stare(4.0)
+			main.stir(main.TABLES[i], ["Ha! They took the table!", "While they were pulling!", "Savage."], 12.0, 0.6, false)
 			main.drop_match(m["a"])
 	t.remove_from_group("interact")
 	t.queue_free()
 	Meet.player.target = null
 	Meet.player.act("PickUp_Table", 1.0)
-	main.hide_table(i)
-	_packed += 1
-	Meet.stamina = max(0.0, Meet.stamina - 30.0)
-	for id in ["harry", "george"]:
-		var r: Node = Meet.riser(id)
-		if r:
-			r.mind.experience("helped", 0.35, 1.0, true, "packing down")
-	Meet.add_heat(-0.5)
-	Meet.say("One table loaded. They're heavier than they look. (%d of 3)" % _packed)
-	if _packed >= 3:
-		var harry: Node = Meet.riser("harry")
-		if harry:
-			harry.say_aloud("All three? On your own? ...Here. Get yourself something.", 6.0)
-		Meet.pay(10, "Harry tips you for the pack-down.")
-		Meet.dare("pack")
+	var root: Node3D = main._table_roots[i]
+	main._gone_tables[i] = true
+	root.reparent(Meet.player)
+	root.position = Vector3(0, 1.95, 0.1)
+	root.rotation = Vector3(PI, 0, 0)
+	root.scale = Vector3(0.8, 0.8, 0.8)
+	Meet.carrying = i
+	Meet.stamina = max(0.0, Meet.stamina - 15.0)
+	Meet.touch_state()
+	Meet.say("You've got the table over your head. Get it to the gate. You can't run with it.")
+
+func _run_carry() -> void:
+	if Meet.carrying < 0:
+		return
+	var p: Vector3 = Meet.player.global_position
+	if p.z > 21.0 and absf(p.x) < 6.0:
+		var root: Node3D = main._table_roots[Meet.carrying]
+		root.visible = false
+		Meet.carrying = -1
+		_packed += 1
+		Meet.player.act("PickUp_Table", 0.8)
+		Meet.sfx("punch", -6.0, 0.6)
+		for id in ["harry", "george"]:
+			var r: Node = Meet.riser(id)
+			if r:
+				r.mind.experience("helped", 0.35, 1.0, true, "packing down")
+		Meet.add_heat(-0.5)
+		Meet.say("Table loaded at the gate. (%d of 3)" % _packed)
+		Meet.touch_state()
+		if _packed >= 3:
+			var harry: Node = Meet.riser("harry")
+			if harry:
+				harry.say_aloud("All three? On your own? ...Here. Get yourself something.", 6.0)
+			Meet.pay(10, "Harry tips you for the pack-down.")
+			Meet.dare("pack")
 
 # --- Places round the edges -------------------------------------------------------------------------
 
@@ -595,7 +635,7 @@ func _free() -> Array:
 
 func _random_moment() -> void:
 	if _moments_left.is_empty():
-		_moments_left = ["critter", "swimmer", "legend_don" if randf() < 0.5 else "sneeze", "legend_lasha" if randf() < 0.5 else "phone", "cyclist", "phone", "footy", "blackout", "conga", "balloon", "plank", "double", "possum", "wallet", "feast", "tiktok", "star", "sprinkler", "pushups", "tourist", "sneeze", "cap", "fiver" if randf() < 0.4 else "sneeze"]
+		_moments_left = ["critter", "swimmer", "gale", "gale" if Meet.owned.has("balloon") else "phone", "legend_don" if randf() < 0.5 else "sneeze", "legend_lasha" if randf() < 0.5 else "phone", "cyclist", "phone", "footy", "blackout", "conga", "balloon", "plank", "double", "possum", "wallet", "feast", "tiktok", "star", "sprinkler", "pushups", "tourist", "sneeze", "cap", "fiver" if randf() < 0.4 else "sneeze"]
 		for m in Moments.LIST:
 			_moments_left.append("d_" + m["id"])
 		_moments_left.shuffle()
@@ -654,7 +694,7 @@ func play(m: Dictionary) -> bool:
 			if is_instance_valid(w) and w.state not in ["winded", "scrap", "confront"]:
 				w.say_aloud(text, 3.5))
 	if m.has("chalk_one") and cast["any"]:
-		Fx.tint(cast["any"]._figure, Color(1, 1, 1, 0.8), 30.0)
+		load("res://scripts/wear.gd").dust(cast["any"]._figure, 40.0)
 	var body := m.duplicate()
 	body.erase("choice")
 	fx(body)
@@ -744,7 +784,7 @@ func fx(e: Dictionary) -> void:
 	if e.has("chalk_all"):
 		for r in Meet.risers:
 			if not r.alien:
-				Fx.tint(r._figure, Color(1, 1, 1, 0.8), 25.0)
+				load("res://scripts/wear.gd").dust(r._figure, 35.0)
 		Meet.player.dusted()
 	if e.has("to_gate"):
 		for r in _free():
@@ -939,6 +979,27 @@ func _m_possum() -> void:
 	_possum = th
 	_possum_t = 40.0
 	Meet.hud.banner("POSSUM", "On the snack table. Like it pays membership.")
+	th.hittable(func(_d: int):
+		if _possum == null:
+			return
+		Meet.sfx("squeak", 0.0, 1.5)
+		Fx.burst(main, th.position, Vector3.UP, false, 8)
+		_possum = null
+		th.remove_from_group("interact")
+		th.remove_from_group("hittable")
+		Meet.player.target = null
+		th.queue_free()
+		Meet.hud.banner("YOU HIT THE POSSUM", "It is a protected species. Everyone is looking at you.")
+		Meet.add_heat(1.6, "hitting a possum")
+		for r in Meet.risers:
+			if r.is_riser or r.post:
+				r.mind.experience("violence", -0.35, 1.2, true, "the possum")
+				r._mood_check = 0.0
+		var lu: Node = Meet.riser("luie")
+		if lu:
+			lu.say_aloud("...It was just a possum.", 5.0)
+		main.stir(main.SNACKS, ["A POSSUM?!", "What is WRONG with you?", "It had little hands!", "That's a fine. That's an actual fine."], 30.0, 0.9, false)
+		Meet.ripple("You hit a possum. A possum."))
 	th.setup("Offer the possum a snack", func():
 		if Meet.snacks <= 0:
 			Meet.say("The possum looks at your empty hands with open contempt.")
@@ -1690,3 +1751,12 @@ func _kaiju_leave(text: String) -> void:
 		_kaiju.get_node("Offer").queue_free()
 	Meet.player.target = null
 	_kaiju_state = "sink"
+
+func _m_gale() -> void:
+	Meet.wind = 32.0
+	Meet.hud.banner("WIND", "A proper one, off the bay. Banners straight out. Hats gone.")
+	Meet.sfx("puff", 0.0, 0.5)
+	Meet.touch_state()
+	main.stir(Vector3(0, 0, 4), ["My hat!", "Hold the tables!", "It's blowing the chalk to Meadowbank!", "Lean into it!"], 40.0, 0.7, false)
+	if Meet.owned.has("balloon"):
+		Meet.say("It's windy enough that a balloon would take your weight. Put it in your hand and hold jump.")

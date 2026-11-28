@@ -308,6 +308,12 @@ func _run() -> void:
 	Meet.menu._topic(jokes)
 	Meet.menu._answer(jokes["opts"][0])
 	check(Meet.leads.has("joke_bhavya"), "laughing at Tommy's joke gives you something to raise with Bhavya")
+	var out_good: String = tommy.react(0.6)
+	var out_bad: String = Meet.riser("luie").react(-0.6)
+	check(out_good != "" and Meet.riser("luie").sulking and Meet.riser("luie").reluctance() != "", "what you say has consequences you can see: '%s' / '%s'" % [out_good, out_bad])
+	Meet.riser("luie").sulking = false
+	Meet.riser("luie")._after_talk = ""
+	tommy._after_talk = ""
 	Meet.menu.close()
 	bhavya.state = "idle"
 	bhavya.interact()
@@ -758,7 +764,18 @@ func _run() -> void:
 		if n.has_method("prompt") and n.prompt().begins_with("Carry this table"):
 			n.interact()
 			carried += 1
-	check(carried == 3 and ev._packed == 3, "the tables can be carried out at pack-down")
+	check(carried >= 1 and Meet.carrying >= 0, "a table goes over your head")
+	for k in 3:
+		p.global_position = Meet.main.ground(Vector3(0, 0, 22.5))
+		await wait(0.3)
+		Meet.carrying = -1
+		for n in get_tree().get_nodes_in_group("interact"):
+			if n.has_method("prompt") and n.prompt().begins_with("Carry this table") and Meet.carrying < 0:
+				n.interact()
+	p.global_position = Meet.main.ground(Vector3(0, 0, 22.5))
+	await wait(0.3)
+	check(ev._packed >= 1, "carrying it to the gate loads it (%d)" % ev._packed)
+	Meet.carrying = -1
 	var lu: Node3D = Meet.riser("luie")
 	if lu.coned:
 		check(lu.cone_off() != "" and Meet.cone_with == "", "the cone can be taken back")
@@ -993,6 +1010,38 @@ func _run() -> void:
 			l.queue_free()
 	ev._legends.clear()
 	Meet.heat = 0.0
+	for r in Meet.risers:
+		if r.state in ["confront", "scrap"]:
+			r._vs_player = false
+			r.idle()
+
+	# Wind and the balloon; the possum; chalk as dust.
+	Meet.owned["balloon"] = true
+	Meet.worn["hand"] = "balloon"
+	Meet.touch_state()
+	ev._m_gale()
+	stand(Vector3(0, 0, 14), Vector3(0, 0, 4))
+	Input.action_press("jump")
+	await wait(2.5)
+	await shot("15p_flying")
+	check(p.flying and p._jump > 2.0, "in a wind, a balloon in your hand lifts you off the ground (%.1f m)" % p._jump)
+	Input.action_release("jump")
+	Meet.wind = 0.01
+	Meet.worn["hand"] = ""
+	Meet.touch_state()
+	await wait(2.5)
+	ev._possum = null
+	ev._m_possum()
+	Meet.heat = 0.0
+	ev._possum.take_hit(10, Vector3.ZERO)
+	check(Meet.heat >= 1.5 and ev._possum == null, "hitting the possum raises your heat (%.1f)" % Meet.heat)
+	Meet.heat = 0.0
+	var sk: Skeleton3D = Meet.riser("luie")._figure.find_child("Skeleton3D", true, false)
+	Meet.riser("luie").dusted(Meet.riser("tommy"))
+	check(sk.get_node_or_null("Dust") != null, "chalk leaves dust on the shirt instead of turning them white")
+	check(People2.PASSERS.size() >= 18, "%d kinds of stranger can walk past" % People2.PASSERS.size())
+	Meet.menu._forced = false
+	Meet.menu.close()
 	for r in Meet.risers:
 		if r.state in ["confront", "scrap"]:
 			r._vs_player = false

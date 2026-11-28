@@ -41,6 +41,26 @@ const FOUNDERS := [
 
 ## Not members: people going past along the foreshore. Some stop to look.
 const PASSERS := [
+	{"id": "p_hotdog", "likes": "food", "name": "A man dressed as a hot dog", "role": "Lost a bet. Or won one.", "strength": 57, "pace": 1.5, "stops": 0.8, "prop": "bun", "look": {"body": "Male_Peasant", "hair": "Hair_Buzzed", "tint": Color(0.85, 0.3, 0.2)}, "mind": {"warmth": 0.3, "chatty": 0.9},
+		"chat": ["Don't ask. It's a long story and it ends with me as a hot dog.", "I've been a hot dog since eleven this morning. You get used to it.", "No, I don't have sauce. Everyone asks about sauce."]},
+	{"id": "p_stilts", "likes": "flatter", "name": "Someone on stilts", "role": "Running late for a festival", "strength": 49, "pace": 1.9, "stops": 0.5, "size": 1.55, "look": {"body": "Female_Ranger", "hair": "Hair_Long", "tint": Color(0.6, 0.2, 0.8)}, "mind": {"warmth": 0.2},
+		"chat": ["I can see the whole meet from up here. The big one's hiding snacks behind the banner.", "Do NOT bump the table. I have one balance and this is it.", "Arm wrestling? At this height the leverage would be criminal."]},
+	{"id": "p_statue", "likes": "honest", "name": "The human statue", "role": "Silver. Silent. On his break.", "strength": 63, "pace": 0.8, "stops": 1.0, "look": {"body": "Male_Ranger", "hair": "Hair_SimpleParted", "tint": Color(0.82, 0.84, 0.88), "shade": Color(0.75, 0.77, 0.8)}, "mind": {"warmth": 0.1, "chatty": 0.2},
+		"chat": ["...", "I'm on my break. That's why I'm moving.", "Eleven hours I stood at Circular Quay today. A child put a chip in my ear."]},
+	{"id": "p_clown", "likes": "honest", "name": "A clown, off duty", "role": "Does not want to talk about it", "strength": 66, "pace": 1.3, "stops": 0.6, "look": {"body": "Male_Peasant", "hair": "Hair_Buns", "tint": Color(1.0, 0.85, 0.1), "hair_tint": Color(0.9, 0.1, 0.1)}, "mind": {"warmth": -0.1, "grudge": 1.3},
+		"chat": ["I've done three birthdays today. I've seen things.", "No, I won't make you a balloon animal. ...What animal?", "The shoes are regulation. Don't."]},
+	{"id": "p_larp", "likes": "dare", "name": "Sir Gavin of Wentworth Point", "role": "On his way to a battle in the park", "strength": 71, "pace": 1.4, "stops": 0.8, "look": {"body": "Male_Ranger", "hood": true, "tint": Color(0.5, 0.5, 0.55)}, "mind": {"warmth": 0.2, "chatty": 0.8},
+		"chat": ["Hail! Is this a tourney? I see no lists, yet men do grapple.", "I am sworn to defend the honour of Wentworth Point. Also I work in IT.", "A contest of arms! Literally! I must partake."]},
+	{"id": "p_door", "likes": "honest", "name": "A bloke carrying a door", "role": "It's a long story", "strength": 75, "pace": 1.2, "stops": 0.4, "prop": "door", "look": {"body": "Male_Peasant", "hair": "Hair_Buzzed", "tint": Color(0.3, 0.45, 0.7)}, "mind": {"warmth": 0.1},
+		"chat": ["Don't. Just don't ask about the door.", "It's MY door. I'm taking it with me. She can keep the frame.", "Heavier than it looks. Like most things."]},
+	{"id": "p_catpram", "likes": "flatter", "name": "The woman with a cat in a pram", "role": "His name is Mr Biscuits. No relation.", "strength": 51, "pace": 1.0, "stops": 0.7, "prop": "pram", "look": {"body": "Female_Peasant", "hair": "Hair_Buns", "tint": Color(0.75, 0.6, 0.85)}, "mind": {"warmth": 0.3, "chatty": 0.8},
+		"chat": ["He doesn't walk. He's never walked. He's seventeen and he's never walked anywhere.", "Mr Biscuits finds your sport undignified. I think it's lovely.", "Don't look him in the eye."]},
+	{"id": "p_santa", "likes": "food", "name": "Santa, off season", "role": "It's November. He's early. Or late.", "strength": 73, "pace": 1.1, "stops": 0.9, "look": {"body": "Male_Peasant", "hair": "Hair_Long", "beard": true, "tint": Color(0.85, 0.1, 0.1), "hair_tint": Color(0.95, 0.95, 0.95), "build": 1.2}, "mind": {"warmth": 0.5, "open": 1.4},
+		"chat": ["Ho ho— no. I'm off the clock. It's just Greg.", "I know which of you has been naughty. It's the one with the chalk.", "Eleven months of nothing and then one very bad night."]},
+	{"id": "p_coat", "likes": "food", "name": "A very tall man in a long coat", "role": "Definitely one adult", "strength": 44, "pace": 0.9, "stops": 0.8, "size": 1.35, "look": {"body": "Male_Ranger", "hood": true, "tint": Color(0.35, 0.28, 0.2)}, "mind": {"warmth": 0.2, "chatty": 0.7},
+		"chat": ["Hello, fellow adults. I am here for one adult ticket to the arm business.", "We— I. I would like some snacks. For my one stomach.", "*whispering from the middle* Stop wobbling, Josh."]},
+	{"id": "p_speed", "likes": "dare", "name": "The competitive speed-walker", "role": "Hips like a metronome", "strength": 55, "pace": 3.0, "stops": 0.2, "look": {"body": "Female_Ranger", "hair": "Hair_BuzzedFemale", "tint": Color(0.1, 0.8, 0.6)}, "mind": {"warmth": -0.1, "grudge": 1.2},
+		"chat": ["It's NOT running. One foot is always down. ALWAYS.", "I'm on a time. I'm always on a time.", "Olympic sport since 1908. Look it up."]},
 	{"id": "p_jog", "likes": "dare", "name": "The jogger", "role": "Out for a run", "strength": 50, "pace": 3.4, "stops": 0.25, "look": {"body": "Female_Ranger", "hair": "Hair_Buns", "tint": Color(0.5, 0.8, 1.0)}, "mind": {"warmth": 0.0},
 		"chat": ["I'm on a pace here.", "Is this a club? You all just... do this?", "My watch thinks I've stopped. I have stopped."]},
 	{"id": "p_dog", "likes": "honest", "name": "The dog walker", "role": "Walking Biscuit", "strength": 52, "pace": 1.3, "stops": 0.6, "dog": true, "look": {"body": "Female_Peasant", "hair": "Hair_Long", "tint": Color(0.6, 0.85, 0.6)}, "mind": {"warmth": 0.3, "open": 1.3},
@@ -165,6 +185,30 @@ const REMEMBER := {
 ## v: how it lands (-1..1). flag: remembered between visits. need: only offered once that flag is set.
 ## do: something that then happens in the world.
 const TALK := {
+	"p_hotdog": [
+		{"key": "why", "ask": "\"...Why are you a hot dog?\"", "reply": "My daughter's school fete. I said I'd do anything. They took that seriously.", "opts": [
+			{"say": "That's actually lovely.", "reply": "Don't make it weird. I'm a hot dog with feelings.", "v": 0.4},
+			{"say": "Can a hot dog arm wrestle?", "reply": "The arms are free. The dignity went hours ago. Let's go.", "v": 0.3, "do": "keen"},
+			{"say": "You'd go well with Kelvin.", "reply": "The big one? He's been looking at me. Hungrily.", "v": 0.2}]},
+	],
+	"p_coat": [
+		{"key": "coat", "ask": "\"Are you... three kids in a coat?\"", "reply": "No. I am a businessman. I did a business today. *a small voice: 'say stocks'* Stocks.", "opts": [
+			{"say": "Fair enough. Carry on, sir.", "reply": "Thank you, citizen. *giggling from the knees*", "v": 0.5},
+			{"say": "Want to arm wrestle?", "reply": "*frantic whispering* ...Yes. But the top one does it. The top one's Maddy.", "v": 0.4, "do": "keen"},
+			{"say": "I'm telling your parents.", "reply": "RUN, JOSH. RUN.", "v": -0.5, "kind": "heckle"}]},
+	],
+	"p_larp": [
+		{"key": "quest", "ask": "\"What's the quest, Sir Gavin?\"", "reply": "The Orc King of Bicentennial Park has taken our esky. I ride to reclaim it. On foot.", "opts": [
+			{"say": "I'll fight at your side.", "reply": "A squire! Your name shall be sung in the group chat.", "v": 0.5},
+			{"say": "Prove your strength first. At the table.", "reply": "A trial by combat! I ACCEPT.", "v": 0.3, "do": "keen"},
+			{"say": "That's a plastic sword.", "reply": "It is FOAM. It is tournament-legal FOAM.", "v": -0.3, "kind": "heckle"}]},
+	],
+	"p_santa": [
+		{"key": "list", "ask": "\"Am I on the nice list?\"", "reply": "Let me check. *looks you up and down* ...What did you do to that possum?", "opts": [
+			{"say": "I've been good. Mostly.", "reply": "Mostly gets you socks.", "v": 0.3},
+			{"say": "What do I have to do to get on it?", "reply": "Buy a tired man a kebab.", "v": 0.2, "do": "keen"},
+			{"say": "You're not the real one.", "reply": "Neither's the one at the shops, and he gets dental.", "v": -0.2}]},
+	],
 	"s_busker": [
 		{"key": "songs", "ask": "Ask what she plays", "reply": "Anything with four chords. Which is everything. Don't tell the others.", "opts": [
 			{"say": "Play something for the club.", "reply": "For the arm people? I've got one. It's called 'Hand on the Pad'. It's a waltz.", "v": 0.4, "do": "busk"},

@@ -1210,6 +1210,7 @@ func _run_ufo(dt: float) -> void:
 		_ufo.rotation.y += dt * 1.5
 		if _ufo.position.distance_to(Vector3(0, 4.5, 16)) < 0.2:
 			_ufo_state = "landed"
+			_ufo_wait = 0.0
 			for i in 4:
 				var al: Node3D = RiserScript.new()
 				add_child(al)
@@ -1224,6 +1225,17 @@ func _run_ufo(dt: float) -> void:
 				r.aliens_arrive()
 	elif _ufo_state == "landed":
 		_ufo.rotation.y += dt * 0.6
+		_ufo_wait += dt
+		if _ufo_wait > 120.0:
+			_ufo_wait = 0.0
+			Meet.say("The visitors lose interest, pile back up the ramp, and take somebody's strap with them.")
+			for al in _aliens:
+				if is_instance_valid(al):
+					al.state = "winded"
+			for r in Meet.risers:
+				r.aliens_gone()
+			_lift_off()
+			return
 		var up := 0
 		for al in _aliens:
 			if al.state != "winded":

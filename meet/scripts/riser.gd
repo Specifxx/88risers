@@ -70,6 +70,9 @@ var _lift_t := 0.0
 var _give: Callable
 var _zap := 0.0
 var legend := ""                 # a visiting great: "don" or "lasha"
+var sulking := false             # walked off on you tonight; won't pull until you make it right
+var _tail := 0.0
+var _after_talk := ""
 var keen := false                # already half talked into a pull
 var bracket := ""                # this pull is the player's bracket semi or final
 var _chalk_t := 0.0
@@ -168,6 +171,28 @@ func pass_by(dir: float) -> void:
 	_stops = randf() < float(def.get("stops", 0.4))
 	position = Vector3(-31.0 * dir, 0, _lane)
 	state = "pass"
+	if def.has("size"):
+		var sz: float = def["size"]
+		_figure.scale = Vector3(0.8, sz, 0.8)
+		_bark.position.y = 2.75 * sz
+		_name_label.position.y = 2.2 * sz
+	match def.get("prop", ""):
+		"bun":
+			for sx in [-1.0, 1.0]:
+				Build.sphere(self, 0.3, Vector3(sx * 0.33, 1.05, 0), Color(0.85, 0.62, 0.3)).scale = Vector3(0.6, 2.6, 1.0)
+			Build.cyl(self, 0.03, 0.03, 1.2, Vector3(0, 1.1, 0.3), Color(0.95, 0.85, 0.15), 6)
+		"door":
+			Build.box(self, Vector3(0.9, 2.0, 0.06), Vector3(0.1, 1.3, 0.38), Color(0.5, 0.33, 0.18))
+			Build.sphere(self, 0.04, Vector3(0.45, 1.25, 0.43), Color(0.9, 0.8, 0.3))
+		"pram":
+			Build.box(self, Vector3(0.5, 0.35, 0.8), Vector3(0, 0.6, 0.9), Color(0.2, 0.25, 0.5))
+			Build.box(self, Vector3(0.5, 0.3, 0.05), Vector3(0, 0.95, 0.52), Color(0.2, 0.25, 0.5))
+			for sx in [-1.0, 1.0]:
+				for sz2 in [0.6, 1.2]:
+					Build.cyl(self, 0.13, 0.13, 0.04, Vector3(sx * 0.27, 0.13, sz2), Color(0.1, 0.1, 0.1), 10).rotation.z = PI / 2.0
+			Build.sphere(self, 0.13, Vector3(0, 0.85, 0.95), Color(0.9, 0.55, 0.2))
+			for sx in [-1.0, 1.0]:
+				Build.cyl(self, 0.0, 0.04, 0.08, Vector3(sx * 0.07, 0.99, 0.95), Color(0.9, 0.55, 0.2), 4)
 
 func _dog() -> void:
 	var dog := Node3D.new()
@@ -399,6 +424,24 @@ func _process(dt: float) -> void:
 			_search(dt)
 		"ride":
 			pass   # moved by whoever is running the bike
+		"tail":
+			# Walking with you for a bit, because of something you said.
+			_tail -= dt
+			var tp: Vector3 = Meet.player.global_position
+			if global_position.distance_to(tp) > 2.4:
+				_goal = tp
+				_walk(dt, 1.6 if global_position.distance_to(tp) > 5.0 else 1.0)
+			else:
+				_look(tp, 0.15)
+				Character.play(_figure, "Idle")
+			_qbark -= dt
+			if _qbark <= 0.0:
+				_qbark = randf_range(7.0, 11.0)
+				var own: Array = People.SMALL.get(id, ["Nice night for it."])
+				say_aloud(own[randi() % own.size()], 4.5)
+			if _tail <= 0.0 or Meet.modal and Meet.table.active():
+				say_aloud(["Right. I'm up soon. Good talk.", "Catch you in a bit.", "Go on. I'll find you later."][randi() % 3], 3.5)
+				idle()
 		"post":
 			# At work. Looks up when you come close.
 			global_position = _post_at
@@ -1243,7 +1286,7 @@ func strap_returned() -> String:
 func dusted(by: Node) -> void:
 	if state == "winded":
 		return
-	Fx.tint(_figure, Color(1, 1, 1, 0.8), 40.0)
+	Wear.dust(_figure, 50.0)
 	Fx.burst(Meet.main, global_position + Vector3(0, 1.5, 0), Vector3.UP, false, 10)
 	if by != Meet.player:
 		say_aloud("%s!" % by.first_name.to_upper(), 2.5)
@@ -1729,6 +1772,7 @@ func _mood_changed() -> void:
 ## Say sorry. Words work on an annoyance; anything worse wants a peace offering as well.
 func apologise(with_snack: bool) -> String:
 	var lvl := mood_level()
+	sulking = false
 	Meet.add_heat(-0.7)
 	if _apologised and not with_snack:
 		return "You already said sorry. Show me."
@@ -1803,6 +1847,8 @@ func reluctance() -> String:
 		return "Elbow's gone. Ask me next week."
 	if Meet.stars() >= 3:
 		return "Not while you're carrying on like this. Calm down first."
+	if sulking:
+		return "After what you said to me? No."
 	if mood_level() <= -2:
 		return "Not with you. Not tonight."
 	if mood_level() == -1:
@@ -2302,3 +2348,71 @@ func glow(seconds: float) -> void:
 	get_tree().create_timer(seconds).timeout.connect(func():
 		if is_instance_valid(l):
 			l.queue_free())
+
+# --- What a conversation sets in motion ----------------------------------------------------------------
+
+## Something the player said has landed, well or badly. They act on it, and it travels.
+## Returns a line describing what is about to happen, for the conversation to show.
+func react(v: float) -> String:
+	if not (is_riser or guest) or absf(v) < 0.2:
+		return ""
+	var mate_pair: Array = best_mate() if is_riser else [null, 0.0]
+	var mate: Node = mate_pair[0]
+	# Anyone standing close enough heard it.
+	for r in Meet.risers:
+		if r != self and (r.is_riser or r.guest) and r.global_position.distance_to(global_position) < 5.0 and r.state not in ["pull", "winded"]:
+			r.mind.experience("talk" if v > 0.0 else "heckle", v * 0.3, 0.5, false, riser_name)
+			if absf(v) >= 0.4:
+				r.say_aloud((["Ha. Nice.", "Aw.", "Good on you."] if v > 0.0 else ["Ooh.", "Bit much.", "Did you hear that?", "Yikes."])[randi() % 3], 2.5)
+	if v >= 0.45:
+		gesture("Dance" if mind.chatty > 0.7 else "Interact", 1.6)
+		match randi() % 3:
+			0:
+				Meet.snacks = min(5, Meet.snacks + 1)
+				Meet.touch_state()
+				return "%s presses one of their own snacks into your hand." % first_name
+			1:
+				if mate != null and mate_pair[1] > 0.3:
+					mate.mind.experience("helped", 0.3, 1.0, false, "what %s says about you" % first_name)
+					mate._mood_check = 0.0
+					Meet.ripple("%s told %s you're alright." % [first_name, mate.first_name], true)
+					return "%s is going to tell %s about you. Good things." % [first_name, mate.first_name]
+				return "%s will remember that." % first_name
+			_:
+				_tail = 45.0
+				_qbark = 4.0
+				_after_talk = "tail"
+				return "%s decides to walk with you for a while." % first_name
+	if v >= 0.2:
+		gesture("Interact", 0.8)
+		return "%s liked that." % first_name
+	if v <= -0.45:
+		sulking = true
+		_after_talk = "storm"
+		if mate != null and mate_pair[1] > 0.3:
+			mate.mind.experience("heckle", -0.3, 1.0, false, "what you said to %s" % first_name)
+			mate._mood_check = 0.0
+			Meet.ripple("%s told %s what you said." % [first_name, mate.first_name], true)
+			return "%s is going straight to %s with that. And won't be pulling you tonight." % [first_name, mate.first_name]
+		return "%s won't be pulling you tonight. Not until you make it right." % first_name
+	gesture("Hit_Chest", 0.5)
+	return "%s didn't like that." % first_name
+
+## Called when the conversation ends: do whatever the talk set up.
+func after_talk() -> void:
+	var what := _after_talk
+	_after_talk = ""
+	if state in ["scrap", "confront", "winded", "pull", "to_table"] or post:
+		return
+	if what == "tail":
+		state = "tail"
+	elif what == "storm":
+		say_aloud(["I'm done here.", "Unbelievable.", "Don't follow me."][randi() % 3], 3.5)
+		var away := (global_position - Meet.player.global_position).normalized()
+		_pace_boost = 1.7
+		var mate: Node = best_mate()[0] if is_riser else null
+		if mate != null and mate.is_free():
+			_partner = mate
+			_go(mate.global_position + Vector3(1.2, 0, 0.6), "chat")
+		else:
+			_go(global_position + away * 9.0, "idle")
