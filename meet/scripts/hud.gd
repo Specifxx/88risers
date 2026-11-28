@@ -131,7 +131,8 @@ func _refresh() -> void:
 	_heat.visible = Meet.stars() > 0
 	UI.clear(_dares)
 	for d in Meet.dares:
-		var l := UI.text(_dares, "%s %s%s" % ["✔" if d["done"] else "○", d["text"], " (%d/%d)" % [d["have"], d["need"]] if d["need"] > 1 and not d["done"] else ""], 14, Color(0.6, 0.9, 0.7) if d["done"] else Color(0.95, 0.92, 0.85))
+		var tier: int = int(d.get("tier", 0))
+		var l := UI.text(_dares, "%s %s%s%s" % ["✔" if d["done"] else "○", ("[%s] " % Meet.TIER_NAME[tier]) if tier > 0 else "", d["text"], " (%d/%d)" % [d["have"], d["need"]] if d["need"] > 1 and not d["done"] else ""], 14, Color(0.6, 0.9, 0.7) if d["done"] else [Color(0.95, 0.92, 0.85), Color(1.0, 0.8, 0.4), Color(1.0, 0.5, 0.45)][tier])
 		l.autowrap_mode = TextServer.AUTOWRAP_OFF
 		_shadow(l)
 	if _bag and _bag.visible:
@@ -198,7 +199,7 @@ func _build_touch() -> void:
 	grid.offset_right = -30
 	grid.offset_bottom = -40
 	_touch_ui.add_child(grid)
-	for b in [["USE", func(): Meet.player.use()], ["PUNCH", func(): Meet.player.slap()], ["CHALK", func(): Meet.player.throw_chalk()], ["JUMP", func(): Meet.player.jump()], ["BAG", toggle_bag], ["PHOTO", photo]]:
+	for b in [["USE", func(): Meet.player.use()], ["PUNCH", func(): Meet.player.slap()], ["CHALK", func(): Meet.player.throw_chalk()], ["ITEM", func(): Meet.player.use_item()], ["VIEW", func(): Meet.player.toggle_view()], ["JUMP", func(): Meet.player.jump()], ["BAG", toggle_bag], ["PHOTO", photo]]:
 		var btn := UI.button(grid, b[0], b[1], 20)
 		btn.custom_minimum_size = Vector2(110, 70)
 		btn.alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -288,7 +289,9 @@ func _build_bag() -> void:
 	sc.add_child(_bag_list)
 	var row := HBoxContainer.new()
 	mid.add_child(row)
-	UI.button(row, "Eat a snack", Meet.eat, 18).custom_minimum_size = Vector2(180, 0)
+	UI.button(row, "Eat a snack", Meet.eat, 18).custom_minimum_size = Vector2(150, 0)
+	UI.button(row, "Put down what's in your hand", _put_down.bind("hand"), 16).custom_minimum_size = Vector2(250, 0)
+	UI.button(row, "Take off and leave hat", _put_down.bind("head"), 16).custom_minimum_size = Vector2(200, 0)
 	UI.button(row, "Close", toggle_bag, 18).custom_minimum_size = Vector2(180, 0)
 	# The club.
 	var right := VBoxContainer.new()
@@ -300,6 +303,20 @@ func _build_bag() -> void:
 	right.add_child(_bag_people)
 	_bag.visible = false
 
+## Leave a piece of kit on the ground where you stand. It can be picked up again, by you.
+func _put_down(slot: String) -> void:
+	var item: String = Meet.worn[slot]
+	if item == "":
+		Meet.say("Nothing there to put down.")
+		return
+	Meet.worn[slot] = ""
+	Meet.away[item] = true
+	var at: Vector3 = Meet.player.global_position - Meet.player.global_transform.basis.z * 0.9
+	Meet.main.leave_item(item, at)
+	toggle_bag()
+	Meet.touch_state()
+	Meet.say("You put the %s down. If you leave it, it finds its way back to your bag by next week." % Meet.ITEMS[item]["name"].to_lower())
+
 func _tile(parent: Node, id: String) -> void:
 	var it: Dictionary = Meet.ITEMS[id]
 	var have: bool = Meet.owned.has(id)
@@ -310,7 +327,7 @@ func _tile(parent: Node, id: String) -> void:
 	b.clip_text = true
 	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	b.add_theme_font_size_override("font_size", 14)
-	b.text = it["name"] if have else "? ? ?\n%s" % it["how"]
+	b.text = (it["name"] + ("\n(left on the ground)" if Meet.away.has(id) else "")) if have else "? ? ?\n%s" % it["how"]
 	b.tooltip_text = it["how"]
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.2, 0.16, 0.12) if have else Color(0.1, 0.09, 0.09)
@@ -367,8 +384,8 @@ func _fill_bag() -> void:
 		if not r.is_riser:
 			continue
 		var f: float = r.mind.feeling()
-		var line := UI.text(_bag_people, "%s  —  %s" % [r.first_name, r.bond_text()], 14, Color(0.95, 0.6, 0.5) if f < -0.15 else (UI.GOLD if f > 0.3 else UI.PAPER))
-		line.autowrap_mode = TextServer.AUTOWRAP_OFF
+		var line := UI.text(_bag_people, "%s  —  %s" % [r.first_name, r.attitude()], 13, Color(0.95, 0.6, 0.5) if f < -0.15 else (UI.GOLD if f > 0.3 else UI.PAPER))
+		line.custom_minimum_size = Vector2(290, 0)
 		var bar := ProgressBar.new()
 		bar.custom_minimum_size = Vector2(280, 7)
 		bar.show_percentage = false
@@ -402,6 +419,8 @@ func photo() -> void:
 	var img := get_viewport().get_texture().get_image()
 	_root.visible = true
 	Meet.moments += 1
+	if Meet.main.match_on() and Meet.main.TABLES[Meet.main.nearest_match(Meet.player.global_position)].distance_to(Meet.player.global_position) < 6.0:
+		Meet.errand("george", "ready")
 	var name := "88risers-moment-%d.png" % Meet.moments
 	if OS.has_feature("web"):
 		JavaScriptBridge.download_buffer(img.save_png_to_buffer(), name, "image/png")
@@ -438,7 +457,7 @@ func _build_title() -> void:
 	if Meet.touch:
 		UI.text(v, "Left thumb moves, drag to look around, buttons on the right.", 16, Color(0.75, 0.72, 0.62))
 	else:
-		UI.text(v, "WASD move  ·  mouse look  ·  Shift run  ·  Space jump  ·  E talk or use  ·  click or F punch  ·  G throw chalk  ·  R eat a snack  ·  M sound  ·  Tab bag  ·  P photo  ·  Esc free the mouse", 16, Color(0.75, 0.72, 0.62))
+		UI.text(v, "WASD move  ·  mouse look  ·  Shift run  ·  Space jump  ·  E talk or use  ·  click or F punch  ·  G throw chalk  ·  X use what's in your hand  ·  C look at yourself  ·  R eat a snack  ·  M sound  ·  Tab bag  ·  P photo  ·  Esc free the mouse", 16, Color(0.75, 0.72, 0.62))
 	var g: Dictionary = load("res://scripts/people.gd").GUESTS[Meet.week() % 5]
 	var f: Dictionary = load("res://scripts/people.gd").FINDS[Meet.week() % 4]
 	var wk := "This week: %s is visiting." % g["name"]

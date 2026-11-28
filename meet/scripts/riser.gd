@@ -38,6 +38,7 @@ var done_topics := {}
 var _convo := {}
 var _pitched := 0
 var _insulted := 0
+var _att := ""
 var _name_label: Label3D
 var _level := 0
 var _mood_check := 0.0
@@ -61,6 +62,8 @@ var _dog_goal := Vector3.ZERO
 var _dog_ate := false
 var _lead: MeshInstance3D
 var coned := false
+var keen := false                # already half talked into a pull
+var bracket := ""                # this pull is the player's bracket semi or final
 var _chalk_t := 0.0
 var backing := false             # has agreed to watch your back tonight
 var _asked := {}
@@ -174,6 +177,7 @@ func _dog() -> void:
 		if _dog_free > 0.0:
 			return
 		_dog_free = 24.0
+		Meet.dare("dog")
 		_lead.visible = false
 		dog.reparent(Meet.main)
 		_dog_goal = dog.global_position
@@ -239,6 +243,8 @@ func bond_text() -> String:
 	return {"gone": "wants nothing to do with you", "irritated": "is fed up with you", "known": "knows you", "mates": "counts you a mate", "close": "would back you in anything"}[bond()]
 
 func is_free() -> bool:
+	if state == "walk" and _then in ["answer", "bench", "swarm"]:
+		return false   # on their way to the player; nothing else gets to claim them
 	return state in ["idle", "walk", "watch", "sit", "chat", "snack", "quirk", "huddle"] and not alien and not passer
 
 func has_strap() -> bool:
@@ -506,7 +512,7 @@ func _quirk(main: Node3D) -> void:
 				_face_at = Vector3(0, 0, 30)
 				_go(Vector3(randf_range(-1.5, 1.5), 0, 21.0), "quirk")
 		"drill":
-			_qanim = "Push"
+			_qanim = "Crouch_Idle"
 			var a := randf_range(0.3, 2.8)
 			_face_at = Vector3.ZERO
 			_go(Vector3(cos(a) * 7.6, 0, sin(a) * 7.6), "quirk")
@@ -670,6 +676,29 @@ func _arrive() -> void:
 			_timer = randf_range(4.4, 6.5)
 		"huddle":
 			state = "huddle"
+		"swarm":
+			state = "quirk"
+			_qanim = "Punch_Cross"
+			_qlines = []
+			_face_at = Meet.player.global_position
+			_timer = 4.0
+		"answer":
+			if Meet.player.global_position.distance_to(global_position) < 5.0 and not Meet.modal:
+				Meet.table.start(self)
+			else:
+				say_aloud("Where've they gone? Called me over and wandered off.", 4.0)
+				mind.experience("nagged", -0.1, 0.4)
+				idle()
+		"bench":
+			if Meet.player.sitting and not Meet.modal:
+				state = "sit"
+				_timer = 20.0
+				rotation.y = Meet.player.rotation.y + PI
+				global_position.y = Meet.player.global_position.y
+				mind.experience("talk", 0.3, 0.8, true, "sitting together")
+				Meet.menu.bench(self)
+			else:
+				idle()
 		"watch":
 			state = "watch"
 			_timer = randf_range(8.0, 16.0)
@@ -702,6 +731,7 @@ func _gossip(other: Node3D) -> void:
 	var news: Dictionary = mind.gossip()
 	if not news.is_empty() and other.mind.hear(news):
 		say_aloud("...and then, right in front of everyone...", 3.5)
+		Meet.ripple("%s told %s what you did." % [first_name, other.first_name], true)
 
 func _look(at: Vector3, speed: float) -> void:
 	var to := at - global_position
@@ -767,8 +797,16 @@ func heckle() -> String:
 	return People.HECKLED[randi() % People.HECKLED.size()]
 
 ## Enough. They come for the player.
-func square_up() -> void:
+func square_up(joined := false) -> void:
 	Meet.sfx("sting", -4.0, 1.0, 1.0)
+	if not joined and is_riser:
+		# A close friend may pile in.
+		var bm: Array = best_mate()
+		var mate: Node = bm[0]
+		if mate != null and bm[1] > 0.4 and mate.is_free() and mate.global_position.distance_to(global_position) < 14.0 and randf() < 0.25 + float(bm[1]) * 0.4 and not mate.backing:
+			mate.say_aloud("You take on %s, you take on me." % first_name, 4.5)
+			mate.mind.experience("scrap", -0.3, 1.0, false, riser_name)
+			mate.square_up(true)
 	for r in Meet.risers:
 		if r != self and r.backing and r.is_free() and r.global_position.distance_to(global_position) < 16.0:
 			r.backing = false
@@ -1049,6 +1087,10 @@ func dusted(by: Node) -> void:
 	Meet.main.defend(self, "chalk")
 	Meet.dusted += 1
 	Meet.dare("chalk", id)
+	if guest or recruited:
+		Meet.dare("recruit_chalk")
+	if id == "kelvin":
+		Meet.errand("tommy", "ready")
 	Meet.add_heat(0.4)
 	if Meet.dusted >= 5:
 		Meet.grant("ghost")
@@ -1273,7 +1315,7 @@ func insult(key: String) -> String:
 ## The player tries a line on a stranger. Returns [did it work, what they said].
 func pitch(key: String) -> Array:
 	_pitched += 1
-	if def.get("likes", "") == key or mind.feeling() + randf() * 0.4 > 0.6:
+	if keen or def.get("likes", "") == key or mind.feeling() + randf() * 0.4 > 0.6:
 		guest_ready = true
 		return [true, People.PITCH_YES[key]]
 	mind.experience("nagged", -0.15, 0.5)
@@ -1289,6 +1331,9 @@ func join_meet() -> void:
 	passer = false
 	guest = true
 	guest_ready = false
+	if id.begins_with("p_") and not Meet.joined.has(id):
+		Meet.joined.append(id)
+		Meet.ripple("%s joined the club because of you." % riser_name)
 	life = {"pull": 1.2, "eat": 0.7, "talk": 0.3, "rest": 0.4, "quirk": 0.0}
 	wants_pull = true
 	state = "idle"
@@ -1296,6 +1341,9 @@ func join_meet() -> void:
 
 func after_pull(player_won: bool) -> void:
 	pull_angry = false
+	if bracket != "":
+		bracket = ""
+		Meet.main.evening.bracket_result(self, player_won)
 	if settle:
 		settle = false
 		for m in mind.memories:
@@ -1339,6 +1387,9 @@ func best_mate() -> Array:
 
 ## Something worth looking at is happening over there.
 func gawp(at: Vector3, line: String, gather: bool) -> void:
+	if state == "walk" and _then in ["answer", "bench", "prank", "coach", "callout", "chat", "huddle", "swarm"]:
+		say_aloud(line, 2.5)
+		return
 	if state in ["pull", "to_table", "prep", "scrap", "winded", "flee", "search", "pass"] and not (state == "pass" and gather):
 		if state == "pull":
 			say_aloud(line, 2.5)
@@ -1359,8 +1410,9 @@ func stand_up_for(victim: Node, kind: String, closeness: float) -> void:
 	Meet.bump(id, victim.id, 0.08)
 	var lines := {"punch": ["Hey! Hands off %s!", "You touch %s, you deal with me."], "chalk": ["Oi. Leave %s alone.", "Pick on someone else. Not %s."], "insult": ["Don't talk to %s like that.", "Say that about %s again."]}
 	say_aloud(lines[kind][randi() % 2] % victim.first_name, 4.5)
-	if kind == "punch" and (closeness > 0.55 or mind.feeling() < -0.3):
-		square_up()
+	if kind == "punch" and (closeness > 0.55 or mind.feeling() < -0.3 or randf() < 0.3 + closeness * 0.5):
+		say_aloud("Right. You've got two of us now.", 4.0)
+		square_up(true)
 	else:
 		_face_at = Meet.player.global_position
 		var to: Vector3 = (victim.global_position - Meet.player.global_position).normalized()
@@ -1383,7 +1435,81 @@ func mood_level() -> int:
 		return 1
 	return 0
 
+## The separate things they keep track of about you, each -1..1, from everything remembered.
+func axes() -> Dictionary:
+	var a := {"trust": 0.0, "respect": 0.0, "fun": 0.0, "irritation": 0.0, "wary": 0.0, "warmth": 0.0}
+	for m in mind.memories:
+		var v: float = float(m["valence"]) * float(m.get("weight", 1.0)) * (1.0 if m.get("firsthand", true) else 0.5)
+		match m["kind"]:
+			"theft": a["trust"] += v * 1.2
+			"helped":
+				a["trust"] += v
+				a["respect"] += v * 0.3
+			"gift":
+				a["trust"] += v * 0.4
+				a["warmth"] += v * 0.8
+			"match": a["respect"] += v * 1.3
+			"chalk":
+				a["fun"] += max(v, 0.0) * 1.5
+				a["irritation"] -= min(v, 0.0) * 1.2
+			"photo":
+				a["fun"] += v * 0.6
+				a["warmth"] += v * 0.6
+			"talk":
+				a["warmth"] += v * 0.8
+				a["fun"] += max(v, 0.0) * 0.3
+			"heckle", "nagged": a["irritation"] -= v * 1.1
+			"violence", "scrap":
+				a["wary"] -= v * 0.9
+				a["trust"] += v * 0.3
+			"aliens": a["respect"] += v * 0.4
+	if Meet.beaten.has(id):
+		a["respect"] += 0.5
+	if _asked.has("dance") or _asked.has("joke"):
+		a["fun"] += 0.3
+	for k in a:
+		a[k] = tanh(a[k] * 0.55)
+	return a
+
+## Which of the attitudes in People.ATTITUDES fits them right now.
+func attitude_key() -> String:
+	var a := axes()
+	var lvl := mood_level()
+	if lvl <= -3:
+		return "afraid" if a["wary"] > 0.5 else "done"
+	if a["wary"] > 0.5 and lvl < 0:
+		return "afraid"
+	if a["trust"] < -0.35:
+		return "arm_not_bag" if a["respect"] > 0.3 else "no_trust"
+	if a["irritation"] > 0.45:
+		if a["fun"] > 0.3:
+			return "funny_pest"
+		return "hurt" if a["warmth"] > 0.35 else "mouth"
+	if a["wary"] > 0.35:
+		return "wary"
+	if lvl < 0:
+		return "cold"
+	if a["respect"] > 0.45:
+		return "rates_likes" if a["warmth"] > 0.35 or lvl >= 1 else "respects"
+	if a["fun"] > 0.45:
+		return "laugh" if a["warmth"] > 0.3 or lvl >= 1 else "amused"
+	if a["trust"] > 0.45:
+		return "trusts" if a["warmth"] > 0.3 else "owes"
+	if a["warmth"] > 0.4 or lvl >= 1:
+		return "warming"
+	return "sussing" if mind.familiarity < 0.5 else "neutral"
+
+func attitude() -> String:
+	return People.ATTITUDES[attitude_key()][0]
+
+func attitude_line() -> String:
+	var l: Array = People.ATTITUDES[attitude_key()][1]
+	return l[randi() % l.size()]
+
 func mood_word() -> String:
+	if is_riser or guest:
+		var k := attitude_key()
+		return "" if k in ["neutral", "sussing"] else attitude()
 	return {-3: "hates you", -2: "dislikes you", -1: "annoyed with you", 0: "", 1: "likes you", 2: "close mate"}[mood_level()]
 
 func _show_mood() -> void:
@@ -1395,6 +1521,14 @@ func _show_mood() -> void:
 
 func _mood_changed() -> void:
 	var now := mood_level()
+	var key := attitude_key()
+	if key != _att:
+		# How they have you figured has shifted, even if how much they like you hasn't.
+		var first := _att == ""
+		_att = key
+		_show_mood()
+		if not first and now == _level and key not in ["neutral", "sussing"] and not (Meet.modal and Meet.menu.who != self):
+			Meet.say("%s now %s." % [riser_name, attitude()])
 	if now == _level:
 		return
 	var was := _level
@@ -1667,6 +1801,8 @@ func _strap_planted() -> void:
 		return
 	other.say_aloud("I never touched it! Why would I want YOUR strap?", 5.0)
 	Meet.bump(id, where, -0.3)
+	Meet.dare("feud")
+	Meet.ripple("%s and %s fell out over a strap you planted." % [first_name, other.first_name])
 	Meet.main.stir(global_position, ["Ooh.", "In his BAG?", "Awkward.", "I'm staying out of this."], 12.0, 0.6, true)
 	Meet.say("%s and %s are having words about a strap. Nobody is looking at you." % [riser_name, other.riser_name])
 	idle()
@@ -1715,6 +1851,7 @@ func cone_on() -> String:
 	if coned:
 		return "I'm already wearing it. Apparently."
 	coned = true
+	Meet.cone_with = id
 	Wear.hold(_figure, Wear.model("cone"), "Head", "Cone")
 	Meet.dare("cone")
 	Meet.main.stir(global_position, ["HA!", "Leave it on!", "Suits you.", "Somebody get a photo."], 10.0, 0.7, false)
@@ -1732,3 +1869,45 @@ func cone_on() -> String:
 	Meet.menu.close()
 	confront()
 	return ""
+
+## The player wants the cone back.
+func cone_off() -> String:
+	coned = false
+	Meet.cone_with = ""
+	Wear.drop(_figure, "Cone")
+	Meet.touch_state()
+	if mood_level() >= 1:
+		return "Aw. I was getting used to it. Here."
+	if mood_level() == 0:
+		return "Take it. Please. Take it."
+	return "Get it off me and get away from me."
+
+## Something silly done at them with an item: they take it as a joke or they don't.
+func pranked(kind: String, amused: Array, annoyed: Array) -> void:
+	if alien or state == "winded":
+		return
+	Meet.dare("item")
+	var n: int = _asked.get("prank", 0)
+	_asked["prank"] = n + 1
+	var likes: bool = (mood_level() >= 1 or mind.chatty > 0.6 or People.HUMOUR.get(id, "") in ["pun", "dad"] or passer) and n < 2 and mood_level() > -2
+	_look(Meet.player.global_position, 1.0)
+	if likes:
+		mind.experience("chalk", 0.25, 0.5, true, "messing about")
+		say_aloud(amused[randi() % amused.size()], 3.5)
+		Meet.sfx("laugh", -8.0, randf_range(0.9, 1.2), 1.5)
+		gesture("Hit_Chest", 0.5)
+	else:
+		mind.experience("nagged", -0.25, 0.7, true, riser_name)
+		say_aloud(annoyed[randi() % annoyed.size()] if n < 3 else "RIGHT. That's enough.", 3.5)
+		Meet.add_heat(0.15)
+		if n >= 3 or mind.feeling() < -0.45:
+			if passer:
+				bolt(1.6)
+			else:
+				confront()
+
+## Come and sit beside the player for a talk.
+func join_on_seat(at: Vector3) -> void:
+	_convo = {}
+	_partner = null
+	_go(at, "bench")

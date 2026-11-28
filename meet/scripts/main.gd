@@ -48,6 +48,10 @@ var _gulls: Node3D
 var _gulls_t := 0.0
 var _gulls_off := false
 var _bucket: Array = []
+var _ganging := false
+var evening: Node3D
+var _table_roots: Array = []
+var _gone_tables := {}
 var _free_snacks := 3
 var _reward := 3.0
 var _passer := 4.0
@@ -80,11 +84,17 @@ func _ready() -> void:
 		_events = [{"at": 75.0, "kind": "gulls"}, {"at": 330.0, "kind": "ufo"}, {"at": 600.0, "kind": "drone"}]
 	else:
 		var kinds := ["gulls", "drone", "gulls", "drone"]
-		if randf() < 0.35:
-			kinds.append("ufo")
+		if randf() < 0.55:
+			kinds.insert(0, "ufo")
+		var first: String = kinds.pop_front() if kinds[0] == "ufo" else ""
 		kinds.shuffle()
+		if first != "":
+			kinds.insert(0, first)
 		for i in 2 + randi() % 2:
 			_events.append({"at": randf_range(60.0, 800.0), "kind": kinds[i]})
+	evening = load("res://scripts/evening.gd").new()
+	add_child(evening)
+	evening.setup(self)
 	if OS.get_cmdline_user_args().has("--selftest"):
 		add_child(load("res://scripts/selftest.gd").new())
 
@@ -283,6 +293,20 @@ func _place() -> void:
 		Build.tbox(self, Vector3(2.0, 0.08, 0.5), bp + Vector3(0, 0.45, 0), "planks", Color(0.6, 0.5, 0.42), true)
 		for sx in [-0.8, 0.8]:
 			Build.tbox(self, Vector3(0.08, 0.45, 0.45), bp + Vector3(sx, 0.22, 0), "iron", Color(0.3, 0.3, 0.33))
+	for bp in [Vector3(-9, 0, 20), Vector3(9, 0, 20)]:
+		_seat_spot("Sit on the bench", bp + Vector3(0, 0.5, 0), PI)
+	for a in [PI + 0.9, PI * 1.5, TAU - 0.9]:
+		_seat_spot("Sit on the steps", Vector3(cos(a) * 11.6, 0.9, sin(a) * 11.6), atan2(-cos(a), -sin(a)) + PI)
+	for dp in [Vector3(-6.5, 0, -5.5), Vector3(7.5, 0, 9.5)]:
+		var db := Thing.new()
+		add_child(db)
+		db.position = ground(dp)
+		for sx in [-0.35, 0.35]:
+			var bar := Build.cyl(db, 0.025, 0.025, 0.36, Vector3(sx, 0.12, 0), Color(0.6, 0.6, 0.65), 6)
+			bar.rotation.x = PI / 2.0
+			for sz in [-0.16, 0.16]:
+				Build.cyl(db, 0.11, 0.11, 0.07, Vector3(sx, 0.12, sz), Color(0.12, 0.12, 0.14), 10).rotation.x = PI / 2.0
+		db.setup("Do a set with the dumbbells", _lift)
 	_skyline()
 	# Lanterns where people leave each other notes.
 	for i in NOTE_SPOTS.size():
@@ -296,9 +320,14 @@ func _place() -> void:
 	_find("pool_noodle", "Pick up the pool noodle", Vector3(14.5, 0.1, 28.0), Color(0.2, 0.85, 0.9))
 	_find("cone", "Take the traffic cone", Vector3(-12.5, TIERS * TIER_H, -15.0), Color(1.0, 0.45, 0.1))
 
+func hide_table(i: int) -> void:
+	_table_roots[i].visible = false
+	_gone_tables[i] = true
+
 func _table(at: Vector3) -> void:
 	var t := Node3D.new()
 	add_child(t)
+	_table_roots.append(t)
 	t.position = at
 	Build.tbox(t, Vector3(0.95, 0.07, 0.7), Vector3(0, 1.02, 0), "darkwood", Color.WHITE, false)
 	Build.tcyl(t, 0.07, 0.3, 1.0, Vector3(0, 0.5, 0), "iron", Color(0.3, 0.3, 0.33), 8)
@@ -311,6 +340,10 @@ func _table(at: Vector3) -> void:
 	t.add_child(rig)
 	rig.visible = false
 	_rigs.append({"root": rig, "lean": 0.0, "target": 0.0, "a": null, "b": null})
+	var call := Thing.new()
+	call.setup("Stand at the table and call for a pull", _call_out.bind(_rigs.size() - 1))
+	add_child(call)
+	call.position = at + Vector3(-1.1, 0, 0)
 	var idx := _rigs.size() - 1
 	var st := Thing.new()
 	st.setup("Strap their hands in", _strap_in.bind(idx))
@@ -318,6 +351,27 @@ func _table(at: Vector3) -> void:
 	add_child(st)
 	st.position = at + Vector3(0, 0, 1.3)
 	_rigs[idx]["helper"] = st
+
+## Stand at an empty table and shout for a taker. Somebody willing comes over, if anyone is.
+func _call_out(i: int) -> void:
+	if table_busy(i) or _gone_tables.has(i):
+		Meet.say("This table's in use.")
+		return
+	Meet.player.act("Punch_Jab", 0.6)
+	Meet.sfx("whistle", -12.0, 0.8)
+	var pool: Array = Meet.risers.filter(func(r): return (r.is_riser or r.guest) and r.is_free() and r.state != "huddle" and r.reluctance() == "")
+	stir(TABLES[i], ["Somebody take that!", "Go on, someone.", "Not me, I've just eaten.", "Fresh meat at table %d." % (i + 1)], 14.0, 0.4, false)
+	if pool.is_empty():
+		Meet.say("\"WHO WANTS A PULL?\" Nobody does. Either they're busy or they've had enough of you.")
+		return
+	pool.sort_custom(func(a, b): return (1.0 if a.wants_pull else 0.0) + a.mind.feeling() + randf() * 0.6 > (1.0 if b.wants_pull else 0.0) + b.mind.feeling() + randf() * 0.6)
+	var r: Node = pool[0]
+	r.say_aloud(["I'll have that.", "Me. I'm coming.", "Go on, then. Don't move.", "Finally. Stay there."][randi() % 4], 4.0)
+	Meet.say("\"WHO WANTS A PULL?\" %s is on the way over. Stay by the table." % r.riser_name)
+	r._convo = {}
+	r._partner = null
+	r._face_at = TABLES[i]
+	r._go(TABLES[i] + Vector3(1.2, 0, 0), "answer")
 
 ## Offer to strap in the two people pulling at this table.
 func _strap_in(i: int) -> void:
@@ -455,6 +509,54 @@ func _bag(d: Dictionary, at: Vector3) -> void:
 	add_child(wt)
 	wt.position = at * 1.07
 
+## Something lying about that somebody asked for, or that just turned up.
+func pickup(label: String, at: Vector3, c: Color, got: Callable) -> Node3D:
+	var th := Thing.new()
+	add_child(th)
+	th.position = ground(at)
+	Build.box(th, Vector3(0.18, 0.05, 0.24), Vector3(0, 0.08, 0), c, false, 0.4)
+	var l := OmniLight3D.new()
+	l.light_color = c
+	l.light_energy = 1.2
+	l.omni_range = 2.5
+	l.position.y = 0.5
+	th.add_child(l)
+	th.setup("Pick up %s" % label, func():
+		th.remove_from_group("interact")
+		Meet.player.target = null
+		Meet.player.act("PickUp_Table", 0.8)
+		th.queue_free()
+		got.call())
+	return th
+
+func _seat_spot(label: String, at: Vector3, yaw: float) -> void:
+	var th := Thing.new()
+	add_child(th)
+	th.position = Vector3(at.x, 0, at.z)
+	th.position.y = height(at.x, at.z)
+	th.setup(label, func(): Meet.player.sit(Vector3(at.x, at.y if at.y > 0.6 else at.y, at.z), yaw))
+
+## A set of curls: tiring, a little painful, and it shows up at the table.
+func _lift() -> void:
+	if Meet.stamina < 30.0:
+		Meet.say("You're too spent for another set. Eat something first.")
+		return
+	Meet.player.gesture("curl", 3.2, Vector3.ZERO, func():
+		Meet.stamina = max(0.0, Meet.stamina - 35.0)
+		Meet.composure = max(10.0, Meet.composure - 8.0)
+		Meet.sets += 1
+		if Meet.pump < 4:
+			Meet.pump += 1
+			Meet.say("One set done. Your forearms are on fire. Pump %d of 4: the gold zone is wider for your pulls tonight." % Meet.pump)
+		else:
+			Meet.say("You're as pumped as you'll get tonight. That one was just for show.")
+		for r in watchers(Meet.player.global_position, 8.0):
+			if randf() < 0.4:
+				r.say_aloud(["Light weight!", "Form's alright, actually.", "Leave some for the rest of us.", "Elbows in."][randi() % 4], 3.0)
+				break
+		Meet.touch_state()
+		Meet.save())
+
 func _coin(at: Vector3, amount: int) -> void:
 	var th := Thing.new()
 	add_child(th)
@@ -489,15 +591,18 @@ func _wallet_take(id: String) -> void:
 		return
 	var p: Vector3 = Meet.player.global_position
 	Meet.player.act("Fixing_Kneeling", 1.0)
-	var seen: Array = []
-	for r in Meet.risers:
-		if r.is_riser and r.state != "winded" and r.global_position.distance_to(p) < 10.0 and r.facing(p):
-			seen.append(r)
+	var seen: Array = watchers(p)
 	if seen.has(owner):
-		owner.mind.experience("theft", -0.8, 2.0, true, "my wallet")
+		owner.mind.experience("theft", -0.9, 3.0, true, "my wallet")
+		owner._mood_check = 0.0
 		owner.say_aloud("That's my WALLET. Get out of it!", 4.0)
-		Meet.say("%s saw exactly what you were doing." % owner.riser_name)
+		Meet.add_heat(1.5, "caught in a wallet")
+		Meet.say("%s saw exactly what you were doing, and is coming over." % owner.riser_name)
 		stir(p, ["Seriously?", "From a wallet?", "Unreal."], 12.0, 0.6, false)
+		for r in seen:
+			if r != owner:
+				r.mind.experience("theft", -0.45, 1.2, true, bag["who"])
+		owner.confront()
 		return
 	var got: int = owner.wallet
 	owner.wallet = 0
@@ -506,23 +611,30 @@ func _wallet_take(id: String) -> void:
 		r.saw_theft[id + "$"] = true
 		r.mind.experience("theft", -0.4, 1.0, false, bag["who"])
 	if seen.is_empty():
+		Meet.dare("wallet")
 		Meet.pay(got, "You lift $%d from %s's wallet. Nobody saw." % [got, bag["who"]])
 	else:
-		seen[0].say_aloud("...", 3.0)
-		Meet.pay(got, "You lift $%d from %s's wallet. %s was watching." % [got, bag["who"], seen[0].first_name])
+		# Whoever saw it goes straight to the owner, and the owner comes for you.
+		var w: Node = seen[0]
+		w.say_aloud("%s! Your bag! I just watched them go through it!" % owner.first_name.to_upper(), 5.0)
+		Meet.pay(got, "You lift $%d from %s's wallet. %s saw you and is shouting for them." % [got, bag["who"], w.first_name])
+		Meet.add_heat(1.0, "seen thieving")
+		owner.mind.experience("theft", -0.85, 2.5, true, "my wallet")
+		owner._mood_check = 0.0
+		owner.confront("beef", "")
 	Meet.save()
 
 ## Two founders are sent to a free table to settle something.
-func force_match(a_id: String, b_id: String) -> bool:
+func force_match(a_id: String, b_id: String, tag := "") -> bool:
 	var a: Node = Meet.riser(a_id)
 	var b: Node = Meet.riser(b_id)
 	if a == null or b == null or not a.is_free() or not b.is_free():
 		return false
 	for i in TABLES.size():
-		if table_busy(i) or i == _player_table:
+		if table_busy(i) or i == _player_table or _gone_tables.has(i):
 			continue
 		var total := randf_range(10.0, 16.0)
-		_matches.append({"table": i, "a": a, "b": b, "time": total, "total": total,
+		_matches.append({"table": i, "a": a, "b": b, "time": total, "total": total, "tag": tag,
 			"a_wins": randf() < 1.0 / (1.0 + pow(10.0, (b.strength - a.strength) / 12.0))})
 		a.go_pull(TABLES[i] + Vector3(-0.66, 0, 0), TABLES[i])
 		b.go_pull(TABLES[i] + Vector3(0.66, 0, 0), TABLES[i])
@@ -549,6 +661,12 @@ func strap_back(id: String) -> void:
 	_bags[id]["thing"]._text = "Take the strap from %s's bag" % _bags[id]["who"]
 
 ## Hand in someone's bag. Whether it works depends on who is looking this way.
+## Who is looking at the player right now. In the dark, nobody.
+func watchers(p: Vector3, radius := 10.0) -> Array:
+	if Meet.dark > 0.0:
+		return []
+	return Meet.risers.filter(func(r): return r.is_riser and r.state != "winded" and (r.global_position.distance_to(p) < 3.5 or (r.global_position.distance_to(p) < radius + 2.0 and r.facing(p))))
+
 func _strap_take(id: String) -> void:
 	var bag: Dictionary = _bags[id]
 	var owner: Node = Meet.riser(id)
@@ -563,14 +681,14 @@ func _strap_take(id: String) -> void:
 		return
 	var p: Vector3 = Meet.player.global_position
 	Meet.player.act("Fixing_Kneeling", 1.0)
-	var seen: Array = []
-	for r in Meet.risers:
-		if r.is_riser and r.state != "winded" and r.global_position.distance_to(p) < 10.0 and r.facing(p):
-			seen.append(r)
+	var seen: Array = watchers(p)
 	if seen.has(owner):
-		owner.mind.experience("theft", -0.6, 1.5, true, "my strap")
+		owner.mind.experience("theft", -0.7, 2.2, true, "my strap")
+		owner._mood_check = 0.0
 		owner.say_aloud("Oi! Out of my bag!", 4.0)
-		Meet.say("%s is looking right at you. You take your hand out of the bag." % owner.riser_name)
+		Meet.add_heat(0.8, "caught in a bag")
+		Meet.say("%s is looking right at you. You take your hand out of the bag. They're coming over." % owner.riser_name)
+		owner.confront()
 		return
 	Meet.straps.append(id)
 	bag["strap"].visible = false
@@ -603,6 +721,7 @@ func _hide_chalk() -> void:
 			return
 	Meet.player.act("PickUp_Table", 0.9)
 	Meet.chalk_hidden = 50.0
+	Meet.dare("hide")
 	for m in _bucket:
 		m.visible = false
 	Meet.add_heat(0.3)
@@ -741,6 +860,16 @@ func _people() -> void:
 	_add(g, false)
 	Meet.risers[-1].join_meet()
 	Meet.risers[-1].wants_pull = false
+	# Strangers you talked into it on earlier visits are members now.
+	for pid in Meet.joined:
+		for d in People.PASSERS:
+			if d["id"] == pid:
+				var m: Dictionary = d.duplicate()
+				m["role"] = "Joined because of you"
+				_add(m, false)
+				Meet.risers[-1].recruited = true
+				Meet.risers[-1].join_meet()
+				Meet.risers[-1].wants_pull = false
 	_events.append({"at": randf_range(200.0, 520.0), "kind": People.RUMOURS[Meet.week() % People.RUMOURS.size()]})
 	var f: Dictionary = People.FINDS[Meet.week() % People.FINDS.size()]
 	if not Meet.owned.has(f["item"]):
@@ -785,11 +914,13 @@ func _process(dt: float) -> void:
 	if Meet.clock >= NIGHT:
 		Meet.clock = NIGHT
 		Meet.last_recap = "Last time: %d won, %d lost, standing %s, $%d in your pocket." % [Meet.results.filter(func(t): return t.begins_with("You beat")).size(), Meet.results.filter(func(t): return t.ends_with("beat you")).size(), Meet.standing().to_lower(), Meet.money]
+		if Meet.peak_heat >= 3:
+			Meet.dare("survive")
 		Meet.sfx("whistle")
 		Meet.hud.night_over(_summary(), "HALF PAST SEVEN")
 		return
 	for ev in _events.duplicate():
-		if Meet.clock >= ev["at"] and _ufo_state in ["", "gone"] and _drone == null and _gulls == null:
+		if Meet.clock >= ev["at"] and _ufo_state in ["", "gone"] and (_drone == null or _drone_t < 0.0) and _gulls == null:
 			_events.erase(ev)
 			call("start_" + ev["kind"])
 			break
@@ -863,7 +994,7 @@ func _process(dt: float) -> void:
 			_passer_pool = People.PASSERS.duplicate()
 			_passer_pool.shuffle()
 		var d: Dictionary = _passer_pool.pop_back()
-		if Meet.riser(d["id"]) == null:
+		if Meet.riser(d["id"]) == null and not Meet.joined.has(d["id"]):
 			var r: Node3D = RiserScript.new()
 			add_child(r)
 			r.setup(d, false, Vector3.ZERO)
@@ -889,7 +1020,7 @@ func _start_match() -> void:
 	if keen.is_empty() and randf() < 0.6:
 		return
 	for i in TABLES.size():
-		if table_busy(i) or i == _player_table:
+		if table_busy(i) or i == _player_table or _gone_tables.has(i):
 			continue
 		idle.shuffle()
 		keen.shuffle()
@@ -911,6 +1042,7 @@ func _end_match(m: Dictionary) -> void:
 	var loser: Node3D = b if a_wins else a
 	Meet.results.append("%s beat %s" % [winner.first_name, loser.first_name])
 	Meet.bump(winner.id, loser.id, 0.03 if loser.mind.grudge < 1.05 else -0.04)
+	evening.match_ended(m, winner)
 	winner.finish_pull(true)
 	loser.finish_pull(false)
 	for r in Meet.risers:
@@ -1054,7 +1186,10 @@ func _summary() -> String:
 			mates += 1
 		elif r.is_riser and r.bond() in ["irritated", "gone"]:
 			sour += 1
-	return "Harry calls it. Tables down, chalk swept, snacks gone.\n\nTonight: %d pulls won, %d lost. %d of the founders count you a mate; %d would rather you hadn't come. Standing with the club: %s (%d).\n\nSee you next Sunday." % [
+	var changed := ""
+	if not Meet.ripples.is_empty():
+		changed = "\n\nWhat you changed tonight:\n• " + "\n• ".join(Meet.ripples.slice(0, 7))
+	return "Harry calls it. Tables down, chalk swept, snacks gone." + changed + "\n\nTonight: %d pulls won, %d lost. %d of the founders count you a mate; %d would rather you hadn't come. Standing with the club: %s (%d).\n\nSee you next Sunday." % [
 		Meet.results.filter(func(t): return t.begins_with("You beat")).size(), Meet.results.filter(func(t): return t.ends_with("beat you")).size(),
 		mates, sour, Meet.standing(), Meet.reputation()]
 
@@ -1093,8 +1228,10 @@ func drop(items: Array, at: Vector3) -> void:
 		Meet.grant(item))
 
 func start_drone() -> void:
-	if _drone != null:
+	if _drone != null and _drone_t >= 0.0:
 		return
+	if _drone != null:
+		_drone.queue_free()
 	_drone = Node3D.new()
 	add_child(_drone)
 	Build.box(_drone, Vector3(0.5, 0.12, 0.5), Vector3.ZERO, Color(0.15, 0.15, 0.18))
@@ -1240,4 +1377,74 @@ func heat_rose(now: int) -> void:
 	elif now == 4:
 		warn("That's enough. You've been at it all night. One more thing and you're through that gate.")
 	elif now >= 5:
-		Meet.hud.night_over("Five stars. Harry, George and Kelvin walk you to the gate in a tight triangle. Tommy holds it open.\n\n\"Go home. Think about what you've done. The chalk bucket has feelings.\"")
+		gang_up("Five stars. It took four of them. You are carried to the gate by one limb each, and Tommy holds it open.\n\n\"Go home. Think about what you've done. The chalk bucket has feelings.\"")
+
+## The club has had enough: several of them close in on the player, and that is the night.
+func gang_up(text: String) -> void:
+	if _ganging:
+		return
+	_ganging = true
+	Meet.menu.close()
+	var p: Node3D = Meet.player
+	p.caught(6.0)
+	Meet.sfx("sting")
+	Meet.say("That's it. They're all coming for you at once.")
+	var crew: Array = []
+	for id in ["harry", "kelvin", "george", "erick", "phillip", "bhavya"]:
+		var r: Node = Meet.riser(id)
+		if r != null and r.state != "winded" and crew.size() < 4:
+			crew.append(r)
+	for i in crew.size():
+		var a := TAU * i / crew.size()
+		var r: Node = crew[i]
+		drop_match(r)
+		r._convo = {}
+		r._stare = 0.0
+		r.global_position = clear(p.global_position + Vector3(cos(a), 0, sin(a)) * 5.0)
+		r._noticed = true
+		r.say_aloud(["RIGHT.", "Get them.", "Enough!", "Hold their arms!"][i % 4], 3.0)
+		r.state = "walk"
+		r._goal = p.global_position + Vector3(cos(a), 0, sin(a)) * 0.9
+		r._then = "swarm"
+	p.toggle_view() if not p._orbit else null
+	var tw := create_tween()
+	tw.tween_interval(1.9)
+	tw.tween_callback(func():
+		for k in 4:
+			Fx.burst(self, p.global_position + Vector3(randf_range(-0.6, 0.6), 1.0, randf_range(-0.6, 0.6)), Vector3.UP, false, 14)
+		Meet.sfx("punch")
+		Meet.hud.shake()
+		p.act("Hit_Chest", 0.7))
+	tw.tween_interval(0.7)
+	tw.tween_callback(func():
+		Meet.sfx("punch", 0.0, 0.8)
+		Meet.sfx("ooh", -4.0)
+		Meet.hud.shake()
+		Fx.burst(self, p.global_position + Vector3(0, 1.2, 0), Vector3.UP, false, 24)
+		p.act("Death01", 30.0))
+	tw.tween_interval(2.6)
+	tw.tween_callback(func():
+		_ganging = false
+		Meet.hud.night_over(text))
+
+## A piece of the player's kit, left lying somewhere. People notice it.
+func leave_item(item: String, at: Vector3) -> void:
+	var th := Thing.new()
+	add_child(th)
+	th.position = ground(at)
+	var m: Node3D = Wear.model(item)
+	th.add_child(m)
+	m.position.y = 0.1
+	m.rotation.z = 1.2
+	th.setup("Pick your %s back up" % Meet.ITEMS[item]["name"].to_lower(), func():
+		th.remove_from_group("interact")
+		Meet.player.target = null
+		Meet.player.act("PickUp_Table", 0.8)
+		Meet.away.erase(item)
+		th.queue_free()
+		Meet.say("Back in your bag.")
+		Meet.touch_state())
+	for r in watchers(at, 9.0):
+		if randf() < 0.5:
+			r.say_aloud(["You can't just leave that there.", "Is that... yours?", "Somebody's going to trip on that.", "Finders keepers?"][randi() % 4], 3.5)
+			break

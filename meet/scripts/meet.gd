@@ -28,6 +28,14 @@ const ITEMS := {
 	"boom_box": {"name": "Tiny boom box", "slot": "hand", "how": "This week's find. Somewhere at the meet.", "hit": 1.5},
 	"gold_chalk": {"name": "Block of golden chalk", "slot": "hand", "how": "This week's find. Somewhere at the meet.", "hit": 1.1},
 	"cape": {"name": "Banner cape", "slot": "body", "how": "This week's find. Somewhere at the meet."},
+	"bracket_cup": {"name": "The Six O'Clock Cup", "slot": "hand", "how": "Win the six o'clock bracket.", "hit": 1.6},
+	"fish": {"name": "A fish", "slot": "hand", "how": "Borrow the fisherman's rod.", "hit": 1.7},
+	"sunnies": {"name": "Servo sunnies", "slot": "head", "how": "Lucky dip at the kebab van."},
+	"snag": {"name": "Sausage on a fork", "slot": "hand", "how": "Lucky dip at the kebab van.", "hit": 1.2},
+	"footy": {"name": "Somebody's football", "slot": "hand", "how": "It came over from the park.", "hit": 1.5},
+	"balloon": {"name": "A child's balloon", "slot": "hand", "how": "It drifts through, some nights.", "hit": 0.6},
+	"possum_hat": {"name": "Possum (asleep) on your head", "slot": "head", "how": "Be kind to the possum."},
+	"glow_stick": {"name": "Glow stick", "slot": "hand", "how": "Handed out when the lights go.", "hit": 1.1},
 	"medal": {"name": "Participation medal", "slot": "body", "how": "Lose three matches. It's the taking part."},
 }
 
@@ -68,6 +76,8 @@ var leads := {}                # things you have been told and can raise with so
 var used := {}                 # leads already raised
 var said: Array = []           # [{by, about, tone, told}]: what one founder said of another
 var paid := {}                 # reputation rewards George has already handed over
+var joined: Array = []          # strangers you talked into the club; they come back
+var sets := 0                  # dumbbell sets, ever: slow real strength
 var points := 0                # ladder points
 var dares_done := 0
 var last_recap := ""
@@ -84,6 +94,17 @@ var chalk := 0                 # handfuls to throw
 var heat := 0.0                # 0..5: how much trouble you are in with the club tonight
 var dares: Array = []          # tonight's three: [{text, event, arg, need, have, done}]
 var night_cash := 0
+var cone_with := ""             # who is wearing your traffic cone
+var errands := {}              # founder id -> "open" | "ready" | "done"
+var buzz := 0.0                # seconds of energy drink left
+var fish := 0
+var bracket := "open"          # open | in | semi | wait | final | out | won | none
+var dark := 0.0                # seconds the lights are out: nobody can see what you do
+var ripples: Array = []         # what you changed tonight
+var away := {}                 # kit you have put down somewhere tonight
+var pump := 0                  # sets of curls done tonight, up to 4
+var double_points := false
+var peak_heat := 0
 var planted := {}              # strap owner id -> whose bag you put it in
 var chalk_hidden := 0.0
 var told_peace := false
@@ -104,6 +125,8 @@ func _ready() -> void:
 	_action("photo", [KEY_P])
 	_action("chalk", [KEY_G, KEY_Q])
 	_action("eat", [KEY_R])
+	_action("item", [KEY_X])
+	_action("view", [KEY_C])
 	_action("mute", [KEY_M])
 	touch = DisplayServer.is_touchscreen_available()
 	if OS.get_cmdline_user_args().has("--selftest"):
@@ -141,7 +164,23 @@ func grant(item: String) -> bool:
 	changed.emit()
 	return true
 
+## Something in the world is different because of you. Shown as it happens and in the night's summary.
+func ripple(text: String, quiet := false) -> void:
+	if ripples.has(text):
+		return
+	ripples.append(text)
+	if not quiet:
+		say("↳ " + text)
+	else:
+		say("↳ " + text)
+
 func wear(item: String) -> void:
+	if away.has(item):
+		say("You put that down somewhere. Go and pick it up.")
+		return
+	if item == "cone" and cone_with != "":
+		say("%s is wearing it. Go and ask for it back." % riser(cone_with).first_name)
+		return
 	var slot: String = ITEMS[item]["slot"]
 	worn[slot] = "" if worn[slot] == item else item
 	save()
@@ -152,7 +191,7 @@ func hit_power() -> float:
 	return ITEMS[h].get("hit", 1.0) if h != "" else 1.0
 
 func strength() -> float:
-	return min(84.0, 62.0 + wins * 1.5) + (3.0 if not straps.is_empty() else 0.0)
+	return min(84.0, 62.0 + wins * 1.5) + (3.0 if not straps.is_empty() else 0.0) + min(6.0, sets * 0.2) + pump * 1.5
 
 ## Start a fresh night.
 func new_night() -> void:
@@ -165,6 +204,17 @@ func new_night() -> void:
 	chalk = 0
 	chalked = false
 	heat = 0.0
+	cone_with = ""
+	errands = {}
+	buzz = 0.0
+	fish = 0
+	bracket = "open"
+	dark = 0.0
+	ripples = []
+	away = {}
+	pump = 0
+	peak_heat = 0
+	double_points = false
 	night_cash = 0
 	planted = {}
 	chalk_hidden = 0.0
@@ -180,7 +230,7 @@ func save() -> void:
 			bonds[r.id] = r.mind.to_data()
 	var data := {"owned": owned, "worn": worn, "bonds": bonds, "beaten": beaten, "notes": notes, "visits": visits,
 		"wins": wins, "losses": losses, "heckles": heckles, "snacks_given": snacks_given, "moments": moments, "seen_ufo": seen_ufo,
-		"points": points, "dares_done": dares_done, "last_recap": last_recap, "muted": muted, "flags": flags, "player_name": player_name, "money": money, "leads": leads, "used": used, "said": said, "paid": paid, "ties": ties, "tips": tips, "straps_lifted": straps_lifted, "recruits": recruits, "dusted": dusted}
+		"joined": joined, "sets": sets, "points": points, "dares_done": dares_done, "last_recap": last_recap, "muted": muted, "flags": flags, "player_name": player_name, "money": money, "leads": leads, "used": used, "said": said, "paid": paid, "ties": ties, "tips": tips, "straps_lifted": straps_lifted, "recruits": recruits, "dusted": dusted}
 	var f := FileAccess.open(SAVE, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(data))
@@ -210,6 +260,8 @@ func load_save() -> void:
 	seen_ufo = bool(data.get("seen_ufo", false))
 	flags = data.get("flags", {})
 	points = int(data.get("points", 0))
+	sets = int(data.get("sets", 0))
+	joined = data.get("joined", [])
 	dares_done = int(data.get("dares_done", 0))
 	last_recap = String(data.get("last_recap", ""))
 	muted = bool(data.get("muted", false))
@@ -290,9 +342,23 @@ func tie(a: String, b: String) -> float:
 
 ## Nudge how two people get on. Small things add up over a night, and over many nights.
 func bump(a: String, b: String, d: float) -> void:
-	if a == b or a.begins_with("p_") or b.begins_with("p_") or a == "alien" or b == "alien":
+	if a == b or a.begins_with("p_") or b.begins_with("p_") or a.begins_with("g_") or b.begins_with("g_") or a == "alien" or b == "alien":
 		return
-	ties[_key(a, b)] = clamp(tie(a, b) + d, -1.0, 1.0)
+	var before := tie(a, b)
+	var now: float = clamp(before + d, -1.0, 1.0)
+	ties[_key(a, b)] = now
+	# Say so when a friendship or a feud crosses a line.
+	if riser(a) != null and riser(b) != null and absf(d) >= 0.1:
+		var na: String = riser(a).first_name
+		var nb: String = riser(b).first_name
+		if before >= 0.0 and now < 0.0:
+			ripple("%s and %s aren't speaking any more." % [na, nb])
+		elif before < 0.0 and now >= 0.0:
+			ripple("%s and %s have patched it up." % [na, nb])
+		elif before <= 0.6 and now > 0.6:
+			ripple("%s and %s are thick as thieves now." % [na, nb])
+		elif before <= 0.35 and now > 0.35:
+			ripple("%s and %s are getting on better than before." % [na, nb])
 
 func tie_word(v: float) -> String:
 	if v > 0.6:
@@ -332,38 +398,56 @@ func week() -> int:
 # --- Tonight's dares -----------------------------------------------------------------------------
 
 const DARE_POOL := [
-	{"text": "Get chalk on %s", "event": "chalk", "who": true},
-	{"text": "Beat %s at the table", "event": "win", "who": true},
-	{"text": "Get %s to like you", "event": "like", "who": true},
-	{"text": "Win two pulls", "event": "win", "need": 2},
-	{"text": "Talk a stranger into a pull", "event": "recruit"},
-	{"text": "Lift a strap without being seen", "event": "strap"},
-	{"text": "Pet a dog", "event": "pet"},
-	{"text": "Get someone to dance with you", "event": "dance"},
-	{"text": "Land a high five", "event": "five"},
-	{"text": "Strap in a pull cleanly", "event": "strapin"},
-	{"text": "Carry a message between two founders", "event": "carry"},
-	{"text": "Make $25 tonight", "event": "cash", "cash": 25},
-	{"text": "Put the traffic cone on someone's head", "event": "cone"},
-	{"text": "Buy someone a drink", "event": "round"},
-	{"text": "Plant a strap in the wrong bag", "event": "plant"},
-	{"text": "See off the seagulls", "event": "gulls"},
+	# Ordinary.
+	{"text": "Beat %s at the table", "event": "win", "who": true, "tier": 0},
+	{"text": "Get %s to like you", "event": "like", "who": true, "tier": 0},
+	{"text": "Win two pulls", "event": "win", "need": 2, "tier": 0},
+	{"text": "Talk a stranger into a pull", "event": "recruit", "tier": 0},
+	{"text": "Pet a dog", "event": "pet", "tier": 0},
+	{"text": "Land a high five", "event": "five", "tier": 0},
+	{"text": "Strap in a pull cleanly", "event": "strapin", "tier": 0},
+	{"text": "Run an errand for a founder", "event": "errand", "tier": 0},
+	{"text": "Be in the group photo", "event": "photo", "tier": 0},
+	{"text": "Buy someone a drink", "event": "round", "tier": 0},
+	{"text": "Catch a fish", "event": "fish", "tier": 0},
+	{"text": "Carry all three tables at pack-down", "event": "pack", "tier": 0},
+	# Cheeky.
+	{"text": "Get chalk on %s", "event": "chalk", "who": true, "tier": 1},
+	{"text": "Get someone to dance with you", "event": "dance", "tier": 1},
+	{"text": "Carry a message between two founders", "event": "carry", "tier": 1},
+	{"text": "Make $25 tonight", "event": "cash", "cash": 25, "tier": 1},
+	{"text": "Win a bet on someone else's pull", "event": "bet", "tier": 1},
+	{"text": "Lift a strap without being seen", "event": "strap", "tier": 1},
+	{"text": "Talk your way out of a confrontation", "event": "talkdown", "tier": 1},
+	{"text": "See off the seagulls", "event": "gulls", "tier": 1},
+	{"text": "Squeak, bonk or zap three people with what you're holding", "event": "item", "need": 3, "tier": 1},
+	# Unhinged.
+	{"text": "Put the traffic cone on %s's head", "event": "cone", "who": true, "tier": 2},
+	{"text": "Recruit a stranger, then chalk them", "event": "recruit_chalk", "tier": 2},
+	{"text": "Plant a strap in the wrong bag", "event": "plant", "tier": 2},
+	{"text": "Hide the chalk bucket", "event": "hide", "tier": 2},
+	{"text": "Let a dog off its lead", "event": "dog", "tier": 2},
+	{"text": "Slap someone with a fish", "event": "fishslap", "tier": 2},
+	{"text": "Lift a wallet without being seen", "event": "wallet", "tier": 2},
+	{"text": "Hit three stars of heat and still be here at 7:30", "event": "survive", "tier": 2},
+	{"text": "Make two founders fall out", "event": "feud", "tier": 2},
+	{"text": "Lose a scrap. On purpose or otherwise.", "event": "floored", "tier": 2},
+	{"text": "Send a lost tourist through the middle of the meet", "event": "tourist", "tier": 2},
 ]
+const TIER_NAME := ["", "cheeky", "unhinged"]
+const TIER_PAY := [5, 8, 12]
 
+## One ordinary, one cheeky, one unhinged, every night.
 func new_dares() -> void:
-	var pool := DARE_POOL.duplicate()
-	pool.shuffle()
 	var names := ["harry", "george", "phillip", "bhavya", "kelvin", "tommy", "luie", "erick"]
 	names.shuffle()
 	dares = []
-	var seen := {}
-	for d in pool:
-		if seen.has(d["event"]) or dares.size() >= 3:
-			continue
-		seen[d["event"]] = true
+	for tier in 3:
+		var pool := DARE_POOL.filter(func(d): return d["tier"] == tier)
+		var d: Dictionary = pool[randi() % pool.size()]
 		var who: String = names.pop_back() if d.get("who", false) else ""
 		var label: String = d["text"] % who.capitalize() if who != "" else d["text"]
-		dares.append({"text": label, "event": d["event"], "arg": who, "need": int(d.get("need", 1)), "have": 0, "done": false, "cash": int(d.get("cash", 0))})
+		dares.append({"text": label, "event": d["event"], "arg": who, "need": int(d.get("need", 1)), "have": 0, "done": false, "cash": int(d.get("cash", 0)), "tier": tier})
 
 ## Something happened that a dare might be about.
 func dare(event: String, arg := "") -> void:
@@ -380,9 +464,10 @@ func dare(event: String, arg := "") -> void:
 				continue
 		d["done"] = true
 		dares_done += 1
-		money += 5
+		var paid: int = TIER_PAY[int(d.get("tier", 0))]
+		money += paid
 		sfx("dare")
-		say("Dare done: %s. +$5." % d["text"])
+		say("Dare done: %s. +$%d." % [d["text"], paid])
 		if dares.all(func(x): return x["done"]):
 			money += 10
 			say("All three dares done tonight. +$10, and the club is impressed.")
@@ -402,9 +487,16 @@ func add_heat(x: float, why := "") -> void:
 	var before := stars()
 	heat = clamp(heat + x, 0.0, 5.0)
 	var now := stars()
+	peak_heat = max(peak_heat, now)
 	if now > before:
 		sfx("heat")
 		say("Heat %s%s%s" % ["★".repeat(now), "☆".repeat(5 - now), ("  " + why) if why != "" else ""])
 		if main != null:
 			main.heat_rose(now)
 	changed.emit()
+
+## A founder's errand moves on a step.
+func errand(id: String, state: String) -> void:
+	if errands.get(id, "") in ["open", "ready"] or state == "open":
+		errands[id] = state
+		changed.emit()

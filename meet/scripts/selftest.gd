@@ -35,6 +35,7 @@ func _run() -> void:
 	Meet.wipe()
 	await wait(0.5)
 	await shot("00_title")
+	Meet.main.evening._moment = 99999.0
 	Meet.hud._name_box.text = "Sam"
 	Meet.hud._begin()
 	var p: Node3D = Meet.player
@@ -43,6 +44,7 @@ func _run() -> void:
 	stand(Vector3(0, 0, 9.5), Vector3(0, 0, 0))
 	await wait(14.0)
 	await shot("02_plaza")
+	check(Meet.dares[0]["tier"] == 0 and Meet.dares[2]["tier"] == 2, "one ordinary, one cheeky, one unhinged")
 	check(Meet.dares.size() == 3, "three dares for tonight: %s" % ", ".join(Meet.dares.map(func(d): return d["text"])))
 	check(Meet.riser(preload("res://scripts/people.gd").GUESTS[Meet.week() % 5]["id"]) != null, "this week's guest is here")
 	for n in ["puff", "punch", "grip", "win", "coin", "murmur", "music", "bark", "gull", "ufo"]:
@@ -150,7 +152,7 @@ func _run() -> void:
 	harry2.square_up()
 	Meet.modal = false
 	await wait(0.8)
-	check(harry2.mood_level() < 0 and harry2._name_label.text.contains("you"), "his name now reads: %s" % harry2._name_label.text.replace("\n", " "))
+	check(harry2.mood_level() < 0 and harry2._name_label.text != harry2.riser_name, "his name now reads: %s" % harry2._name_label.text.replace("\n", " "))
 	harry2.interact()
 	check(harry2.state != "scrap", "putting your hands up in a scrap ends it, once")
 	harry2.interact()
@@ -262,6 +264,34 @@ func _run() -> void:
 	stand(Meet.main._bags["luie"]["at"] + Vector3(0.8, 0, 0), Meet.main._bags["luie"]["at"])
 	Meet.main._wallet_take("luie")
 	check(Meet.money > m0 + 2 and luie.wallet_taken > 0, "a wallet can be lifted when nobody is looking ($%d)" % Meet.money)
+	var ek: Node3D = Meet.riser("erick")
+	ek.state = "idle"
+	ek._vs_player = false
+	stand(Meet.main._bags["erick"]["at"] + Vector3(0.8, 0, 0), Meet.main._bags["erick"]["at"])
+	ek.global_position = p.global_position + Vector3(2.0, 0, 0)
+	var fe: float = ek.mind.feeling()
+	Meet.heat = 0.0
+	Meet.main._wallet_take("erick")
+	check(ek.state == "confront" and ek.mind.feeling() < fe - 0.2 and Meet.heat >= 1.0, "caught in Erick's wallet: he comes for you and thinks far worse of you (%.2f -> %.2f)" % [fe, ek.mind.feeling()])
+	ek.idle()
+	Meet.heat = 0.0
+	for r in Meet.risers:
+		if r.is_riser:
+			r.idle()
+			r.global_position = Meet.main.ground(Vector3(randf_range(-4, 4), 0, randf_range(5, 8)))
+	stand(Meet.main.TABLES[0] + Vector3(-1.1, 0, 0), Meet.main.TABLES[0])
+	Meet.main._matches.clear()
+	Meet.main._call_out(0)
+	var came := false
+	for i in 60:
+		await wait(0.25)
+		if Meet.table.active():
+			came = true
+			break
+	check(came, "calling for a pull at an empty table brings somebody over")
+	if came:
+		Meet.table._finish(true)
+		Meet.table._close()
 	var st0: float = Meet.stamina
 	Meet.stamina = 20.0
 	Meet.main._buy_drink()
@@ -511,6 +541,134 @@ func _run() -> void:
 		print("  note  no dog walker came past in time")
 	Meet.heat = 0.0
 
+	# The evening's set pieces, and things that just happen.
+	var ev: Node = Meet.main.evening
+	Meet.heat = 0.0
+	for name in ["fiver", "phone", "footy", "blackout", "conga", "balloon", "double", "possum", "feast", "sprinkler", "pushups", "sneeze"]:
+		ev.call("_m_" + name)
+		await wait(0.15)
+	check(Meet.dark > 0.0 and Meet.main.watchers(p.global_position).is_empty(), "in a power cut nobody can see what you do")
+	check(ev._possum != null and Meet.double_points, "moments happen: a possum on the snacks, double points called")
+	Meet.dark = 0.01
+	ev._m_wallet()
+	ev._m_star()
+	Meet.menu.close()
+	ev._van()
+	await wait(0.2)
+	await shot("15c_van")
+	Meet.menu.close()
+	Meet.money = 30
+	Meet.main.force_match("bhavya", "george")
+	for r in [Meet.riser("bhavya"), Meet.riser("george")]:
+		r._legs = ["seat"]
+		r._next_leg()
+	var m_bet: Dictionary = {}
+	for i in 60:
+		await wait(0.25)
+		for i2 in 3:
+			if not ev._match_at(i2).is_empty():
+				m_bet = ev._match_at(i2)
+		if not m_bet.is_empty():
+			break
+	if not m_bet.is_empty():
+		m_bet["bet"] = {"on": m_bet["a"], "amt": 5, "pays": 9}
+		var cash0: int = Meet.money
+		ev.match_ended(m_bet, m_bet["a"])
+		check(Meet.money == cash0 + 9, "a bet on someone else's pull pays out")
+		m_bet.erase("bet")
+	else:
+		print("  note  no pull got going to bet on")
+	Meet.bracket = "open"
+	Meet.clock = 100.0
+	ev._enter()
+	check(Meet.bracket == "in", "you can enter the six o'clock bracket")
+	Meet.clock = 361.0
+	await wait(1.0)
+	check(Meet.bracket == "semi" and ev._seat.is_in_group("interact"), "at six the bracket is drawn and your seat is waiting")
+	ev._sit()
+	for i in 6000:
+		if t.phase == "done":
+			break
+		if t.phase == "go" and absf(t.pos - t.zone) < t.width * 0.3 and t._zone.visible:
+			t.tap()
+		t.tick(0.016)
+	t._close()
+	check(Meet.bracket in ["wait", "final", "out", "lost_wait", "npc_final"], "the semi-final is played (%s)" % Meet.bracket)
+	Meet.bracket = "none"
+	ev._photo = "done"
+	ev._start_pack()
+	var carried := 0
+	for n in get_tree().get_nodes_in_group("interact"):
+		if n.has_method("prompt") and n.prompt().begins_with("Carry this table"):
+			n.interact()
+			carried += 1
+	check(carried == 3 and ev._packed == 3, "the tables can be carried out at pack-down")
+	var lu: Node3D = Meet.riser("luie")
+	if lu.coned:
+		check(lu.cone_off() != "" and Meet.cone_with == "", "the cone can be taken back")
+	var ax: Dictionary = tommy.axes()
+	check(tommy.attitude() != "", "Tommy's attitude: %s (trust %.2f, respect %.2f, fun %.2f)" % [tommy.attitude(), ax["trust"], ax["respect"], ax["fun"]])
+	Meet.heat = 0.0
+
+	# Using what's in your hand.
+	Meet.owned["rubber_chicken"] = true
+	Meet.worn["hand"] = "rubber_chicken"
+	var geo: Node3D = Meet.riser("george")
+	geo.state = "idle"
+	geo.global_position = Meet.main.ground(Vector3(-12, 0, 16))
+	stand(geo.global_position + Vector3(0, 0, 1.5), geo.global_position)
+	p._cooldown = 0.0
+	p.use_item()
+	check(geo._asked.get("prank", 0) == 1, "the chicken can be squeaked at someone")
+	Meet.worn["hand"] = ""
+	Meet.stamina = 50.0
+	await wait(2.0)
+	check(Meet.stamina < 53.0, "stamina comes back slowly on its own (%.1f)" % Meet.stamina)
+
+	# Kit put down, ripples, the boom box.
+	Meet.owned["boom_box"] = true
+	Meet.worn["hand"] = "boom_box"
+	p._cooldown = 0.0
+	p.use_item()
+	check(Meet.audio.track == 1, "the boom box changes what's playing")
+	Meet.hud._bag.visible = true
+	Meet.modal = true
+	Meet.hud._put_down("hand")
+	check(Meet.away.has("boom_box") and Meet.worn["hand"] == "", "kit can be put down on the ground")
+	for n in get_tree().get_nodes_in_group("interact"):
+		if n.has_method("prompt") and n.prompt().begins_with("Pick your"):
+			n.interact()
+	check(not Meet.away.has("boom_box"), "and picked up again")
+	check(not Meet.ripples.is_empty(), "what you change is noted: %s" % " | ".join(Meet.ripples.slice(0, 3)))
+	await wait(1.0)
+
+	# Sitting down, weights, and looking at yourself.
+	p.sit(Vector3(9, 0.5, 20), PI)
+	ev._join = 0.1
+	var joined := false
+	for i in 80:
+		await wait(0.25)
+		if Meet.menu.active():
+			joined = true
+			break
+		if ev._join > 1.0 and not Meet.risers.any(func(r): return r._then == "bench"):
+			ev._join = 0.1
+	await shot("15d_bench")
+	check(joined, "sit on the bench and somebody comes to sit with you")
+	Meet.menu.close()
+	p.stand_up()
+	Meet.stamina = 100.0
+	Meet.main._lift()
+	await wait(1.5)
+	await shot("15e_curls")
+	await wait(2.2)
+	check(Meet.pump == 1 and Meet.stamina < 70.0, "a set with the dumbbells costs stamina and pumps you up")
+	p.toggle_view()
+	await wait(0.8)
+	await shot("15f_view")
+	check(p._orbit, "the camera can swing round to look at you")
+	p.toggle_view()
+
 	# Friendly things.
 	var tm: Node3D = Meet.riser("tommy")
 	tm.state = "idle"
@@ -525,6 +683,15 @@ func _run() -> void:
 	Meet.menu._news()
 	Meet.menu._favour("word")
 	Meet.menu.close()
+
+	# Five stars.
+	Meet.heat = 4.9
+	stand(Vector3(0, 0, 6), Vector3(0, 0, 0))
+	Meet.add_heat(0.2, "test")
+	await wait(2.4)
+	await shot("17_ganged_up")
+	await wait(4.0)
+	check(Meet.hud._over.visible, "five stars: they close in on you, and the night is over")
 
 	# Remembered.
 	Meet.save()

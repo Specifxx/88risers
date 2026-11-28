@@ -8,7 +8,9 @@ const COLORS := {"foam_finger": Color(0.15, 0.35, 0.95), "rubber_chicken": Color
 	"katana_88": Color(0.72, 0.6, 0.42), "cone": Color(1.0, 0.45, 0.1), "chef_hat": Color(0.97, 0.97, 0.97), "antennae": Color(0.3, 0.9, 0.4),
 	"lion_mask": Color(0.93, 0.72, 0.28), "belt": Color(0.5, 0.35, 0.15), "medal": Color(0.2, 0.4, 0.9), "strap_scarf": Color(0.9, 0.15, 0.15),
 	"clipboard": Color(0.45, 0.3, 0.18), "ghost": Color(0.9, 0.9, 0.92), "raygun": Color(1.0, 0.4, 0.9), "prop_hat": Color(0.9, 0.2, 0.2), "golden_chip": Color(1.0, 0.82, 0.25),
-	"dare_sash": Color(0.93, 0.72, 0.28), "sweatband": Color(0.95, 0.2, 0.3), "boom_box": Color(0.3, 0.3, 0.35), "gold_chalk": Color(1.0, 0.85, 0.3), "cape": Color(0.7, 0.1, 0.12)}
+	"dare_sash": Color(0.93, 0.72, 0.28), "sweatband": Color(0.95, 0.2, 0.3), "boom_box": Color(0.3, 0.3, 0.35), "gold_chalk": Color(1.0, 0.85, 0.3), "cape": Color(0.7, 0.1, 0.12),
+	"bracket_cup": Color(1.0, 0.82, 0.25), "fish": Color(0.55, 0.7, 0.8), "sunnies": Color(0.1, 0.1, 0.12), "snag": Color(0.7, 0.35, 0.2),
+	"footy": Color(0.75, 0.3, 0.15), "balloon": Color(0.95, 0.2, 0.3), "possum_hat": Color(0.5, 0.48, 0.45), "glow_stick": Color(0.3, 1.0, 0.5)}
 
 static func dress(figure: Node3D, worn: Dictionary) -> void:
 	var skel: Skeleton3D = figure.find_child("Skeleton3D", true, false)
@@ -122,6 +124,34 @@ static func model(item: String) -> Node3D:
 		"cape":
 			Build.box(n, Vector3(0.46, 0.75, 0.03), Vector3(0, -0.12, -0.17), Color(0.7, 0.1, 0.12))
 			Asia.quad(n, Vector2(0.26, 0.26), Vector3(0, 0.0, -0.19), PI, "ui/emblem.png", true)
+		"bracket_cup":
+			Build.cyl(n, 0.11, 0.05, 0.2, Vector3(0, 0.34, 0), Color(1.0, 0.82, 0.25), 12).material_override = Build.mat(Color(1.0, 0.82, 0.25), 0.5)
+			Build.cyl(n, 0.02, 0.02, 0.14, Vector3(0, 0.17, 0), Color(1.0, 0.82, 0.25), 6)
+			Build.cyl(n, 0.08, 0.09, 0.04, Vector3(0, 0.09, 0), Color(0.2, 0.15, 0.1), 10)
+		"fish":
+			Build.sphere(n, 0.09, Vector3(0, 0.3, 0), Color(0.55, 0.7, 0.8)).scale = Vector3(0.5, 2.4, 1.0)
+			Build.box(n, Vector3(0.02, 0.12, 0.16), Vector3(0, 0.55, 0), Color(0.4, 0.55, 0.7))
+			Build.sphere(n, 0.018, Vector3(0.04, 0.16, 0.03), Color(0.05, 0.05, 0.05))
+		"sunnies":
+			for sx in [-1.0, 1.0]:
+				Build.box(n, Vector3(0.09, 0.05, 0.02), Vector3(sx * 0.06, 0.08, 0.13), Color(0.08, 0.08, 0.1))
+			Build.box(n, Vector3(0.24, 0.012, 0.02), Vector3(0, 0.1, 0.13), Color(0.9, 0.9, 0.9))
+		"snag":
+			Build.cyl(n, 0.008, 0.008, 0.4, Vector3(0, 0.22, 0), Color(0.75, 0.75, 0.78), 5)
+			Build.cyl(n, 0.035, 0.035, 0.2, Vector3(0, 0.44, 0), Color(0.7, 0.35, 0.2), 8).rotation.z = PI / 2.0
+		"footy":
+			Build.sphere(n, 0.12, Vector3(0, 0.22, 0), Color(0.75, 0.3, 0.15)).scale = Vector3(0.75, 1.3, 0.75)
+		"balloon":
+			Build.cyl(n, 0.004, 0.004, 0.7, Vector3(0, 0.4, 0), Color(0.9, 0.9, 0.9), 4)
+			Build.sphere(n, 0.17, Vector3(0, 0.9, 0), Color(0.95, 0.2, 0.3)).scale = Vector3(1, 1.2, 1)
+		"possum_hat":
+			Build.sphere(n, 0.13, Vector3(0, 0.22, 0), Color(0.5, 0.48, 0.45)).scale = Vector3(1.2, 0.7, 1.5)
+			Build.sphere(n, 0.07, Vector3(0, 0.22, 0.17), Color(0.55, 0.53, 0.5))
+			Build.cyl(n, 0.012, 0.02, 0.3, Vector3(0.1, 0.16, -0.18), Color(0.3, 0.28, 0.27), 5).rotation.x = 1.2
+			for sx in [-1.0, 1.0]:
+				Build.sphere(n, 0.025, Vector3(sx * 0.05, 0.29, 0.17), Color(0.4, 0.38, 0.36))
+		"glow_stick":
+			Build.cyl(n, 0.018, 0.018, 0.4, Vector3(0, 0.25, 0), Color(0.3, 1.0, 0.5), 6).material_override = Build.mat(Color(0.3, 1.0, 0.5), 2.0)
 		"medal":
 			Build.box(n, Vector3(0.03, 0.2, 0.01), Vector3(0, 0.02, 0.16), Color(0.2, 0.4, 0.9))
 			Build.cyl(n, 0.05, 0.05, 0.012, Vector3(0, -0.1, 0.16), Color(0.93, 0.72, 0.28), 10).rotation.x = PI / 2.0
