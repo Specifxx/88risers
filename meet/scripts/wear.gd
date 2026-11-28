@@ -10,7 +10,9 @@ const COLORS := {"foam_finger": Color(0.15, 0.35, 0.95), "rubber_chicken": Color
 	"clipboard": Color(0.45, 0.3, 0.18), "ghost": Color(0.9, 0.9, 0.92), "raygun": Color(1.0, 0.4, 0.9), "prop_hat": Color(0.9, 0.2, 0.2), "golden_chip": Color(1.0, 0.82, 0.25),
 	"dare_sash": Color(0.93, 0.72, 0.28), "sweatband": Color(0.95, 0.2, 0.3), "boom_box": Color(0.3, 0.3, 0.35), "gold_chalk": Color(1.0, 0.85, 0.3), "cape": Color(0.7, 0.1, 0.12),
 	"bracket_cup": Color(1.0, 0.82, 0.25), "fish": Color(0.55, 0.7, 0.8), "sunnies": Color(0.1, 0.1, 0.12), "snag": Color(0.7, 0.35, 0.2),
-	"footy": Color(0.75, 0.3, 0.15), "balloon": Color(0.95, 0.2, 0.3), "possum_hat": Color(0.5, 0.48, 0.45), "glow_stick": Color(0.3, 1.0, 0.5)}
+	"footy": Color(0.75, 0.3, 0.15), "balloon": Color(0.95, 0.2, 0.3), "possum_hat": Color(0.5, 0.48, 0.45), "glow_stick": Color(0.3, 1.0, 0.5),
+	"harmonica": Color(0.75, 0.75, 0.8), "catch_ball": Color(0.2, 0.75, 0.6), "gripling": Color(0.95, 0.6, 0.2), "golden_grip": Color(1.0, 0.82, 0.25),
+	"signed_band": Color(0.9, 0.1, 0.1), "giant_band": Color(0.2, 0.2, 0.25), "kaiju_claw": Color(0.15, 0.5, 0.45)}
 
 static func dress(figure: Node3D, worn: Dictionary) -> void:
 	var skel: Skeleton3D = figure.find_child("Skeleton3D", true, false)
@@ -72,7 +74,7 @@ static func model(item: String) -> Node3D:
 			Build.sphere(n, 0.19, Vector3(0, 0.42, 0), Color(0.97, 0.97, 0.97))
 		"antennae":
 			for sx in [-1.0, 1.0]:
-				Build.cyl(n, 0.01, 0.015, 0.32, Vector3(sx * 0.08, 0.34, 0), Color(0.3, 0.9, 0.4), 4)
+				Build.cyl(n, 0.01, 0.015, 0.32, Vector3(sx * 0.08, 0.34, 0), Color(0.3, 0.9, 0.4), 4).material_override = Build.mat(Color(0.3, 0.9, 0.4), 0.7)
 				Build.sphere(n, 0.045, Vector3(sx * 0.08, 0.52, 0), Color(1.0, 0.4, 0.9), 1.5)
 		"lion_mask":
 			Build.box(n, Vector3(0.3, 0.32, 0.04), Vector3(0, 0.05, 0.19), Color(0.93, 0.72, 0.28))
@@ -152,8 +154,56 @@ static func model(item: String) -> Node3D:
 				Build.sphere(n, 0.025, Vector3(sx * 0.05, 0.29, 0.17), Color(0.4, 0.38, 0.36))
 		"glow_stick":
 			Build.cyl(n, 0.018, 0.018, 0.4, Vector3(0, 0.25, 0), Color(0.3, 1.0, 0.5), 6).material_override = Build.mat(Color(0.3, 1.0, 0.5), 2.0)
+		"harmonica":
+			Build.box(n, Vector3(0.18, 0.05, 0.05), Vector3(0, 0.12, 0.02), Color(0.78, 0.78, 0.82))
+			Build.box(n, Vector3(0.16, 0.02, 0.055), Vector3(0, 0.12, 0.02), Color(0.5, 0.1, 0.1))
+		"catch_ball":
+			Build.sphere(n, 0.09, Vector3(0, 0.14, 0.02), Color(0.2, 0.75, 0.6))
+			Build.cyl(n, 0.092, 0.092, 0.02, Vector3(0, 0.14, 0.02), Color(0.1, 0.1, 0.12), 12)
+			Build.sphere(n, 0.025, Vector3(0, 0.14, 0.11), Color(0.95, 0.95, 0.95))
+		"gripling":
+			var g := gripling()
+			n.add_child(g)
+			g.position = Vector3(0.24, 0.22, 0.0)
+			g.scale = Vector3(0.55, 0.55, 0.55)
+		"golden_grip":
+			# A plated gauntlet with a clenched fist and a wrist guard: a puller's glove, in gold.
+			var gold := Build.mat(Color(1.0, 0.82, 0.25), 0.55)
+			Build.cyl(n, 0.075, 0.095, 0.26, Vector3(0, -0.04, 0), Color(1.0, 0.82, 0.25), 10).material_override = gold
+			Build.box(n, Vector3(0.17, 0.15, 0.13), Vector3(0, 0.15, 0.01), Color(1.0, 0.82, 0.25)).material_override = gold
+			for i in 4:
+				Build.box(n, Vector3(0.035, 0.07, 0.11), Vector3(-0.06 + i * 0.04, 0.24, 0.02), Color(0.95, 0.75, 0.2)).material_override = gold
+			Build.box(n, Vector3(0.05, 0.1, 0.05), Vector3(0.1, 0.16, 0.05), Color(0.95, 0.75, 0.2)).material_override = gold
+			Build.cyl(n, 0.1, 0.1, 0.03, Vector3(0, 0.07, 0), Color(0.7, 0.5, 0.1), 10)
+			Asia.quad(n, Vector2(0.11, 0.11), Vector3(0, 0.15, 0.08), 0.0, "ui/emblem.png", true, 0.4)
+		"signed_band":
+			Build.cyl(n, 0.125, 0.125, 0.06, Vector3(0, 0.14, 0.0), Color(0.9, 0.1, 0.1), 12)
+			Build.box(n, Vector3(0.1, 0.03, 0.01), Vector3(0, 0.14, 0.126), Color(0.05, 0.05, 0.05))
+		"giant_band":
+			Build.cyl(n, 0.2, 0.2, 0.14, Vector3(0, -0.34, 0.0), Color(0.2, 0.2, 0.25), 12)
+			Build.cyl(n, 0.205, 0.205, 0.03, Vector3(0, -0.34, 0.0), Color(0.9, 0.1, 0.1), 12)
+		"kaiju_claw":
+			var cc := Color(0.15, 0.5, 0.45)
+			Build.cyl(n, 0.06, 0.1, 0.5, Vector3(0, 0.3, 0), cc, 8)
+			Build.cyl(n, 0.0, 0.1, 0.5, Vector3(0.07, 0.75, 0), cc * 1.2, 6).rotation.z = -0.25
+			Build.cyl(n, 0.0, 0.08, 0.4, Vector3(-0.08, 0.7, 0), cc * 0.9, 6).rotation.z = 0.35
 		"medal":
 			Build.box(n, Vector3(0.03, 0.2, 0.01), Vector3(0, 0.02, 0.16), Color(0.2, 0.4, 0.9))
 			Build.cyl(n, 0.05, 0.05, 0.012, Vector3(0, -0.1, 0.16), Color(0.93, 0.72, 0.28), 10).rotation.x = PI / 2.0
 	return n
 
+
+## A Gripling: round, orange, two stubby legs, and one arm far too big for it.
+static func gripling() -> Node3D:
+	var n := Node3D.new()
+	var c := Color(0.95, 0.6, 0.2)
+	Build.sphere(n, 0.2, Vector3(0, 0.26, 0), c)
+	for sx in [-1.0, 1.0]:
+		Build.sphere(n, 0.045, Vector3(sx * 0.08, 0.34, 0.16), Color(1, 1, 1))
+		Build.sphere(n, 0.022, Vector3(sx * 0.08, 0.34, 0.2), Color(0.05, 0.05, 0.05))
+		Build.box(n, Vector3(0.07, 0.1, 0.09), Vector3(sx * 0.09, 0.05, 0.02), c * 0.8)
+		Build.cyl(n, 0.0, 0.035, 0.12, Vector3(sx * 0.1, 0.5, 0), c * 0.85, 5)
+	Build.cyl(n, 0.07, 0.11, 0.3, Vector3(0.27, 0.3, 0.02), c * 0.9, 8).rotation.z = -0.9
+	Build.sphere(n, 0.11, Vector3(0.4, 0.44, 0.02), c * 0.9)
+	Build.cyl(n, 0.03, 0.03, 0.12, Vector3(-0.2, 0.26, 0), c * 0.8, 6).rotation.z = 1.3
+	return n

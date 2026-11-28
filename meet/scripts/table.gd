@@ -14,7 +14,7 @@ const MOVES := {
 	"kings": ["King's Move", "the gold zone flickers out of sight", Color(0.95, 0.76, 0.3)],
 	"fake": ["Fake-Out", "the gold zone jumps when you get close", Color(0.49, 1.0, 0.69)],
 }
-const WHO := {"harry": "toproll", "george": "hook", "phillip": "hydraulic", "bhavya": "press", "kelvin": "side", "tommy": "kings", "luie": "fake", "erick": "chain", "p_old": "chain"}
+const WHO := {"harry": "toproll", "george": "hook", "phillip": "hydraulic", "bhavya": "press", "kelvin": "side", "tommy": "kings", "luie": "fake", "erick": "chain", "p_old": "chain", "kaiju": "chain"}
 const CHAIN := ["toproll", "hook", "press"]
 
 var rival: Node = null
@@ -150,7 +150,7 @@ func start(r: Node) -> void:
 	_grip.visible = true
 	_root.visible = true
 	UI.open_modal()
-	_table = Meet.main.seat_player(r)
+	_table = Meet.main.seat_player(r) if r.id != "kaiju" else -1
 	phase = "ready"
 	_wait = 1.6
 	_call.text = "Hands in... ready..."
@@ -159,7 +159,7 @@ func start(r: Node) -> void:
 
 ## Set up the bar for the next grip.
 func _round() -> void:
-	var kind: String = WHO.get(rival.id, "")
+	var kind: String = WHO.get(rival.id, "chain" if rival.legend != "" else "")
 	move = CHAIN[(mine + theirs) % 3] if kind == "chain" else kind
 	width = clamp(0.2 + (Meet.strength() - rival.strength) * 0.003 - mine * 0.015, 0.1, 0.3)
 	speed = (4.2 + (rival.strength - 50.0) * 0.05 + (mine + theirs) * 0.35) * _angry

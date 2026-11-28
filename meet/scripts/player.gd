@@ -26,6 +26,7 @@ var _hold := 0.0
 var _down := 0.0
 var _worn := {}
 var _tag: Label3D
+var _lamp: OmniLight3D
 var riding := false
 var _ride_v := Vector3.ZERO
 var sitting := false
@@ -176,6 +177,12 @@ func stand_up() -> void:
 	sitting = false
 	global_position = Meet.main.clear(global_position - global_transform.basis.z * 0.8)
 
+## Thrown straight up.
+func launch() -> void:
+	sitting = false
+	_jump = 0.1
+	_jump_v = 13.0
+
 ## Held where you are while something happens to you.
 func caught(seconds: float) -> void:
 	sitting = false
@@ -242,11 +249,15 @@ func slap() -> void:
 			best = n
 			bd = to.length()
 	if best == null:
+		# Nothing living in the way. With something heavy enough, the scenery gives.
+		if Meet.attack() >= 8:
+			Meet.main.smash(global_position + fwd * 1.6)
 		return
 	if Meet.worn["hand"] == "fish":
 		Meet.dare("fishslap")
 	Meet.sfx("punch", -2.0, randf_range(0.85, 1.1))
-	best.take_hit(int(22.0 * Meet.hit_power()), global_position)
+	best.take_hit(8 + Meet.attack() * 5, global_position)
+	Meet.hud.float_text(["tap", "tap", "thwack", "thwack", "WHACK", "WHACK", "CRACK", "CRACK", "BOOM", "BOOM", "KA-BOOM"][Meet.attack()])
 	if Meet.worn["hand"] == "rubber_chicken":
 		Meet.hud.float_text("squeak")
 	Fx.burst(Meet.main, best.global_position + Vector3(0, 1.3, 0), Vector3.UP, false, 8)
@@ -345,6 +356,44 @@ func use_item() -> void:
 				Meet.main.start_gulls()
 			else:
 				Meet.say("You hold the %s up. Kelvin has noticed." % Meet.ITEMS[item]["name"].to_lower())
+		"golden_grip":
+			# One clap, and everything near you sits down.
+			_cooldown = 6.0
+			act("Punch_Cross", 0.8)
+			Meet.sfx("crash")
+			Meet.hud.shake()
+			Meet.hud.banner("THE GOLDEN GRIP", "You clap once.")
+			for k in 10:
+				var a := TAU * k / 10.0
+				Fx.burst(Meet.main, global_position + Vector3(cos(a) * 2.0, 0.6, sin(a) * 2.0), Vector3.UP, false, 8)
+			for r in Meet.risers:
+				var d: float = r.global_position.distance_to(global_position)
+				if d < 7.0 and r.state != "winded":
+					if r.alien:
+						r.take_hit(200, global_position)
+					else:
+						r.bowled(r.global_position - global_position)
+			Meet.add_heat(1.0, "using THAT at a club meet")
+		"harmonica":
+			act("Interact", 1.2)
+			Meet.sfx("item", -4.0, 1.3)
+			Meet.say("You play the only tune you know. It's the first four notes of something.")
+			for r in Meet.risers:
+				if r.global_position.distance_to(global_position) < 7.0 and not r.alien and r.state not in ["pull", "scrap", "winded", "confront", "post"]:
+					if r.mind.chatty > 0.55 or r.mood_level() >= 1:
+						r.gesture("Dance", 3.0)
+			var dee: Node = Meet.riser("s_busker")
+			if dee and dee.global_position.distance_to(global_position) < 9.0:
+				dee.say_aloud("Other way round. ...No. Just give it here.", 4.0)
+		"catch_ball":
+			if who:
+				act("Punch_Jab", 0.5)
+				var tb := who
+				Meet.main.lob(global_position + Vector3(0, 1.4, 0), tb.global_position + Vector3(0, 1.3, 0), Color(0.2, 0.75, 0.6), func():
+					if is_instance_valid(tb):
+						tb.pranked("ball", ["Did you just try to CATCH me?", "I'm not going in there.", "Ha! Missed."], ["I am not a collectable.", "Throw that at me again."]))
+			else:
+				Meet.say("Nothing to throw it at. It's for something small, orange and fast.")
 		"katana_88", "bracket_cup", "glow_stick":
 			act("Sword_Idle", 1.5)
 			Meet.sfx("ooh", -8.0)
@@ -460,6 +509,16 @@ func _process(dt: float) -> void:
 	look = Vector2.ZERO
 	_pivot.rotation = Vector3(_pitch, _orbit_yaw if _orbit else 0.0, 0)
 	cam.position = cam.position.lerp(Vector3(0.0, 0.2, _orbit_zoom) if _orbit else Vector3(0.5, 0.4, 3.4), min(1.0, dt * 8.0))
+	# In the dark, a glow stick in your hand is the only real light. Without one, almost nothing.
+	if _lamp == null:
+		_lamp = OmniLight3D.new()
+		_lamp.position = Vector3(0, 1.3, -0.3)
+		add_child(_lamp)
+	var lit: bool = Meet.worn["hand"] == "glow_stick"
+	_lamp.visible = Meet.dark > 0.0 or lit
+	_lamp.light_color = Color(0.4, 1.0, 0.6) if lit else Color(0.5, 0.5, 0.6)
+	_lamp.light_energy = (2.4 if Meet.dark > 0.0 else 0.6) if lit else 0.25
+	_lamp.omni_range = 11.0 if lit else 2.2
 	if sitting:
 		Character.play(_figure, "Sitting_Idle")
 		Meet.stamina = min(100.0, Meet.stamina + dt * 4.0)

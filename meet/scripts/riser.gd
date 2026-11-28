@@ -63,6 +63,13 @@ var _dog_ate := false
 var _lead: MeshInstance3D
 var coned := false
 var riding := false              # on a bicycle
+var post := false                # works a fixed spot: the busker, the fisherman, the kebab van
+var _post_at := Vector3.ZERO
+var _post_yaw := 0.0
+var _lift_t := 0.0
+var _give: Callable
+var _zap := 0.0
+var legend := ""                 # a visiting great: "don" or "lasha"
 var keen := false                # already half talked into a pull
 var bracket := ""                # this pull is the player's bracket semi or final
 var _chalk_t := 0.0
@@ -136,9 +143,9 @@ func setup(d: Dictionary, riser: bool, at: Vector3) -> void:
 	_bark = Build.label(self, "", 2.75 if d["id"] != "alien" else 2.2, Color(1.0, 0.93, 0.6), 44)
 	# Speech stays the same size on screen however far away they are, so it can be read.
 	_bark.fixed_size = true
-	_bark.pixel_size = 0.0011
+	_bark.pixel_size = 0.0008
 	_bark.outline_size = 14
-	_bark.width = 520.0
+	_bark.width = 560.0
 	_bark.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_bark.no_depth_test = true
 	_bark.visible = false
@@ -252,7 +259,18 @@ func bond() -> String:
 func bond_text() -> String:
 	return {"gone": "wants nothing to do with you", "irritated": "is fed up with you", "known": "knows you", "mates": "counts you a mate", "close": "would back you in anything"}[bond()]
 
+func set_post(at: Vector3, yaw: float) -> void:
+	post = true
+	_post_at = at
+	_post_yaw = yaw
+	global_position = at
+	rotation.y = yaw
+	state = "post"
+	_timer = randf_range(6.0, 14.0)
+
 func is_free() -> bool:
+	if post:
+		return false
 	if state == "walk" and _then in ["answer", "bench", "swarm"]:
 		return false   # on their way to the player; nothing else gets to claim them
 	return state in ["idle", "walk", "watch", "sit", "chat", "snack", "quirk", "huddle"] and not alien and not passer
@@ -269,6 +287,10 @@ func at_table() -> bool:
 	return state == "pull"
 
 func idle() -> void:
+	if post:
+		state = "post"
+		global_position = _post_at
+		return
 	Wear.drop(_figure)
 	_convo = {}
 	if passer:
@@ -329,7 +351,7 @@ func _process(dt: float) -> void:
 		Character.play(_figure, "Idle")
 		return
 	_notice()
-	if state not in ["pull", "prep"] and Pose.posed(_figure):
+	if state not in ["pull", "prep", "lift"] and Pose.posed(_figure):
 		Pose.stop(_figure)
 	match state:
 		"idle":
@@ -377,6 +399,27 @@ func _process(dt: float) -> void:
 			_search(dt)
 		"ride":
 			pass   # moved by whoever is running the bike
+		"post":
+			# At work. Looks up when you come close.
+			global_position = _post_at
+			var pd: float = global_position.distance_to(Meet.player.global_position)
+			if pd < 4.5:
+				_look(Meet.player.global_position, 0.1)
+			else:
+				rotation.y = lerp_angle(rotation.y, _post_yaw, 0.05)
+			Character.play(_figure, def.get("anim", "Idle") if pd < 4.5 or id == "s_busker" else "Idle")
+			_timer -= dt
+			if _timer <= 0.0 and pd < 9.0:
+				_timer = randf_range(14.0, 26.0)
+				say_aloud(def["chat"][randi() % def["chat"].size()], 4.5)
+		"lift":
+			_lift_t += dt
+			Pose.curl(_figure, _lift_t)
+			_timer -= dt
+			if _timer <= 0.0:
+				Pose.stop(_figure)
+				say_aloud(["And that's the set.", "Forearms. Always forearms.", "Light weight."][randi() % 3], 3.0)
+				idle()
 		"confront":
 			# Walking you down for a word. It happens when they reach you.
 			_chase += dt
@@ -479,11 +522,58 @@ func _choose() -> void:
 			to.y = 0
 			_go(_partner.global_position + to.normalized() * 1.3, "chat")
 		"rest":
+			if randf() < 0.6:
+				_outing(main)
+				return
 			var a2 := PI + 0.4 + randf() * (PI - 0.8)
 			var rr: float = main.PLAZA + 0.5 + randi() % 5
 			_go(Vector3(cos(a2) * rr, 0, sin(a2) * rr), "sit")
 		"quirk":
 			_quirk(main)
+
+## Go and use the place: the van, the busker, the fisherman, the weights, the bench, the ladder.
+func _outing(main: Node3D) -> void:
+	_qlines = []
+	_qbark = 1.0
+	_qanim = "Idle"
+	_timer = randf_range(7.0, 12.0)
+	var options := ["van", "busker", "fisher", "weights", "ladder", "bin" if id == "kelvin" else "van", "rail"]
+	if id == "phillip":
+		options = ["weights", "weights", "rail"]
+	elif id == "luie":
+		options = ["fisher", "rail", "busker"]
+	match options[randi() % options.size()]:
+		"van":
+			_qlines = ["The lot. Garlic AND chilli.", "Chips. Large. Chicken salt.", "Just a drink, thanks, Sami.", "Same as last time."] if id != "kelvin" else ["The Sunday, please, Sami.", "Two lamb, one chicken. And whatever's left.", "Is that all for me? ...Yes. Yes it is."]
+			_qanim = "Interact"
+			_face_at = Vector3(-17.0, 0, 23.5)
+			_go(Vector3(-15.8, 0, 27.0) + Vector3(randf_range(-0.8, 0.8), 0, randf_range(0.2, 0.9)), "quirk")
+		"busker":
+			_qlines = ["Play the one about the pad!", "She's good, you know.", "Wonderwall!", "..."]
+			_qanim = "Dance" if mind.chatty > 0.6 else "Idle"
+			_face_at = Vector3(-7.5, 0, 26.6)
+			_go(Vector3(-7.5 + randf_range(-1.5, 1.5), 0, 24.6), "quirk")
+		"fisher":
+			_qlines = ["Catching anything, Con?", "What's biting?", "Is Kevin about?", "..."]
+			_face_at = Vector3(15.0, 0, 40)
+			_go(Vector3(15.0 + randf_range(1.2, 2.4), 0, 28.2), "quirk")
+		"weights":
+			_face_at = Vector3.ZERO
+			_go(Vector3(-6.5, 0, -5.5) + Vector3(randf_range(-0.6, 0.6), 0, 0.9) if randf() < 0.5 else Vector3(7.5, 0, 9.5) + Vector3(0.9, 0, randf_range(-0.6, 0.6)), "lift")
+		"ladder":
+			_qlines = {"harry": ["Second? Who's first? ...Erick. Right."], "erick": ["First. As it should be.", "Still top. Good."], "kelvin": ["Third. I'll take third."], "tommy": ["Seventh. The board's wrong. The board has always been wrong."], "luie": ["...Eighth. Fine."]}.get(id, ["Hm. Could be worse.", "Who updates this thing?"])
+			_face_at = Vector3(3.6, 0, 21.5)
+			_go(Vector3(3.6 + randf_range(-0.5, 0.5), 0, 19.6), "quirk")
+		"bin":
+			_qlines = ["Somebody threw away half a kebab. HALF.", "Just checking. Just looking.", "Don't tell anyone."]
+			_qanim = "Fixing_Kneeling"
+			_face_at = Vector3(11.5, 0, 25.6)
+			_go(Vector3(11.5, 0, 24.8), "quirk")
+		_:
+			_qlines = ["Nice out.", "...", "Ferry's late."]
+			var x := randf_range(-12.0, 10.0)
+			_face_at = Vector3(x, 0, 60)
+			_go(Vector3(x, 0, 28.4), "quirk")
 
 func _watch(main: Node3D) -> void:
 	if not main.match_on():
@@ -517,6 +607,7 @@ func _quirk(main: Node3D) -> void:
 				_timer = 4.0
 		"film":
 			if main.match_on():
+				camera()
 				_qanim = "Pistol_Aim_Neutral"
 				_face_at = main.TABLES[main.nearest_match(global_position)]
 				_go(_face_at + Vector3(randf_range(-1.5, 1.5), 0, 2.4), "quirk")
@@ -726,6 +817,22 @@ func _arrive() -> void:
 				say_aloud("Where've they gone? Called me over and wandered off.", 4.0)
 				mind.experience("nagged", -0.1, 0.4)
 				idle()
+		"lift":
+			state = "lift"
+			_lift_t = 0.0
+			_timer = randf_range(5.0, 8.0)
+			say_aloud(["One set.", "Just a quick pump.", "Don't watch me."][randi() % 3], 2.5)
+		"give":
+			# Hand something over, properly.
+			state = "quirk"
+			_qanim = "Interact"
+			_qlines = []
+			_face_at = Meet.player.global_position
+			_timer = 2.5
+			_look(Meet.player.global_position, 1.0)
+			gesture("Interact", 1.2)
+			if _give.is_valid():
+				_give.call()
 		"bench":
 			if Meet.player.sitting and not Meet.modal:
 				state = "sit"
@@ -749,7 +856,7 @@ func _arrive() -> void:
 				_timer = randf_range(5.0, 9.0)
 				if _partner.passer:
 					say_aloud(["You should have a go.", "We're here every month.", "It's all technique, honestly."][randi() % 3])
-					_partner.say_aloud(_partner.def["chat"][randi() % 3], 5.0)
+					_partner.say_aloud(_partner.def["chat"][randi() % _partner.def["chat"].size()], 5.0)
 				else:
 					Meet.bump(id, _partner.id, 0.04)
 					_partner.state = "chat"
@@ -878,6 +985,12 @@ func take_hit(dmg: int, from: Vector3) -> void:
 		if composure <= 0.0:
 			_go_down()
 		return
+	if post:
+		say_aloud(["OI! I'm WORKING here!", "What's the matter with you?", "Touch me again and I'm calling someone."][randi() % 3], 4.0)
+		mind.experience("scrap", -0.6, 1.5, true, riser_name)
+		Meet.add_heat(1.5, "hitting someone at work")
+		Meet.main.warn("That's %s. They've got nothing to do with us. What is WRONG with you?" % riser_name)
+		return
 	if passer:
 		say_aloud("Help! This one's lost the plot!", 4.0)
 		for r in Meet.risers:
@@ -904,6 +1017,8 @@ func _go_down() -> void:
 		for r in Meet.risers:
 			if r != self and not r.alien and r.global_position.distance_to(global_position) < 24.0:
 				r.saw_beating(self)
+	if alien:
+		Meet.main.alien_down(self)
 	state = "winded"
 	_timer = 9.0 if not alien else 9999.0
 	_vs_player = false
@@ -991,7 +1106,7 @@ func _alien(dt: float) -> void:
 		return
 	if not is_instance_valid(_foe) or randf() < dt * 0.15:
 		_foe = null
-		_vs_player = randf() < 0.45
+		_vs_player = randf() < 0.6 and not (Meet.worn["head"] == "antennae" and composure >= 150.0)
 		if not _vs_player:
 			var pick: Array = Meet.risers.filter(func(r): return r.state != "winded")
 			if not pick.is_empty():
@@ -1008,15 +1123,26 @@ func _alien(dt: float) -> void:
 			_strike = 1.8
 			if to.length() < 2.4:
 				if _vs_player:
-					Meet.player.slapped(10.0, global_position, self)
+					Meet.player.slapped(22.0, global_position, self)
 				elif _foe.state != "scrap":
 					_foe.knock(to.normalized() * 4.0)
 					_foe.say_aloud("Aah!", 1.0)
 		return
+	# From a distance they shoot. It hurts less than a zap up close, but it finds you.
+	_zap -= dt
+	if _vs_player and to.length() > 3.0 and to.length() < 14.0 and _zap <= 0.0:
+		_zap = randf_range(2.2, 3.4)
+		Meet.sfx("zap", -4.0, randf_range(1.2, 1.5))
+		Character.play(_figure, "Spell_Simple_Shoot", true)
+		var from := global_position + Vector3(0, 1.0, 0)
+		var aim: Vector3 = target + Vector3(0, 1.2, 0)
+		Meet.main.bolt(from, aim, func():
+			if Meet.player.global_position.distance_to(aim - Vector3(0, 1.2, 0)) < 1.6:
+				Meet.player.slapped(9.0, from, self))
 	if to.length() > 1.8:
 		_goal = target
 		state = "walk"
-		_walk(dt, 2.0)
+		_walk(dt, 2.7)
 		return
 	_look(target, 0.3)
 	if _strike <= 0.0:
@@ -1380,6 +1506,11 @@ func join_meet() -> void:
 
 func after_pull(player_won: bool) -> void:
 	pull_angry = false
+	if id == "kaiju":
+		Meet.main.evening.kaiju_result(player_won)
+		return
+	if legend != "":
+		Meet.main.evening.legend_result(self, player_won)
 	if bracket != "":
 		bracket = ""
 		Meet.main.evening.bracket_result(self, player_won)
@@ -2126,3 +2257,48 @@ func throw_at(target: Node) -> void:
 			tgt.splatted()
 		else:
 			tgt.splatted(self))
+
+## One of the player's stone lions has come over to have a look at them.
+func pet_visit() -> void:
+	if state in ["pull", "winded", "scrap", "confront"]:
+		return
+	_look(Meet.player.global_position, 0.5)
+	var lines: Array = {
+		"harry": ["That is council property and it is sniffing my shoe.", "...Good boy. Don't tell anyone I said that."],
+		"george": ["Hold still. HOLD STILL. This is the best content we've ever had.", "Does it want to be in the photo?"],
+		"phillip": ["...", "...It's heavy. Good."],
+		"bhavya": ["Its posture is excellent. Look at that spine.", "It likes the beard. Everything likes the beard."],
+		"kelvin": ["Does it eat snacks? It's looking at my snacks.", "You can have a yellow one. Not a red."],
+		"tommy": ["CAN I RIDE IT.", "I'm naming this one Chalky."],
+		"luie": ["...Hello.", "It sat on my foot. I'm staying here now."],
+		"erick": ["I could beat it.", "It's got a good grip. Look at those paws."],
+	}.get(id, ["Is that... is that the statue?", "It's STONE. It's WALKING.", "Nice... cat?", "Does it bite? It looks like it bites."])
+	say_aloud(lines[randi() % lines.size()], 4.5)
+	if passer and randf() < 0.4:
+		bolt(1.8)
+	elif mind.chatty > 0.5 or id in ["kelvin", "luie", "tommy"]:
+		gesture("Fixing_Kneeling", 1.6)
+		if not _asked.has("lionpet"):
+			_asked["lionpet"] = true
+			mind.experience("talk", 0.25, 0.7, true, "the lion")
+
+## George's camera, in his hands whenever he is filming.
+func camera() -> void:
+	var c := Node3D.new()
+	Build.box(c, Vector3(0.16, 0.11, 0.08), Vector3(0, 0.08, 0.04), Color(0.08, 0.08, 0.1))
+	Build.cyl(c, 0.04, 0.045, 0.09, Vector3(0, 0.08, 0.12), Color(0.15, 0.15, 0.18), 10).rotation.x = PI / 2.0
+	Build.sphere(c, 0.03, Vector3(0, 0.08, 0.17), Color(0.4, 0.6, 1.0), 0.8)
+	Build.sphere(c, 0.012, Vector3(0.05, 0.15, 0.04), Color(1.0, 0.1, 0.1), 2.5)
+	Wear.hold(_figure, c)
+
+## Carrying a light for a while.
+func glow(seconds: float) -> void:
+	var l := OmniLight3D.new()
+	l.light_color = Color(0.4, 1.0, 0.6)
+	l.light_energy = 1.6
+	l.omni_range = 6.0
+	l.position = Vector3(0, 1.4, 0)
+	add_child(l)
+	get_tree().create_timer(seconds).timeout.connect(func():
+		if is_instance_valid(l):
+			l.queue_free())
